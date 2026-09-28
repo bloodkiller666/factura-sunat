@@ -1,26 +1,137 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Modo oscuro controlado por la clase .dark en <html> (permite el toggle). */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+/* Barra de progreso indeterminada del header */
+@keyframes barraIndeterminada {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(420%);
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.dark body {
+  background-color: #020617;
+  color: #e2e8f0;
+}
+
+/* Scrollbar discreta para las tablas y el modal */
+*::-webkit-scrollbar {
+  height: 9px;
+  width: 9px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background-color: #334155;
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: #475569;
+}
+
+*::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Mantiene el icono del selector de fecha legible en modo oscuro */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
+}
+
+/* Sombra suave reutilizable para el papel de la vista previa */
+.sombra-papel {
+  box-shadow: 0 24px 60px -18px rgb(15 23 42 / 0.45);
+}
+
+/* ------------------------------------------------------------------ *
+ * Exportación a PDF (window.print)
+ * En pantalla la hoja `.area-impresion` está oculta; al imprimir se oculta
+ * todo lo demás para que el PDF contenga solo el comprobante seleccionado.
+ * ------------------------------------------------------------------ */
+
+.area-impresion {
+  display: none;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  /* El modal bloquea el scroll del body con estilo inline: lo liberamos para
+     que el comprobante pueda ocupar varias páginas al exportarse. */
+  body {
+    overflow: visible !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .area-impresion,
+  .area-impresion * {
+    visibility: visible;
+  }
+
+  .area-impresion {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #fff;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
 }

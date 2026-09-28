@@ -2,17 +2,51 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Este proyecto usa **pnpm** (fijado en `packageManager`). No uses `npm`: el lockfile es
+`pnpm-lock.yaml`.
+
+Instala las dependencias y arranca el servidor de desarrollo:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
+
+### Seguridad de la cadena de suministro
+
+pnpm no ejecuta los scripts de instalación de las dependencias salvo que se autoricen
+explícitamente. Las decisiones quedan registradas en `pnpm-workspace.yaml` (`allowBuilds`);
+si necesitas revisar o cambiar alguna, usa `pnpm approve-builds`.
+
+## Envío de comprobantes por correo
+
+El botón **Enviar por Correo** hace un envío real a través de [Resend](https://resend.com).
+El navegador llama a la ruta `POST /api/enviar-comprobantes`, y la clave del proveedor solo
+existe en el servidor: nunca llega al cliente.
+
+1. Copia `.env.example` a `.env.local`.
+2. Crea una API key en <https://resend.com/api-keys> y asígnala a `RESEND_API_KEY`.
+3. Opcional: define `CORREO_DESTINO_PRUEBA` para redirigir todos los correos a tu propio
+   buzón. Es lo recomendable en el prototipo, porque los RUC de los datos simulados no
+   tienen buzones reales.
+
+Si `RESEND_API_KEY` no está definida, la acción no falla en silencio: muestra un aviso
+indicando que falta configurarla.
+
+## Exportaciones
+
+Todos los archivos se generan en el navegador, sin dependencias de terceros:
+
+| Acción | Formato | Contenido |
+| --- | --- | --- |
+| `Imprimir / PDF` | PDF (impresión nativa) | Representación impresa del comprobante |
+| `Descargar XML` | XML | UBL 2.1 simulado de SUNAT |
+| `Exportar a Excel` | XLSX (OOXML) | Reporte con los comprobantes seleccionados |
+| `Descargar Lote ZIP` | ZIP | Un XML por comprobante + `LEEME.txt` |
+
+El ZIP y el contenedor XLSX se construyen con un escritor propio en `lib/zip.ts` (sin
+compresión) para evitar añadir dependencias; `lib/xlsx.ts` genera las seis partes OOXML
+mínimas que Excel necesita.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
