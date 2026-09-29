@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
 import { CompanyInfoCard } from "@/components/company-info-card";
 import { CompanySelector } from "@/components/company-selector";
 import { FILTROS_INICIALES, FiltersPanel } from "@/components/filters-panel";
@@ -89,6 +91,12 @@ export default function Page() {
   const [solicitudCarga, setSolicitudCarga] = useState(0);
 
   const temporizadorDescarga = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Raíz de la página: acota los selectores de GSAP. */
+  const raizRef = useRef<HTMLDivElement>(null);
+  /** Bloque que se redibuja al cambiar de empresa (ficha, KPIs, filtros y tabla). */
+  const contenidoRef = useRef<HTMLDivElement>(null);
+  /** Evita repetir la transición de empresa durante el primer render. */
+  const primeraEmpresa = useRef(true);
 
   const empresa = useMemo(
     () => EMPRESAS.find((item) => item.id === empresaId) ?? EMPRESAS[0],
@@ -101,6 +109,63 @@ export default function Page() {
   );
 
   const metricas = useMemo(() => calcularMetricas(empresa.comprobantes), [empresa]);
+
+  /**
+   * Entrada de la página: revelado escalonado de header, selector, contenido
+   * y pie. Se usa `matchMedia` para respetar `prefers-reduced-motion`.
+   */
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from("[data-anim='reveal']", {
+          y: 26,
+          opacity: 0,
+          duration: 0.72,
+          ease: "power3.out",
+          stagger: 0.08,
+          clearProps: "opacity,transform",
+        });
+      });
+
+      return () => mm.revert();
+    },
+    { scope: raizRef },
+  );
+
+  /**
+   * Transición al alternar entre TDM Servicios, TDM Geosintéticos y
+   * TDM Asfaltos: el bloque de contenido entra con un desplazamiento suave.
+   */
+  useGSAP(
+    () => {
+      if (primeraEmpresa.current) {
+        primeraEmpresa.current = false;
+        return;
+      }
+
+      const contenido = contenidoRef.current;
+      if (!contenido) return;
+
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.fromTo(
+          contenido,
+          { opacity: 0, y: 16 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            ease: "power2.out",
+            clearProps: "opacity,transform",
+          },
+        );
+      });
+
+      return () => mm.revert();
+    },
+    { dependencies: [empresaId], revertOnUpdate: true },
+  );
 
   /**
    * Simula la consulta a SUNAT. El estado de carga se activa en el manejador
@@ -186,42 +251,59 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
+    <div
+      ref={raizRef}
+      className="relative min-h-screen bg-gradient-to-b from-[#f5f7fc] via-[#fafbff] to-[#eef1f9] dark:from-[#05060c] dark:via-[#06070e] dark:to-[#04050a]"
+    >
+      {/* Orbes de fondo: profundidad sutil sin interferir con la UI */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[560px] overflow-hidden"
+      >
+        <div className="absolute -top-40 -left-32 h-[420px] w-[420px] animate-[flotarOrbe_14s_ease-in-out_infinite] rounded-full bg-indigo-500/20 blur-[130px] dark:bg-indigo-500/25" />
+        <div className="absolute -top-24 right-[-8rem] h-[360px] w-[360px] animate-[flotarOrbe_18s_ease-in-out_infinite] rounded-full bg-emerald-400/15 blur-[130px] dark:bg-emerald-500/20" />
+      </div>
+
       <PortalHeader cargando={cargando} />
 
-      <main className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-5 sm:gap-5 sm:px-6 sm:py-6 lg:px-8">
+      <main className="relative z-10 mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-5 sm:gap-5 sm:px-6 sm:py-6 lg:px-8">
         <CompanySelector
           empresas={EMPRESAS}
           seleccionadaId={empresa.id}
           onSeleccionar={seleccionarEmpresa}
         />
 
-        <CompanyInfoCard empresa={empresa} cargando={cargando} />
+        <div ref={contenidoRef} data-anim="reveal" className="flex flex-col gap-4 sm:gap-5">
+          <CompanyInfoCard empresa={empresa} cargando={cargando} />
 
-        {cargando ? <SkeletonKpis /> : <KpiCards metricas={metricas} />}
+          {cargando ? <SkeletonKpis /> : <KpiCards metricas={metricas} />}
 
-        <FiltersPanel
-          filtros={filtros}
-          onCambiar={(parcial) => setFiltros((previos) => ({ ...previos, ...parcial }))}
-          onLimpiar={() => setFiltros(FILTROS_INICIALES)}
-          resultados={comprobantesFiltrados.length}
-          total={empresa.comprobantes.length}
-          cargando={cargando}
-        />
+          <FiltersPanel
+            filtros={filtros}
+            onCambiar={(parcial) => setFiltros((previos) => ({ ...previos, ...parcial }))}
+            onLimpiar={() => setFiltros(FILTROS_INICIALES)}
+            resultados={comprobantesFiltrados.length}
+            total={empresa.comprobantes.length}
+            cargando={cargando}
+          />
 
-        <InvoicesTable
-          comprobantes={comprobantesFiltrados}
-          empresa={empresa}
-          totalEmpresa={empresa.comprobantes.length}
-          cargando={cargando}
-          descargaEnCurso={descargaEnCurso}
-          onVerDetalle={setDetalle}
-          onDescargar={descargar}
-          onNotificar={notificar}
-        />
+          <InvoicesTable
+            comprobantes={comprobantesFiltrados}
+            empresa={empresa}
+            totalEmpresa={empresa.comprobantes.length}
+            cargando={cargando}
+            descargaEnCurso={descargaEnCurso}
+            onVerDetalle={setDetalle}
+            onDescargar={descargar}
+            onNotificar={notificar}
+          />
+        </div>
       </main>
 
-      <footer className="mx-auto max-w-[1600px] px-4 pb-10 text-center text-xs text-slate-400 dark:text-slate-500 sm:px-6 lg:px-8">
+      <footer
+        data-anim="reveal"
+        className="relative z-10 mx-auto max-w-[1600px] px-4 pb-10 text-center text-xs text-slate-400 sm:px-6 lg:px-8 dark:text-slate-500"
+      >
         Prototipo de interfaz · Grupo TDM · Información fiscal y comprobantes simulados con fines de
         demostración. No realiza operaciones reales ante SUNAT.
       </footer>

@@ -19,18 +19,20 @@ export const metadata: Metadata = {
 };
 
 /**
- * Se ejecuta antes del primer pintado para evitar el "flash" de tema:
- * respeta la preferencia guardada y, si no existe, la del sistema.
+ * Se ejecuta antes del primer pintado para evitar el "flash" de tema.
+ * El portal es dark-first: si el usuario nunca eligió un tema se aplica el
+ * modo oscuro premium; si eligió "claro" esa preferencia se respeta.
  */
 const scriptTema = `
 (function () {
   try {
     var guardado = window.localStorage.getItem("tdm-tema");
-    var sistemaOscuro = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    if (guardado === "oscuro" || (!guardado && sistemaOscuro)) {
+    if (guardado === "oscuro" || !guardado) {
       document.documentElement.classList.add("dark");
     }
-  } catch (e) {}
+  } catch (e) {
+    document.documentElement.classList.add("dark");
+  }
 })();
 `;
 
@@ -44,7 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: scriptTema }} />
       </head>
-      <body className="min-h-full bg-slate-100 font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+      <body className="min-h-full font-sans text-slate-900 antialiased dark:text-slate-100">
         {children}
       </body>
     </html>
