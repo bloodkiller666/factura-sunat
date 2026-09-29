@@ -41,8 +41,8 @@ Todos los archivos se generan en el navegador, sin dependencias de terceros:
 | --- | --- | --- |
 | `Imprimir / PDF` | PDF (impresión nativa) | Representación impresa del comprobante |
 | `Descargar XML` | XML | UBL 2.1 simulado de SUNAT |
-| `Exportar a Excel` | XLSX (OOXML) | Reporte con los comprobantes seleccionados |
-| `Descargar Lote ZIP` | ZIP | Un XML por comprobante + `LEEME.txt` |
+| `Exportar a Excel` | XLSX (OOXML) | Reporte con los comprobantes seleccionados o, si no hay ninguno, con todos los visibles |
+| `Descargar Lote ZIP` | ZIP | Un XML por comprobante (seleccionados o todos los visibles) + `LEEME.txt` |
 
 El ZIP y el contenedor XLSX se construyen con un escritor propio en `lib/zip.ts` (sin
 compresión) para evitar añadir dependencias; `lib/xlsx.ts` genera las seis partes OOXML

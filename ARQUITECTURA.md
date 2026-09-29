@@ -22,13 +22,15 @@ de sus tres empresas:
 2. **Saber de un vistazo** cómo va el periodo: total facturado del mes, aprobados,
    pendientes y anulados (tarjetas KPI).
 3. **Encontrar un comprobante** por N° de documento, cliente o RUC, y por tipo de
-   documento, estado SUNAT, estado de cobranza y rango de fechas.
+   documento, estado SUNAT, N° SAP y rango de fechas.
 4. **Ver la representación impresa** de cualquier comprobante antes de entregarlo.
 5. **Exportar trabajo real**:
    - **PDF** del comprobante (vía diálogo de impresión del navegador → "Guardar como PDF").
    - **XML** UBL 2.1 del comprobante.
-   - **Excel (.xlsx)** con los comprobantes seleccionados.
-   - **ZIP** con el XML de cada comprobante seleccionado + un manifiesto `LEEME.txt`.
+   - **Excel (.xlsx)** con los comprobantes seleccionados, o con todos los visibles si
+     no hay ninguno marcado.
+   - **ZIP** con el XML de cada comprobante seleccionado (o de todos los visibles, con
+     la misma regla) + un manifiesto `LEEME.txt`.
 6. **Enviar por correo real** los comprobantes (XML adjunto) a cada cliente, agrupando
    por destinatario, a través de Resend desde el servidor.
 
@@ -38,7 +40,7 @@ de sus tres empresas:
 | --- | --- |
 | Datos de comprobantes y empresas | **Simulados** (`lib/mock-data.ts`) |
 | "Consulta a SUNAT" al cambiar de empresa | **Simulada**: un `setTimeout` de 700 ms |
-| Estado SUNAT / comercial | **Simulado** en los datos |
+| Estado SUNAT y número SAP | **Simulado** en los datos |
 | Descarga de XML | **Real** (se genera el UBL 2.1 en el navegador) |
 | Descarga de Excel y ZIP | **Real** (se generan los binarios en el navegador) |
 | Exportación a PDF | **Real** (usa la impresión nativa del navegador) |
@@ -145,14 +147,14 @@ La única llamada al servidor es la del correo.
 | `app/page.tsx` | Única página. Estado del portal, filtrado, métricas, exportaciones, toasts y animaciones GSAP de página/cambio de empresa. |
 | `app/api/enviar-comprobantes/route.ts` | `POST` que valida el lote, agrupa por cliente, genera los XML y llama a Resend. La API key nunca llega al navegador. |
 | `app/globals.css` | Sistema de diseño: `.vidrio`, `.vidrio-tenue`, `.borde-brillo`, `.aura-*`, `.texto-degradado`, keyframes y reglas de impresión. |
-| `components/portal-header.tsx` | Cabecera sticky glass: marca, indicador "SUNAT conectado", toggle de tema, perfil y barra de progreso. |
+| `components/portal-header.tsx` | Cabecera sticky glass: marca, toggle de tema, perfil y barra de progreso. |
 | `components/company-selector.tsx` | Pestañas de empresa como píldoras de cristal con **indicador deslizante GSAP**. |
 | `components/company-info-card.tsx` | Ficha informativa SUNAT de la empresa (estado, condición, domicilio, actividad…). |
 | `components/kpi-cards.tsx` | Cuatro tarjetas KPI con aura, acento y glow. |
-| `components/filters-panel.tsx` | Búsqueda + 3 selectores + rango de fechas y atajos. Exporta `FILTROS_INICIALES`. |
+| `components/filters-panel.tsx` | Búsqueda + 2 selectores + N° SAP + rango de fechas y atajos. Exporta `FILTROS_INICIALES`. |
 | `components/invoices-table.tsx` | Tabla de escritorio + tarjetas móviles, selección masiva, acciones por fila y acciones rápidas. |
 | `components/quick-actions-bar.tsx` | Barra de selección global y acciones masivas; exporta `CasillaSeleccion`. |
-| `components/status-badge.tsx` | Insignias de estado SUNAT / comercial (con tono `auto` o `claro` para el papel). |
+| `components/status-badge.tsx` | Insignia de estado SUNAT (con tono `auto` o `claro` para el papel). |
 | `components/invoice-paper.tsx` | Representación impresa del comprobante (siempre en blanco). Se reutiliza en modal y en impresión. |
 | `components/print-sheet.tsx` | Contenedor `.area-impresion`: solo se imprime al exportar a PDF. |
 | `components/invoice-detail-modal.tsx` | Modal de vista previa: apertura animada y **micro-tilt 3D** de la hoja. |
@@ -177,7 +179,7 @@ Comprobante  ─┬─ numero, tipo, cliente {ruc, razonSocial}
               ├─ descripcion, items: ItemComprobante[]
               ├─ baseImponible, igv, total
               ├─ estadoSunat: "Aprobado" | "Pendiente" | "Anulado"
-              ├─ estadoComercial: "Pagado" | "Pendiente" | "Vencido"
+              ├─ numeroSap: string
               └─ formaPago, observacion?
 ```
 
@@ -214,8 +216,11 @@ No se usa ninguna librería de PDF. El flujo es:
 3. `imprimirPdf()` cambia `document.title` al nombre sugerido
    (`Factura-F001-0004521-20615209385.pdf`), llama a `window.print()` y restaura el
    título al recibir `afterprint` (con un respaldo por si el navegador no lo emite).
-4. `@media print` en `globals.css` oculta **todo** salvo `.area-impresion`, de modo que
-   el PDF contiene únicamente el comprobante, a A4 y con márgenes de 12 mm.
+4. `@media print` en `globals.css` oculta **todo** salvo `.area-impresion`: el resto
+   del portal se saca del flujo con `display: none`
+   (`#portal-raiz > *:not(.area-impresion)`), porque ocultarlo solo con
+   `visibility: hidden` conservaba su altura y generaba páginas en blanco después de
+   la primera. El PDF queda con únicamente el comprobante, a A4 y con márgenes de 12 mm.
 
 ### 4.2 XML (UBL 2.1)
 
@@ -325,17 +330,17 @@ sequenceDiagram
 
     U->>Q: clic en Exportar a Excel o Descargar Lote ZIP
     Q->>T: onExportarExcel u onDescargarZip
-    T->>T: valida la selección visible
+    T->>T: documentosAExportar elige el conjunto:<br/>seleccionados o todos los visibles sin selección
 
-    alt sin selección
+    alt sin registros para exportar
         T-->>U: toast No hay comprobantes seleccionados
-    else con selección
+    else conjunto determinado
         alt Excel
-            T->>D: descargarExcel seleccionados y empresa
+            T->>D: descargarExcel conjunto y empresa
             D->>X: generarXlsx con cabeceras y filas
             X->>Z: crearZip con las partes OOXML
         else Lote ZIP
-            T->>D: descargarLoteZip seleccionados y empresa
+            T->>D: descargarLoteZip conjunto y empresa
             D->>D: generarXmlUbl por cada comprobante
             D->>Z: crearZip con los XML y LEEME.txt
         end
@@ -423,8 +428,8 @@ Detalles que conviene tener presentes al leer los diagramas:
   - `.texto-degradado`: texto con degradado de marca.
 - Tokens de color: índigo/azul eléctrico como acento, esmeralda = aprobado,
   ámbar = pendiente, carmesí = anulado.
-- Keyframes: `flotarOrbe`, `brilloBarrido`, `barraToast`, `pulsoLuminoso`, `latido`,
-  `fadeInUp`, `barraIndeterminada`.
+- Keyframes: `flotarOrbe`, `brilloBarrido`, `barraToast`, `pulsoLuminoso`, `fadeInUp`,
+  `barraIndeterminada`.
 
 ### 5.2 Animación con GSAP
 
