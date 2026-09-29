@@ -261,7 +261,7 @@ invisible, dispara el clic y revoca la URL después.
 4. Usa `Promise.allSettled` para que un fallo puntual no aborte el resto y devuelve
    cuántos se enviaron y a quién.
 
-Variables de entorno (`.env.example`): `RESEND_API_KEY`, `CORREO_EMISOR`,
+Variables de entorno (en `.env.local`): `RESEND_API_KEY`, `CORREO_EMISOR`,
 `CORREO_DESTINO_PRUEBA` (en pruebas redirige **todos** los correos a un solo buzón,
 porque los RUC simulados no tienen buzón real).
 
@@ -474,7 +474,7 @@ con `gsap.matchMedia()` o comprobaciones explícitas.
 pnpm install
 
 # 2. Opcional: envío real de correo
-cp .env.example .env.local     # y completa RESEND_API_KEY
+#    Crea .env.local en la raíz y define RESEND_API_KEY
 
 # 3. Desarrollo
 pnpm dev                        # http://localhost:3000

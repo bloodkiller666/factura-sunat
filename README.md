@@ -24,7 +24,7 @@ El botón **Enviar por Correo** hace un envío real a través de [Resend](https:
 El navegador llama a la ruta `POST /api/enviar-comprobantes`, y la clave del proveedor solo
 existe en el servidor: nunca llega al cliente.
 
-1. Copia `.env.example` a `.env.local`.
+1. Crea un archivo `.env.local` en la raíz del proyecto.
 2. Crea una API key en <https://resend.com/api-keys> y asígnala a `RESEND_API_KEY`.
 3. Opcional: define `CORREO_DESTINO_PRUEBA` para redirigir todos los correos a tu propio
    buzón. Es lo recomendable en el prototipo, porque los RUC de los datos simulados no
