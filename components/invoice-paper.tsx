@@ -60,8 +60,8 @@ export function InvoicePaper({ comprobante, empresa }: { comprobante: Comprobant
             {comprobante.numero}
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-            <SunatBadge estado={comprobante.estadoSunat} size="sm" />
-            <ComercialBadge estado={comprobante.estadoComercial} size="sm" />
+            <SunatBadge estado={comprobante.estadoSunat} size="sm" tono="claro" />
+            <ComercialBadge estado={comprobante.estadoComercial} size="sm" tono="claro" />
           </div>
         </div>
       </div>

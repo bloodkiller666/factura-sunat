@@ -36,12 +36,12 @@ export function QuickActionsBar({
   const sinRegistros = cargando || totalVisibles === 0;
 
   return (
-    <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/40 sm:px-5 xl:flex-row xl:items-center xl:justify-between">
+    <div className="flex flex-col gap-3 border-b border-slate-200/70 bg-white/40 px-4 py-3 backdrop-blur-md sm:px-5 xl:flex-row xl:items-center xl:justify-between dark:border-white/10 dark:bg-white/[0.02]">
       {/* Lado izquierdo: selección global + contador */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <label
           className={cn(
-            "flex select-none items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300",
+            "flex items-center gap-2 text-[13px] font-semibold text-slate-600 select-none dark:text-slate-200",
             sinRegistros ? "cursor-not-allowed opacity-50" : "cursor-pointer",
           )}
         >
@@ -58,10 +58,10 @@ export function QuickActionsBar({
         <span
           aria-live="polite"
           className={cn(
-            "rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition-colors",
+            "rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition-all duration-300",
             haySeleccion
-              ? "bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-blue-400/25"
-              : "bg-slate-100 text-slate-500 ring-slate-300/60 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700",
+              ? "bg-indigo-50 text-indigo-700 ring-indigo-600/20 dark:bg-indigo-500/15 dark:text-indigo-200 dark:ring-indigo-400/30 dark:shadow-[0_0_24px_-8px_rgba(99,102,241,0.95)]"
+              : "bg-slate-100 text-slate-500 ring-slate-300/60 dark:bg-white/5 dark:text-slate-400 dark:ring-white/10",
           )}
         >
           {cargando
@@ -139,7 +139,7 @@ export function CasillaSeleccion({
       aria-label={etiqueta}
       title={etiqueta}
       className={cn(
-        "h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 accent-blue-600 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600",
+        "h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 accent-indigo-600 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/20 dark:accent-indigo-500",
         className,
       )}
     />
@@ -173,10 +173,10 @@ export function BotonAccionRapida({
       title={etiqueta}
       aria-label={etiqueta}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-wait disabled:opacity-70",
+        "inline-flex items-center justify-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-semibold transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 active:scale-[0.97] disabled:cursor-wait disabled:opacity-70",
         principal
-          ? "bg-blue-600 text-white shadow-sm hover:bg-blue-700 active:bg-blue-800"
-          : "border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-500/60 dark:hover:bg-blue-500/10 dark:hover:text-blue-300",
+          ? "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-inset ring-white/20 hover:from-indigo-400 hover:to-blue-500 hover:shadow-indigo-500/45"
+          : "border border-slate-200/90 bg-white/70 text-slate-600 backdrop-blur-md hover:border-indigo-300 hover:bg-indigo-50/70 hover:text-indigo-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-indigo-400/50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200 dark:hover:shadow-[0_0_26px_-10px_rgba(99,102,241,0.95)]",
       )}
     >
       {cargando ? (
@@ -184,18 +184,13 @@ export function BotonAccionRapida({
           aria-hidden="true"
           className={cn(
             "h-4 w-4 shrink-0 animate-spin rounded-full border-2",
-            principal ? "border-white/40 border-t-white" : "border-blue-300 border-t-blue-600",
+            principal ? "border-white/40 border-t-white" : "border-indigo-300 border-t-indigo-600",
           )}
         />
       ) : (
         <Icono className={cn("h-4 w-4 shrink-0", principal ? "text-white" : colorIcono)} />
       )}
-      <span
-        className={cn(
-          "whitespace-nowrap",
-          !siempreConTexto && "hidden md:inline",
-        )}
-      >
+      <span className={cn("whitespace-nowrap", !siempreConTexto && "hidden md:inline")}>
         {etiqueta}
       </span>
     </button>

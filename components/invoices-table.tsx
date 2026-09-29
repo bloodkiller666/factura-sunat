@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
 import {
   Eye,
   FileCode2,
@@ -10,6 +12,7 @@ import {
   Printer,
   Send,
 } from "lucide-react";
+import { BotonDescarga } from "@/components/boton-descarga";
 import { CasillaSeleccion, QuickActionsBar } from "@/components/quick-actions-bar";
 import { SkeletonFilasTabla, SkeletonTarjetas } from "@/components/skeletons";
 import { ComercialBadge, SunatBadge } from "@/components/status-badge";
@@ -33,15 +36,15 @@ interface Props {
 }
 
 const CLASES_TH =
-  "whitespace-nowrap bg-slate-50 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-800/60 dark:text-slate-400";
+  "whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-400";
 
 const ICONOS_TIPO: Record<string, string> = {
-  Factura: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
-  "Boleta de Venta": "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
-  "Guía de Remisión": "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
-  "Nota de Crédito": "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400",
-  "Nota de Débito": "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
-  "Comprobante de Retención": "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
+  Factura: "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300",
+  "Boleta de Venta": "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300",
+  "Guía de Remisión": "bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-300",
+  "Nota de Crédito": "bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300",
+  "Nota de Débito": "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300",
+  "Comprobante de Retención": "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300",
 };
 
 export function InvoicesTable({
@@ -57,6 +60,14 @@ export function InvoicesTable({
   const [seleccionados, setSeleccionados] = useState<Set<string>>(() => new Set());
   const [idsPrevios, setIdsPrevios] = useState<string[]>([]);
   const [enviandoCorreo, setEnviandoCorreo] = useState(false);
+  /** Clave de la última descarga terminada: alimenta la etiqueta "¡Descargado!". */
+  const [descargaCompletada, setDescargaCompletada] = useState<string | null>(null);
+
+  const seccionRef = useRef<HTMLElement>(null);
+  const cuerpoRef = useRef<HTMLTableSectionElement>(null);
+  const listaMovilRef = useRef<HTMLDivElement>(null);
+  /** Clave de la descarga previa, para detectar cuándo finaliza. */
+  const descargaPrevia = useRef<string | null>(null);
 
   const idsVisibles = useMemo(() => comprobantes.map((comprobante) => comprobante.id), [comprobantes]);
 
@@ -82,6 +93,120 @@ export function InvoicesTable({
 
   const todosSeleccionados =
     comprobantes.length > 0 && seleccionadosVisibles.length === comprobantes.length;
+
+  /* Cuando la descarga en curso termina, el botón muestra "¡Descargado!" un momento. */
+  useEffect(() => {
+    const anterior = descargaPrevia.current;
+    descargaPrevia.current = descargaEnCurso;
+
+    if (!anterior || descargaEnCurso !== null) return;
+
+    setDescargaCompletada(anterior);
+    const temporizador = setTimeout(() => setDescargaCompletada(null), 1200);
+    return () => clearTimeout(temporizador);
+  }, [descargaEnCurso]);
+
+  /* Entrada escalonada de las filas cada vez que cambia el conjunto visible. */
+  useGSAP(
+    () => {
+      const filas = cuerpoRef.current?.querySelectorAll<HTMLTableRowElement>("tr[data-fila]");
+      if (!filas || filas.length === 0) return;
+
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from(filas, {
+          opacity: 0,
+          y: 12,
+          duration: 0.42,
+          ease: "power2.out",
+          stagger: { each: 0.03, from: "start" },
+          clearProps: "opacity,transform",
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: seccionRef, dependencies: [comprobantes, cargando], revertOnUpdate: true },
+  );
+
+  /* Entrada escalonada de las tarjetas en móvil. */
+  useGSAP(
+    () => {
+      const tarjetas = listaMovilRef.current?.querySelectorAll<HTMLElement>("[data-tarjeta]");
+      if (!tarjetas || tarjetas.length === 0) return;
+
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from(tarjetas, {
+          opacity: 0,
+          y: 14,
+          duration: 0.4,
+          ease: "power2.out",
+          stagger: 0.06,
+          clearProps: "opacity,transform",
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: seccionRef, dependencies: [comprobantes, cargando], revertOnUpdate: true },
+  );
+
+  /* Hover de fila: elevación sutil y retorno suave (delegado en el tbody). */
+  useGSAP(() => {
+    const cuerpo = cuerpoRef.current;
+    if (!cuerpo || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(hover: none)").matches) return;
+
+    const alEntrar = (evento: Event) => {
+      const fila = (evento.target as HTMLElement).closest<HTMLTableRowElement>("tr[data-fila]");
+      if (!fila) return;
+      gsap.to(fila, { y: -2, duration: 0.25, ease: "power2.out", overwrite: "auto" });
+    };
+
+    const alSalir = (evento: Event) => {
+      const raton = evento as MouseEvent;
+      const fila = (raton.target as HTMLElement | null)?.closest<HTMLTableRowElement>(
+        "tr[data-fila]",
+      );
+      if (!fila) return;
+      // Ignora los micro movimientos dentro de la misma fila.
+      if (raton.relatedTarget instanceof Node && fila.contains(raton.relatedTarget)) return;
+      gsap.to(fila, { y: 0, duration: 0.3, ease: "power2.out", overwrite: "auto" });
+    };
+
+    cuerpo.addEventListener("mouseover", alEntrar);
+    cuerpo.addEventListener("mouseout", alSalir);
+    return () => {
+      cuerpo.removeEventListener("mouseover", alEntrar);
+      cuerpo.removeEventListener("mouseout", alSalir);
+    };
+  }, { scope: seccionRef });
+
+  /* Microinteracción de pulsación: rebote físico delegado en toda la tarjeta. */
+  useGSAP(() => {
+    const seccion = seccionRef.current;
+    if (!seccion || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const alPresionar = (evento: Event) => {
+      const boton = (evento.target as HTMLElement | null)?.closest<HTMLButtonElement>(
+        "[data-accion]",
+      );
+      if (!boton || boton.disabled) return;
+      gsap.fromTo(
+        boton,
+        { scale: 0.95 },
+        {
+          scale: 1,
+          duration: 0.36,
+          ease: "back.out(3)",
+          overwrite: "auto",
+          clearProps: "transform",
+        },
+      );
+    };
+
+    seccion.addEventListener("pointerdown", alPresionar);
+    return () => seccion.removeEventListener("pointerdown", alPresionar);
+  }, { scope: seccionRef });
 
   function alternarTodos() {
     setSeleccionados((previos) => {
@@ -186,24 +311,25 @@ export function InvoicesTable({
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section ref={seccionRef} className="vidrio overflow-hidden rounded-3xl">
       {/* Encabezado de la sección */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-4 py-4 sm:px-5 dark:border-white/10">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-blue-600">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-700 text-white shadow-lg shadow-indigo-500/25 ring-1 ring-inset ring-white/20">
             <FileSpreadsheet className="h-4 w-4" />
           </span>
           <div>
             <h3 className="text-sm font-bold tracking-tight text-slate-800 dark:text-slate-100">
               Comprobantes electrónicos
             </h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Toca <span className="font-medium text-slate-500 dark:text-slate-400">Ver detalle</span> para
+            <p className="text-xs text-slate-400 dark:text-slate-400">
+              Toca{" "}
+              <span className="font-medium text-slate-500 dark:text-slate-300">Ver detalle</span> para
               abrir la representación impresa
             </p>
           </div>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        <span className="rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-600 backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
           {cargando
             ? "Cargando…"
             : `${comprobantes.length} registro${comprobantes.length === 1 ? "" : "s"}`}
@@ -228,7 +354,7 @@ export function InvoicesTable({
       <div className="hidden overflow-x-auto lg:block">
         <table className="w-full min-w-[1530px] border-collapse">
           <thead>
-            <tr className="border-b border-slate-200 dark:border-slate-800">
+            <tr className="border-b border-slate-200/70 bg-white/40 dark:border-white/10 dark:bg-white/[0.02]">
               <th className={cn(CLASES_TH, "w-12 pr-0")}>
                 <span className="sr-only">Selección</span>
               </th>
@@ -247,7 +373,10 @@ export function InvoicesTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          <tbody
+            ref={cuerpoRef}
+            className="divide-y divide-slate-100/80 dark:divide-white/5"
+          >
             {cargando && <SkeletonFilasTabla filas={6} />}
 
             {!cargando &&
@@ -261,9 +390,10 @@ export function InvoicesTable({
                 return (
                   <tr
                     key={comprobante.id}
+                    data-fila="true"
                     className={cn(
-                      "transition-colors hover:bg-blue-50/50 dark:hover:bg-slate-800/60",
-                      marcado && "bg-blue-50/60 dark:bg-blue-500/5",
+                      "transition-colors duration-200 hover:bg-indigo-50/50 dark:hover:bg-white/[0.045]",
+                      marcado && "bg-indigo-50/60 dark:bg-indigo-500/[0.07]",
                     )}
                   >
                     <td className="w-12 px-4 py-3.5 pr-0">
@@ -278,11 +408,11 @@ export function InvoicesTable({
                       <button
                         type="button"
                         onClick={() => onVerDetalle(comprobante)}
-                        className="font-mono text-[13px] font-bold tracking-tight text-blue-700 underline-offset-2 transition hover:underline dark:text-blue-400"
+                        className="font-mono text-[13px] font-bold tracking-tight text-indigo-600 underline-offset-2 transition hover:text-indigo-500 hover:underline dark:text-indigo-300 dark:hover:text-indigo-200"
                       >
                         {comprobante.numero}
                       </button>
-                      <span className="mt-0.5 block text-[11px] text-slate-400 dark:text-slate-500">
+                      <span className="mt-0.5 block text-[11px] text-slate-400 dark:text-slate-400">
                         {comprobante.formaPago}
                       </span>
                     </td>
@@ -291,13 +421,13 @@ export function InvoicesTable({
                       <span className="flex items-center gap-2">
                         <span
                           className={cn(
-                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ring-black/5 dark:ring-white/10",
                             ICONOS_TIPO[comprobante.tipo] ?? "bg-slate-100 text-slate-500",
                           )}
                         >
                           <FileText className="h-3.5 w-3.5" />
                         </span>
-                        <span className="whitespace-nowrap text-[13px] font-semibold text-slate-700 dark:text-slate-200">
+                        <span className="text-[13px] font-semibold whitespace-nowrap text-slate-700 dark:text-slate-200">
                           {comprobante.tipo}
                         </span>
                       </span>
@@ -310,15 +440,15 @@ export function InvoicesTable({
                       >
                         {comprobante.cliente.razonSocial}
                       </span>
-                      <span className="block font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                      <span className="block font-mono text-[11px] text-slate-400 dark:text-slate-400">
                         {comprobante.cliente.ruc}
                       </span>
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-slate-600 dark:text-slate-300">
+                    <td className="px-4 py-3.5 text-[13px] whitespace-nowrap text-slate-600 dark:text-slate-300">
                       {formatearFecha(comprobante.fechaEmision)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-[13px] text-slate-600 dark:text-slate-300">
+                    <td className="px-4 py-3.5 text-[13px] whitespace-nowrap text-slate-600 dark:text-slate-300">
                       {formatearFecha(comprobante.fechaVencimiento)}
                     </td>
 
@@ -330,13 +460,13 @@ export function InvoicesTable({
                         {comprobante.descripcion}
                       </span>
                       {primerItem && (
-                        <span className="mt-0.5 block text-[11px] text-slate-400 dark:text-slate-500">
+                        <span className="mt-0.5 block text-[11px] text-slate-400 dark:text-slate-400">
                           {primerItem.cantidad} {primerItem.unidad}
                         </span>
                       )}
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
                       {sinImporte ? (
                         <span className="text-sm text-slate-300 dark:text-slate-600">—</span>
                       ) : (
@@ -344,14 +474,14 @@ export function InvoicesTable({
                           <span className="block text-[13px] font-medium tabular-nums text-slate-700 dark:text-slate-200">
                             {formatearMoneda(primerItem?.precioUnitario ?? 0)}
                           </span>
-                          <span className="block text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                          <span className="block text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
                             Base: {formatearMoneda(comprobante.baseImponible)}
                           </span>
                         </>
                       )}
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-3.5 text-right text-[13px] tabular-nums text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-3.5 text-right text-[13px] tabular-nums whitespace-nowrap text-slate-500 dark:text-slate-400">
                       {sinImporte ? (
                         <span className="text-slate-300 dark:text-slate-600">—</span>
                       ) : (
@@ -359,7 +489,7 @@ export function InvoicesTable({
                       )}
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
                       {sinImporte ? (
                         <span className="text-sm text-slate-300 dark:text-slate-600">—</span>
                       ) : (
@@ -376,43 +506,47 @@ export function InvoicesTable({
                       )}
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-3.5">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
                       <SunatBadge estado={comprobante.estadoSunat} />
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3.5">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
                       <ComercialBadge estado={comprobante.estadoComercial} />
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-3.5">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
                         <AccionBoton
                           etiqueta="Ver detalle"
                           onClick={() => onVerDetalle(comprobante)}
-                          className="text-slate-500 hover:bg-slate-900 hover:text-white dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+                          className="text-slate-500 hover:bg-slate-900 hover:text-white dark:text-slate-300 dark:hover:bg-white/15 dark:hover:text-white"
                         >
                           <Eye className="h-4 w-4" />
                         </AccionBoton>
-                        <AccionBoton
+                        <BotonDescarga
+                          variante="icono"
+                          icono={<Printer className="h-4 w-4" />}
                           etiqueta="Imprimir / Descargar PDF"
+                          textoProgreso="Generando PDF…"
                           cargando={descargaEnCurso === clavePdf}
+                          completado={descargaCompletada === clavePdf}
                           onClick={() => onDescargar(comprobante, "PDF")}
-                          className="text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </AccionBoton>
-                        <AccionBoton
+                          className="text-rose-500 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/15 dark:hover:text-rose-200"
+                        />
+                        <BotonDescarga
+                          variante="icono"
+                          icono={<FileCode2 className="h-4 w-4" />}
                           etiqueta="Descargar XML"
+                          textoProgreso="Generando XML…"
                           cargando={descargaEnCurso === claveXml}
+                          completado={descargaCompletada === claveXml}
                           onClick={() => onDescargar(comprobante, "XML")}
-                          className="text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-300"
-                        >
-                          <FileCode2 className="h-4 w-4" />
-                        </AccionBoton>
+                          className="text-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-200"
+                        />
                         <AccionBoton
                           etiqueta={`Enviar por correo a ${correoCliente(comprobante.cliente)}`}
                           deshabilitado={enviandoCorreo}
                           onClick={() => enviarCorreoIndividual(comprobante)}
-                          className="text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-500/10 dark:hover:text-blue-300"
+                          className="text-blue-500 hover:bg-blue-500/10 hover:text-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/15 dark:hover:text-blue-200"
                         >
                           <Send className="h-4 w-4" />
                         </AccionBoton>
@@ -434,7 +568,7 @@ export function InvoicesTable({
       </div>
 
       {/* Vista de tarjetas (móvil y tablet) */}
-      <div className="space-y-3 p-4 lg:hidden">
+      <div ref={listaMovilRef} className="space-y-3 p-4 lg:hidden">
         {cargando && <SkeletonTarjetas cantidad={4} />}
 
         {!cargando &&
@@ -444,6 +578,7 @@ export function InvoicesTable({
               comprobante={comprobante}
               marcado={seleccionados.has(comprobante.id)}
               descargaEnCurso={descargaEnCurso}
+              descargaCompletada={descargaCompletada}
               enviandoCorreo={enviandoCorreo}
               onAlternar={() => alternarUno(comprobante.id)}
               onVerDetalle={onVerDetalle}
@@ -455,14 +590,14 @@ export function InvoicesTable({
         {!cargando && comprobantes.length === 0 && <EstadoVacio />}
       </div>
 
-      <div className="flex flex-col gap-1.5 border-t border-slate-200 bg-slate-50/60 px-4 py-3 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div className="flex flex-col gap-1.5 border-t border-slate-200/70 bg-white/40 px-4 py-3 text-xs text-slate-400 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:px-5 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-400">
         <span>
           Mostrando{" "}
-          <span className="font-semibold text-slate-600 dark:text-slate-300">
+          <span className="font-semibold text-slate-600 dark:text-slate-200">
             {cargando ? "…" : comprobantes.length}
           </span>{" "}
           de{" "}
-          <span className="font-semibold text-slate-600 dark:text-slate-300">{totalEmpresa}</span>{" "}
+          <span className="font-semibold text-slate-600 dark:text-slate-200">{totalEmpresa}</span>{" "}
           comprobantes
         </span>
         <span>Datos simulados con fines de demostración · Prototipo no conectado a SUNAT</span>
@@ -479,6 +614,7 @@ function TarjetaComprobante({
   comprobante,
   marcado,
   descargaEnCurso,
+  descargaCompletada,
   enviandoCorreo,
   onAlternar,
   onVerDetalle,
@@ -488,6 +624,7 @@ function TarjetaComprobante({
   comprobante: Comprobante;
   marcado: boolean;
   descargaEnCurso: string | null;
+  descargaCompletada: string | null;
   enviandoCorreo: boolean;
   onAlternar: () => void;
   onVerDetalle: (comprobante: Comprobante) => void;
@@ -498,11 +635,12 @@ function TarjetaComprobante({
 
   return (
     <article
+      data-tarjeta="true"
       className={cn(
-        "rounded-xl border bg-white p-4 transition hover:shadow-sm dark:bg-slate-900",
+        "relative overflow-hidden rounded-2xl border p-4 backdrop-blur-md transition duration-300",
         marcado
-          ? "border-blue-300 bg-blue-50/40 dark:border-blue-500/50 dark:bg-blue-500/5"
-          : "border-slate-200 hover:border-blue-200 dark:border-slate-800 dark:hover:border-slate-700",
+          ? "border-indigo-300/80 bg-indigo-50/50 dark:border-indigo-400/40 dark:bg-indigo-500/[0.08]"
+          : "border-slate-200/80 bg-white/80 hover:border-indigo-200 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20",
       )}
     >
       <div className="flex items-start gap-3">
@@ -516,14 +654,14 @@ function TarjetaComprobante({
           <button
             type="button"
             onClick={() => onVerDetalle(comprobante)}
-            className="font-mono text-sm font-bold tracking-tight text-blue-700 dark:text-blue-400"
+            className="font-mono text-sm font-bold tracking-tight text-indigo-600 dark:text-indigo-300"
           >
             {comprobante.numero}
           </button>
-          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-400">
             <span
               className={cn(
-                "flex h-5 w-5 items-center justify-center rounded",
+                "flex h-5 w-5 items-center justify-center rounded ring-1 ring-inset ring-black/5 dark:ring-white/10",
                 ICONOS_TIPO[comprobante.tipo] ?? "bg-slate-100 text-slate-500",
               )}
             >
@@ -537,19 +675,19 @@ function TarjetaComprobante({
 
       <dl className="mt-3 space-y-2.5 text-xs">
         <div>
-          <dt className="font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <dt className="font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-400">
             Cliente
           </dt>
           <dd className="mt-0.5 font-semibold text-slate-700 dark:text-slate-200">
             {comprobante.cliente.razonSocial}
           </dd>
-          <dd className="font-mono text-[11px] text-slate-400 dark:text-slate-500">
+          <dd className="font-mono text-[11px] text-slate-400 dark:text-slate-400">
             {comprobante.cliente.ruc}
           </dd>
         </div>
 
         <div>
-          <dt className="font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <dt className="font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-400">
             Concepto
           </dt>
           <dd className="mt-0.5 line-clamp-2 text-slate-600 dark:text-slate-300">
@@ -559,7 +697,7 @@ function TarjetaComprobante({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <dt className="font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <dt className="font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-400">
               Emisión
             </dt>
             <dd className="mt-0.5 text-slate-600 dark:text-slate-300">
@@ -567,7 +705,7 @@ function TarjetaComprobante({
             </dd>
           </div>
           <div>
-            <dt className="font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <dt className="font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-400">
               Vencimiento
             </dt>
             <dd className="mt-0.5 text-slate-600 dark:text-slate-300">
@@ -577,7 +715,7 @@ function TarjetaComprobante({
         </div>
       </dl>
 
-      <div className="mt-3 flex items-end justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <div className="mt-3 flex items-end justify-between gap-3 border-t border-slate-100 pt-3 dark:border-white/10">
         <ComercialBadge estado={comprobante.estadoComercial} size="sm" />
         <div className="text-right">
           {sinImporte ? (
@@ -594,7 +732,7 @@ function TarjetaComprobante({
               >
                 {formatearMoneda(comprobante.total)}
               </p>
-              <p className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+              <p className="text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
                 Base {formatearMoneda(comprobante.baseImponible)} · IGV{" "}
                 {formatearMoneda(comprobante.igv)}
               </p>
@@ -608,20 +746,24 @@ function TarjetaComprobante({
           <Eye className="h-4 w-4" />
           Detalle
         </BotonTarjeta>
-        <BotonTarjeta
+        <BotonDescarga
+          variante="tarjeta"
+          icono={<Printer className="h-4 w-4" />}
+          etiqueta="PDF"
+          textoProgreso="Generando…"
           cargando={descargaEnCurso === claveDescarga(comprobante.id, "PDF")}
+          completado={descargaCompletada === claveDescarga(comprobante.id, "PDF")}
           onClick={() => onDescargar(comprobante, "PDF")}
-        >
-          <Printer className="h-4 w-4" />
-          PDF
-        </BotonTarjeta>
-        <BotonTarjeta
+        />
+        <BotonDescarga
+          variante="tarjeta"
+          icono={<FileCode2 className="h-4 w-4" />}
+          etiqueta="XML"
+          textoProgreso="Generando…"
           cargando={descargaEnCurso === claveDescarga(comprobante.id, "XML")}
+          completado={descargaCompletada === claveDescarga(comprobante.id, "XML")}
           onClick={() => onDescargar(comprobante, "XML")}
-        >
-          <FileCode2 className="h-4 w-4" />
-          XML
-        </BotonTarjeta>
+        />
         <BotonTarjeta deshabilitado={enviandoCorreo} onClick={() => onEnviarCorreo(comprobante)}>
           <Send className="h-4 w-4" />
           Correo
@@ -639,7 +781,7 @@ function Spinner() {
   return (
     <span
       aria-hidden="true"
-      className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700 dark:border-slate-600 dark:border-t-slate-200"
+      className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700 dark:border-white/25 dark:border-t-white"
     />
   );
 }
@@ -662,12 +804,13 @@ function AccionBoton({
   return (
     <button
       type="button"
+      data-accion="true"
       onClick={onClick}
       disabled={cargando || deshabilitado}
       title={etiqueta}
       aria-label={etiqueta}
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-lg transition disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex h-8 w-8 items-center justify-center rounded-xl border border-transparent backdrop-blur-md transition duration-150 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/5 dark:bg-white/[0.03]",
         className,
       )}
     >
@@ -690,9 +833,10 @@ function BotonTarjeta({
   return (
     <button
       type="button"
+      data-accion="true"
       onClick={onClick}
       disabled={cargando || deshabilitado}
-      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
+      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200/90 bg-white/70 px-2 py-2 text-xs font-semibold text-slate-600 backdrop-blur-md transition hover:border-indigo-300 hover:bg-indigo-50/70 hover:text-indigo-700 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-indigo-400/50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
     >
       {cargando ? <Spinner /> : children}
     </button>
@@ -702,14 +846,14 @@ function BotonTarjeta({
 function EstadoVacio() {
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ring-1 ring-inset ring-slate-200/70 dark:bg-white/5 dark:text-slate-400 dark:ring-white/10">
         <Inbox className="h-7 w-7" />
       </span>
       <div>
         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
           No se encontraron comprobantes
         </p>
-        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
           Ajusta los filtros o la búsqueda para ver resultados de esta empresa.
         </p>
       </div>

@@ -23,9 +23,9 @@ function estaOscuro(): boolean {
   return document.documentElement.classList.contains("dark");
 }
 
-/** Durante el render en servidor no hay DOM: se asume modo claro. */
+/** Snapshot de servidor acorde al tema por defecto del portal (dark-first). */
 function estaOscuroEnServidor(): boolean {
-  return false;
+  return true;
 }
 
 export function ThemeToggle() {
@@ -50,9 +50,13 @@ export function ThemeToggle() {
       title={etiqueta}
       aria-label={etiqueta}
       aria-pressed={oscuro}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
+      className="group relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200/90 bg-white/80 text-slate-500 shadow-sm backdrop-blur-md transition duration-300 hover:border-indigo-300 hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-indigo-400/60 dark:hover:text-indigo-300 dark:hover:shadow-[0_0_22px_-6px_rgba(99,102,241,0.9)]"
     >
-      {oscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500/0 via-indigo-500/0 to-indigo-500/0 opacity-0 transition-opacity duration-300 group-hover:from-indigo-500/10 group-hover:to-sky-400/10 group-hover:opacity-100"
+      />
+      {oscuro ? <Sun className="relative h-4 w-4" /> : <Moon className="relative h-4 w-4" />}
     </button>
   );
 }
