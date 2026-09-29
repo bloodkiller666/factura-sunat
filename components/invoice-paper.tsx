@@ -1,4 +1,4 @@
-import { ComercialBadge, SunatBadge } from "@/components/status-badge";
+import { SunatBadge } from "@/components/status-badge";
 import { esSinImporte, formatearFecha, formatearFechaLarga, formatearMoneda } from "@/lib/format";
 import type { Comprobante, Empresa } from "@/lib/types";
 
@@ -61,7 +61,9 @@ export function InvoicePaper({ comprobante, empresa }: { comprobante: Comprobant
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
             <SunatBadge estado={comprobante.estadoSunat} size="sm" tono="claro" />
-            <ComercialBadge estado={comprobante.estadoComercial} size="sm" tono="claro" />
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-slate-600 ring-1 ring-inset ring-slate-300/70">
+              SAP {comprobante.numeroSap}
+            </span>
           </div>
         </div>
       </div>

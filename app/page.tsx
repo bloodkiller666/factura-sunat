@@ -29,6 +29,7 @@ const MS_DESCARGA = 900;
 
 function aplicarFiltros(comprobantes: Comprobante[], filtros: FiltrosState): Comprobante[] {
   const consulta = filtros.q.trim().toLowerCase();
+  const filtroSap = filtros.numeroSap.trim().toLowerCase();
 
   return comprobantes.filter((comprobante) => {
     const coincideTexto =
@@ -42,9 +43,8 @@ function aplicarFiltros(comprobantes: Comprobante[], filtros: FiltrosState): Com
     const coincideTipo = filtros.tipo === "TODOS" || comprobante.tipo === filtros.tipo;
     const coincideSunat =
       filtros.estadoSunat === "TODOS" || comprobante.estadoSunat === filtros.estadoSunat;
-    const coincideComercial =
-      filtros.estadoComercial === "TODOS" ||
-      comprobante.estadoComercial === filtros.estadoComercial;
+    const coincideSap =
+      filtroSap === "" || comprobante.numeroSap.toLowerCase().includes(filtroSap);
     const coincideDesde = filtros.desde === "" || comprobante.fechaEmision >= filtros.desde;
     const coincideHasta = filtros.hasta === "" || comprobante.fechaEmision <= filtros.hasta;
 
@@ -52,7 +52,7 @@ function aplicarFiltros(comprobantes: Comprobante[], filtros: FiltrosState): Com
       coincideTexto &&
       coincideTipo &&
       coincideSunat &&
-      coincideComercial &&
+      coincideSap &&
       coincideDesde &&
       coincideHasta
     );
@@ -253,6 +253,7 @@ export default function Page() {
   return (
     <div
       ref={raizRef}
+      id="portal-raiz"
       className="relative min-h-screen bg-gradient-to-b from-[#f5f7fc] via-[#fafbff] to-[#eef1f9] dark:from-[#05060c] dark:via-[#06070e] dark:to-[#04050a]"
     >
       {/* Orbes de fondo: profundidad sutil sin interferir con la UI */}

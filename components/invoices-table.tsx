@@ -15,9 +15,14 @@ import {
 import { BotonDescarga } from "@/components/boton-descarga";
 import { CasillaSeleccion, QuickActionsBar } from "@/components/quick-actions-bar";
 import { SkeletonFilasTabla, SkeletonTarjetas } from "@/components/skeletons";
-import { ComercialBadge, SunatBadge } from "@/components/status-badge";
+import { SunatBadge } from "@/components/status-badge";
 import type { NuevoToast } from "@/components/toast";
-import { type Emisor, descargarExcel, descargarLoteZip } from "@/lib/comprobante-descargas";
+import {
+  type Emisor,
+  documentosAExportar,
+  descargarExcel,
+  descargarLoteZip,
+} from "@/lib/comprobante-descargas";
 import { correoCliente, enviarComprobantesPorCorreo } from "@/lib/correo";
 import { esSinImporte, formatearFecha, formatearMoneda } from "@/lib/format";
 import type { Comprobante } from "@/lib/types";
@@ -245,12 +250,16 @@ export function InvoicesTable({
     });
   }
 
-  /** Reporte Excel real: genera el `.xlsx` y dispara la descarga. */
+  /**
+   * Reporte Excel real: genera el `.xlsx` y dispara la descarga.
+   * Si no hay comprobantes seleccionados se exportan todos los visibles.
+   */
   function exportarExcel() {
-    const total = seleccionadosVisibles.length;
+    const conjunto = documentosAExportar(seleccionadosVisibles, comprobantes);
+    const total = conjunto.length;
     if (total === 0) return avisarSinSeleccion("exportar a Excel");
 
-    const nombreArchivo = descargarExcel(seleccionadosVisibles, empresa);
+    const nombreArchivo = descargarExcel(conjunto, empresa);
 
     onNotificar({
       titulo: "Reporte Excel descargado exitosamente",
@@ -259,12 +268,16 @@ export function InvoicesTable({
     });
   }
 
-  /** Lote ZIP real: empaqueta el XML de cada comprobante seleccionado. */
+  /**
+   * Lote ZIP real: empaqueta el XML de cada comprobante.
+   * Si no hay comprobantes seleccionados se incluye todo lo visible.
+   */
   function descargarZip() {
-    const total = seleccionadosVisibles.length;
+    const conjunto = documentosAExportar(seleccionadosVisibles, comprobantes);
+    const total = conjunto.length;
     if (total === 0) return avisarSinSeleccion("descargar el lote ZIP");
 
-    const nombreArchivo = descargarLoteZip(seleccionadosVisibles, empresa);
+    const nombreArchivo = descargarLoteZip(conjunto, empresa);
 
     onNotificar({
       titulo: "Lote ZIP generado exitosamente",
@@ -368,7 +381,7 @@ export function InvoicesTable({
               <th className={cn(CLASES_TH, "text-right")}>IGV (18%)</th>
               <th className={cn(CLASES_TH, "text-right")}>Precio total</th>
               <th className={CLASES_TH}>Estado SUNAT</th>
-              <th className={CLASES_TH}>Estado comercial</th>
+              <th className={CLASES_TH}>N° SAP</th>
               <th className={cn(CLASES_TH, "text-center")}>Acciones</th>
             </tr>
           </thead>
@@ -510,7 +523,9 @@ export function InvoicesTable({
                       <SunatBadge estado={comprobante.estadoSunat} />
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                      <ComercialBadge estado={comprobante.estadoComercial} />
+                      <span className="font-mono text-[13px] font-semibold tracking-tight text-slate-600 dark:text-slate-300">
+                        {comprobante.numeroSap}
+                      </span>
                     </td>
 
                     <td className="px-4 py-3.5 whitespace-nowrap">
@@ -558,7 +573,7 @@ export function InvoicesTable({
 
             {!cargando && comprobantes.length === 0 && (
               <tr>
-                <td colSpan={13} className="px-4 py-20">
+                <td colSpan={12} className="px-4 py-20">
                   <EstadoVacio />
                 </td>
               </tr>
@@ -716,7 +731,9 @@ function TarjetaComprobante({
       </dl>
 
       <div className="mt-3 flex items-end justify-between gap-3 border-t border-slate-100 pt-3 dark:border-white/10">
-        <ComercialBadge estado={comprobante.estadoComercial} size="sm" />
+        <span className="font-mono text-[11px] font-semibold tracking-tight text-slate-400 dark:text-slate-400">
+          SAP {comprobante.numeroSap}
+        </span>
         <div className="text-right">
           {sinImporte ? (
             <p className="text-sm text-slate-300 dark:text-slate-600">Sin importe</p>

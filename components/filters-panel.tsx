@@ -1,13 +1,13 @@
 import { CalendarRange, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { CargandoTexto } from "@/components/skeletons";
-import type { EstadoComercial, EstadoSunat, FiltrosState, TipoDocumento } from "@/lib/types";
+import type { EstadoSunat, FiltrosState, TipoDocumento } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const FILTROS_INICIALES: FiltrosState = {
   q: "",
   tipo: "TODOS",
   estadoSunat: "TODOS",
-  estadoComercial: "TODOS",
+  numeroSap: "",
   desde: "",
   hasta: "",
 };
@@ -22,7 +22,6 @@ export const TIPOS_DOCUMENTO: TipoDocumento[] = [
 ];
 
 export const ESTADOS_SUNAT: EstadoSunat[] = ["Aprobado", "Pendiente", "Anulado"];
-export const ESTADOS_COMERCIALES: EstadoComercial[] = ["Pagado", "Pendiente", "Vencido"];
 
 interface Props {
   filtros: FiltrosState;
@@ -94,7 +93,7 @@ export function FiltersPanel({
     filtros.q !== "" ||
     filtros.tipo !== "TODOS" ||
     filtros.estadoSunat !== "TODOS" ||
-    filtros.estadoComercial !== "TODOS" ||
+    filtros.numeroSap !== "" ||
     filtros.desde !== "" ||
     filtros.hasta !== "";
 
@@ -189,15 +188,18 @@ export function FiltersPanel({
         </div>
 
         <div className="xl:col-span-3">
-          <Selector
-            etiqueta="Estado de pago"
-            valor={filtros.estadoComercial}
-            onChange={(valor) =>
-              onCambiar({ estadoComercial: valor as FiltrosState["estadoComercial"] })
-            }
-            opciones={ESTADOS_COMERCIALES}
-            textoInicial="Todos"
-            deshabilitado={cargando}
+          <Etiqueta>N° SAP</Etiqueta>
+          <input
+            type="text"
+            value={filtros.numeroSap}
+            disabled={cargando}
+            onChange={(evento) => onCambiar({ numeroSap: evento.target.value })}
+            placeholder="Ej. 4500926001"
+            className={cn(
+              CLASES_CONTROL,
+              "py-2.5 pr-3 pl-3 font-mono placeholder:font-normal dark:placeholder:text-slate-500",
+            )}
+            aria-label="Número SAP"
           />
         </div>
 

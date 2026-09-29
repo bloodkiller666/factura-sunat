@@ -412,7 +412,7 @@ const CABECERAS_REPORTE = [
   "IGV (18%)",
   "Total",
   "Estado SUNAT",
-  "Estado comercial",
+  "N° SAP",
   "Forma de pago",
 ];
 
@@ -430,9 +430,18 @@ function filaReporte(comprobante: Comprobante): (string | number)[] {
     comprobante.igv,
     comprobante.total,
     comprobante.estadoSunat,
-    comprobante.estadoComercial,
+    comprobante.numeroSap,
     comprobante.formaPago,
   ];
+}
+
+/**
+ * Conjunto a exportar en las acciones masivas (Excel y lote ZIP):
+ * si no hay comprobantes seleccionados se usa todo lo visible en la tabla;
+ * con selección se exportan únicamente los marcados.
+ */
+export function documentosAExportar(seleccionados: Comprobante[], visibles: Comprobante[]): Comprobante[] {
+  return seleccionados.length > 0 ? seleccionados : visibles;
 }
 
 export function nombreArchivoExcel(cantidad: number, empresa: Emisor): string {

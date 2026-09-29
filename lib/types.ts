@@ -15,9 +15,6 @@ export type TipoDocumento =
 /** Estado de validación del comprobante ante SUNAT. */
 export type EstadoSunat = "Aprobado" | "Pendiente" | "Anulado";
 
-/** Estado comercial / de cobranza del comprobante. */
-export type EstadoComercial = "Pagado" | "Pendiente" | "Vencido";
-
 export interface Cliente {
   ruc: string;
   razonSocial: string;
@@ -48,7 +45,8 @@ export interface Comprobante {
   igv: number;
   total: number;
   estadoSunat: EstadoSunat;
-  estadoComercial: EstadoComercial;
+  /** Número SAP (órden/entrada de pedido) asociado al comprobante. */
+  numeroSap: string;
   formaPago: string;
   observacion?: string;
 }
@@ -71,7 +69,8 @@ export interface FiltrosState {
   q: string;
   tipo: TipoDocumento | "TODOS";
   estadoSunat: EstadoSunat | "TODOS";
-  estadoComercial: EstadoComercial | "TODOS";
+  /** Número SAP a buscar (coincidencia exacta). */
+  numeroSap: string;
   desde: string;
   hasta: string;
 }

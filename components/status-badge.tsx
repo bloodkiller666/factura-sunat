@@ -1,19 +1,13 @@
 import type { CSSProperties } from "react";
-import { CheckCircle2, Clock, Ban, CircleDollarSign, CreditCard, AlertTriangle } from "lucide-react";
-import { ESTILOS_COMERCIAL, ESTILOS_SUNAT, PUNTOS_COMERCIAL, PUNTOS_SUNAT } from "@/lib/format";
-import type { EstadoComercial, EstadoSunat } from "@/lib/types";
+import { CheckCircle2, Clock, Ban } from "lucide-react";
+import { ESTILOS_SUNAT, PUNTOS_SUNAT } from "@/lib/format";
+import type { EstadoSunat } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const ICONOS_SUNAT: Record<EstadoSunat, typeof CheckCircle2> = {
   Aprobado: CheckCircle2,
   Pendiente: Clock,
   Anulado: Ban,
-};
-
-const ICONOS_COMERCIAL: Record<EstadoComercial, typeof CheckCircle2> = {
-  Pagado: CircleDollarSign,
-  Pendiente: CreditCard,
-  Vencido: AlertTriangle,
 };
 
 /**
@@ -53,27 +47,6 @@ const CLARO_SUNAT: Record<EstadoSunat, PaletaClara> = {
   },
 };
 
-const CLARO_COMERCIAL: Record<EstadoComercial, PaletaClara> = {
-  Pagado: {
-    fondo: "rgb(239 246 255)",
-    texto: "rgb(29 78 216)",
-    anillo: "rgb(37 99 235 / 0.22)",
-    punto: "rgb(59 130 246)",
-  },
-  Pendiente: {
-    fondo: "rgb(255 247 237)",
-    texto: "rgb(194 65 12)",
-    anillo: "rgb(234 88 12 / 0.22)",
-    punto: "rgb(249 115 22)",
-  },
-  Vencido: {
-    fondo: "rgb(255 241 242)",
-    texto: "rgb(190 18 60)",
-    anillo: "rgb(225 29 72 / 0.22)",
-    punto: "rgb(244 63 94)",
-  },
-};
-
 function estiloClaro(paleta: PaletaClara): CSSProperties {
   return {
     backgroundColor: paleta.fondo,
@@ -105,36 +78,6 @@ export function SunatBadge({
       <span
         style={claro ? { backgroundColor: CLARO_SUNAT[estado].punto } : undefined}
         className={cn("h-1.5 w-1.5 rounded-full", !claro && PUNTOS_SUNAT[estado])}
-      />
-      <Icono className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} />
-      {estado}
-    </span>
-  );
-}
-
-export function ComercialBadge({
-  estado,
-  size = "md",
-  tono = "auto",
-}: {
-  estado: EstadoComercial;
-  size?: "md" | "sm";
-  tono?: TonoInsignia;
-}) {
-  const Icono = ICONOS_COMERCIAL[estado];
-  const claro = tono === "claro";
-  return (
-    <span
-      style={claro ? estiloClaro(CLARO_COMERCIAL[estado]) : undefined}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-semibold whitespace-nowrap ring-1 ring-inset backdrop-blur-md transition",
-        !claro && ESTILOS_COMERCIAL[estado],
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
-      )}
-    >
-      <span
-        style={claro ? { backgroundColor: CLARO_COMERCIAL[estado].punto } : undefined}
-        className={cn("h-1.5 w-1.5 rounded-full", !claro && PUNTOS_COMERCIAL[estado])}
       />
       <Icono className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} />
       {estado}

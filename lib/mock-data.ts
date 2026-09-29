@@ -6,7 +6,11 @@ import type { Comprobante, Empresa, ItemComprobante, TipoDocumento } from "./typ
 
 const TASA_IGV = 0.18;
 
+/** Consecutivo para derivar el número SAP de cada comprobante (solo demo). */
+let consecutivoSap = 0;
+
 /** Los documentos que no gravan IGV (guías y retenciones). */
+
 const SIN_IGV: TipoDocumento[] = ["Guía de Remisión", "Comprobante de Retención"];
 
 function redondear(valor: number): number {
@@ -28,7 +32,7 @@ function item(
   };
 }
 
-type EntradaComprobante = Omit<Comprobante, "id" | "descripcion" | "baseImponible" | "igv" | "total"> & {
+type EntradaComprobante = Omit<Comprobante, "id" | "descripcion" | "baseImponible" | "igv" | "total" | "numeroSap"> & {
   id?: string;
   descripcion?: string;
 };
@@ -43,7 +47,7 @@ function documento(entrada: EntradaComprobante): Comprobante {
   const { descripcion, id, ...resto } = entrada;
   const baseImponible = redondear(resto.items.reduce((suma, i) => suma + i.baseImponible, 0));
   const igv = SIN_IGV.includes(resto.tipo) ? 0 : redondear(baseImponible * TASA_IGV);
-
+  consecutivoSap += 1;
   return {
     ...resto,
     id: id ?? resto.numero,
@@ -51,6 +55,7 @@ function documento(entrada: EntradaComprobante): Comprobante {
     baseImponible,
     igv,
     total: redondear(baseImponible + igv),
+    numeroSap: `4500926${String(consecutivoSap).padStart(3, "0")}`,
   };
 }
 
@@ -104,7 +109,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-17",
         items: [item("Alquiler de excavadora hidráulica 320D con operador", 1, "Servicio", 14800)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "Transferencia bancaria",
       }),
       documento({
@@ -117,7 +121,6 @@ export const EMPRESAS: Empresa[] = [
           item("Servicio de instalación y montaje de estructura metálica en obra", 1, "Servicio", 22500),
         ],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
       }),
       documento({
@@ -130,7 +133,6 @@ export const EMPRESAS: Empresa[] = [
           item("Mantenimiento preventivo de maquinaria pesada (aceite y filtros)", 3, "Día", 1250),
         ],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "Efectivo",
       }),
       documento({
@@ -143,7 +145,6 @@ export const EMPRESAS: Empresa[] = [
           item("Alquiler de plataforma de tijera eléctrica 12 m", 30, "Día", 185),
         ],
         estadoSunat: "Aprobado",
-        estadoComercial: "Vencido",
         formaPago: "Crédito 15 días",
         observacion: "Cliente solicitó reprogramación de pago.",
       }),
@@ -155,7 +156,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-15",
         items: [item("Servicio de demolición y habilitación de terreno — obra Chorrillos", 1, "Servicio", 8900)],
         estadoSunat: "Pendiente",
-        estadoComercial: "Pendiente",
         formaPago: "Transferencia bancaria",
         observacion: "En espera de confirmación de la CDR por SUNAT.",
       }),
@@ -170,7 +170,6 @@ export const EMPRESAS: Empresa[] = [
           item("Traslado de maquinaria en plataforma", 2, "Viaje", 850),
         ],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
       }),
       documento({
@@ -181,7 +180,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-10-08",
         items: [item("Servicio de topografía y control de avance de obra — frente Huachipa", 1, "Servicio", 6400)],
         estadoSunat: "Anulado",
-        estadoComercial: "Vencido",
         formaPago: "Crédito 15 días",
         observacion: "Anulado por error en el RUC del adquirente.",
       }),
@@ -214,7 +212,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-16",
         items: [item("Geomembrana HDPE 1.5 mm — rollo 7.0 x 100 m", 12, "Rollo", 2480)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "Transferencia bancaria",
       }),
       documento({
@@ -225,7 +222,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-19",
         items: [item("Geotextil no tejido para drenaje 200 g/m² — rollo 2 x 100 m", 40, "Rollo", 395)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
       }),
       documento({
@@ -236,7 +232,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-09",
         items: [item("Liner plastificado para reservorio — geomembrana PVC 1.0 mm", 5, "Unidad", 1120)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "Efectivo",
       }),
       documento({
@@ -247,7 +242,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-26",
         items: [item("Descuento comercial sobre geomembrana HDPE (ref. F002-0005417)", 1, "Servicio", -1250)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "Nota de crédito aplicada",
         observacion: "Modifica el importe total de la factura F002-0005417.",
       }),
@@ -259,7 +253,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-29",
         items: [item("Flete adicional por traslado a almacén Arequipa", 1, "Servicio", 980)],
         estadoSunat: "Pendiente",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
         observacion: "En espera de confirmación de la CDR por SUNAT.",
       }),
@@ -271,7 +264,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-16",
         items: [],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "No aplica",
         observacion: "Traslado de geomembrana HDPE de planta Chorrillos a almacén Arequipa.",
       }),
@@ -283,7 +275,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-10-05",
         items: [item("Geomalla biaxial de refuerzo 40 kN/m para estabilización de taludes", 8, "Rollo", 1730)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
       }),
       documento({
@@ -297,7 +288,6 @@ export const EMPRESAS: Empresa[] = [
           item("Cinta de sellado térmico para HDPE", 15, "Rollo", 85),
         ],
         estadoSunat: "Pendiente",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
       }),
     ],
@@ -329,7 +319,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-18",
         items: [item("Asfalto modificado con polímeros PG 70-22 — suministro en planta", 80, "Ton", 985)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "Transferencia bancaria",
       }),
       documento({
@@ -340,7 +329,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-21",
         items: [item("Emulsión asfáltica de rotura rápida CRS-2 — cilindro 55 gal", 60, "Cilindro", 412.5)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
         observacion: "Orden de compra municipal N° 4471-2026.",
       }),
@@ -352,7 +340,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-10",
         items: [item("Servicio de transporte de asfalto en cisterna — Lima a Huancayo", 4, "Viaje", 2350)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "Transferencia bancaria",
       }),
       documento({
@@ -363,7 +350,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-28",
         items: [item("Volumen no atendido de emulsión CRS-2 (ref. F003-0009034)", 1, "Servicio", -1960)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pagado",
         formaPago: "Nota de crédito aplicada",
       }),
       documento({
@@ -374,7 +360,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-30",
         items: [item("Mayor recorrido de cisterna por cambio de frente de obra", 1, "Servicio", 640)],
         estadoSunat: "Pendiente",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
       }),
       documento({
@@ -385,7 +370,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-09-17",
         items: [],
         estadoSunat: "Anulado",
-        estadoComercial: "Pagado",
         formaPago: "No aplica",
         observacion: "Anulada por cambio de placa del vehículo transportista.",
       }),
@@ -397,7 +381,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-10-06",
         items: [item("Asfalto en caliente AC-20 — suministro y colocación en obra", 45, "Ton", 870)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Vencido",
         formaPago: "Crédito 15 días",
       }),
       documento({
@@ -408,7 +391,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-10-10",
         items: [item("Servicio de transporte de emulsión asfáltica — Lurín a Arequipa", 6, "Viaje", 3120)],
         estadoSunat: "Pendiente",
-        estadoComercial: "Pendiente",
         formaPago: "Crédito 15 días",
       }),
       documento({
@@ -419,7 +401,6 @@ export const EMPRESAS: Empresa[] = [
         fechaVencimiento: "2026-10-11",
         items: [item("Retención del 4% del IGV — ref. factura F003-0009034", 1, "Servicio", 3719.36)],
         estadoSunat: "Aprobado",
-        estadoComercial: "Pendiente",
         formaPago: "Retención de IGV",
         observacion: "Régimen de retenciones del IGV — Agente de retención designado.",
       }),

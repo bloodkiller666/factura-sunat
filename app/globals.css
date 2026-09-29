@@ -290,6 +290,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     visibility: visible;
   }
 
+  /* Oculta por completo el resto del portal (solo el papel queda en el flujo).
+     Con `visibility: hidden` el contenido oculto sigue ocupando su altura y
+     generaba páginas en blanco después de la primera. */
+  #portal-raiz > *:not(.area-impresion) {
+    display: none !important;
+  }
+
   .area-impresion {
     display: block;
     position: absolute;

@@ -22,22 +22,11 @@ export function PortalHeader({ cargando = false }: { cargando?: boolean }) {
               Portal de Facturación Electrónica
               <span className="texto-degradado"> · Grupo TDM</span>
             </h1>
-            <p className="hidden truncate text-xs font-medium text-slate-500 sm:block dark:text-slate-400">
-              Gestión de comprobantes electrónicos · SUNAT
-            </p>
           </div>
         </div>
 
-        {/* Estado del sistema + tema + perfil */}
+        {/* Tema + perfil */}
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-md sm:px-3 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-300 dark:shadow-[0_0_22px_-8px_rgba(16,185,129,0.95)]">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 animate-[latido_2.4s_ease-in-out_infinite] rounded-full bg-emerald-500" />
-            </span>
-            <span className="hidden md:inline">SUNAT conectado</span>
-          </span>
-
           <ThemeToggle />
 
           <div className="flex items-center gap-2.5 rounded-full border border-slate-200/90 bg-white/70 py-1 pr-1 pl-1 shadow-sm backdrop-blur-md xl:pr-3 dark:border-white/10 dark:bg-white/5">
