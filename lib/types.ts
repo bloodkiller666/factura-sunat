@@ -12,8 +12,11 @@ export type TipoDocumento =
   | "Nota de Débito"
   | "Comprobante de Retención";
 
-/** Estado de validación del comprobante ante SUNAT. */
-export type EstadoSunat = "Aprobado" | "Pendiente" | "Anulado";
+/**
+ * Estado de validación del comprobante ante SUNAT.
+ * `Rechazado`: SUNAT devolvió la CDR con observaciones y el comprobante no tiene validez.
+ */
+export type EstadoSunat = "Aprobado" | "Pendiente" | "Anulado" | "Rechazado";
 
 export interface Cliente {
   ruc: string;
@@ -45,10 +48,21 @@ export interface Comprobante {
   igv: number;
   total: number;
   estadoSunat: EstadoSunat;
-  /** Número SAP (órden/entrada de pedido) asociado al comprobante. */
+  /** Número SAP (orden/entrada de pedido) asociado al comprobante. */
   numeroSap: string;
+  /** Orden de compra del cliente asociada al comprobante (`""` si no tiene). */
+  ordenCompra: string;
+  /** Marca manual del usuario: el comprobante ya fue verificado en SAP. */
+  checkSap: boolean;
   formaPago: string;
   observacion?: string;
+}
+
+/** Fila adicional de la consulta RUC de SUNAT mostrada en la ficha de la empresa. */
+export interface DatoSunat {
+  etiqueta: string;
+  /** Texto del dato; los saltos de línea separan los valores de una lista. */
+  valor: string;
 }
 
 export interface Empresa {
@@ -61,16 +75,25 @@ export interface Empresa {
   domicilioFiscal: string;
   actividadPrincipal: string;
   comprobantesElectronicos: TipoDocumento[];
+  /** Detalle ampliado de la consulta RUC (opcional en las empresas del demo). */
+  detalleSunat?: DatoSunat[];
   comprobantes: Comprobante[];
 }
 
 export interface FiltrosState {
   /** Búsqueda por N° documento o cliente/RUC. */
   q: string;
+  /** Periodo de emisión en formato `yyyy-mm`, o `"TODOS"` (sin filtrar por mes). */
+  mes: string;
   tipo: TipoDocumento | "TODOS";
   estadoSunat: EstadoSunat | "TODOS";
   /** Número SAP a buscar (coincidencia exacta). */
   numeroSap: string;
+  /** Filtra por la marca manual "Check SAP" del comprobante. */
+  checkSap: FiltroCheckSap;
   desde: string;
   hasta: string;
 }
+
+/** Valores del filtro "Check SAP". */
+export type FiltroCheckSap = "TODOS" | "CON" | "SIN";

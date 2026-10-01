@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Archive, FileSpreadsheet, Mail, Plus } from "lucide-react";
+import { Archive, FileSpreadsheet, FileUp, Mail, Plus } from "lucide-react";
+import { EXTENSIONES_EXCEL } from "@/lib/importar-excel";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -13,11 +14,14 @@ interface Props {
   cargando: boolean;
   /** Hay un envío por correo en curso: bloquea las acciones que lo disparan. */
   enviandoCorreo: boolean;
+  /** Hay un Excel en análisis: el botón de importar muestra su progreso. */
+  importando: boolean;
   onAlternarTodos: () => void;
   onEmitir: () => void;
   onExportarExcel: () => void;
   onDescargarZip: () => void;
   onEnviarCorreo: () => void;
+  onImportarExcel: (archivo: File) => void;
 }
 
 export function QuickActionsBar({
@@ -26,11 +30,13 @@ export function QuickActionsBar({
   todosSeleccionados,
   cargando,
   enviandoCorreo,
+  importando,
   onAlternarTodos,
   onEmitir,
   onExportarExcel,
   onDescargarZip,
   onEnviarCorreo,
+  onImportarExcel,
 }: Props) {
   const haySeleccion = seleccionados > 0;
   const sinRegistros = cargando || totalVisibles === 0;
@@ -85,6 +91,7 @@ export function QuickActionsBar({
           colorIcono="text-emerald-600 dark:text-emerald-400"
           onClick={onExportarExcel}
         />
+        <BotonImportarExcel onArchivo={onImportarExcel} cargando={importando} />
         <BotonAccionRapida
           icono={Archive}
           etiqueta="Descargar Lote ZIP"
@@ -113,6 +120,7 @@ export function CasillaSeleccion({
   onChange,
   etiqueta,
   disabled = false,
+  tono = "indigo",
   className,
 }: {
   checked: boolean;
@@ -120,6 +128,8 @@ export function CasillaSeleccion({
   onChange: () => void;
   etiqueta: string;
   disabled?: boolean;
+  /** Color del control: índigo para selección, esmeralda para marcas editables. */
+  tono?: "indigo" | "esmeralda";
   className?: string;
 }) {
   const referencia = useRef<HTMLInputElement>(null);
@@ -139,10 +149,52 @@ export function CasillaSeleccion({
       aria-label={etiqueta}
       title={etiqueta}
       className={cn(
-        "h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 accent-indigo-600 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/20 dark:accent-indigo-500",
+        "h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/20",
+        tono === "esmeralda"
+          ? "accent-emerald-600 focus-visible:outline-emerald-500 dark:accent-emerald-500"
+          : "accent-indigo-600 focus-visible:outline-indigo-500 dark:accent-indigo-500",
         className,
       )}
     />
+  );
+}
+
+/**
+ * Botón "Importar Excel": abre el selector de archivos y entrega el libro
+ * elegido a la página, que lo analiza contra las columnas de la tabla.
+ */
+export function BotonImportarExcel({
+  onArchivo,
+  cargando = false,
+}: {
+  onArchivo: (archivo: File) => void;
+  cargando?: boolean;
+}) {
+  const entradaRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <>
+      <BotonAccionRapida
+        icono={FileUp}
+        etiqueta="Importar Excel"
+        colorIcono="text-teal-600 dark:text-teal-400"
+        cargando={cargando}
+        onClick={() => entradaRef.current?.click()}
+      />
+      <input
+        ref={entradaRef}
+        type="file"
+        accept={EXTENSIONES_EXCEL.join(",")}
+        className="hidden"
+        aria-label="Seleccionar archivo Excel para analizar"
+        onChange={(evento) => {
+          const archivo = evento.target.files?.[0];
+          // Se limpia el valor para poder reelegir el mismo archivo después.
+          evento.target.value = "";
+          if (archivo) onArchivo(archivo);
+        }}
+      />
+    </>
   );
 }
 

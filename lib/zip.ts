@@ -1,10 +1,13 @@
 /**
- * Escritor ZIP mínimo y sin dependencias (método "store", sin compresión).
+ * Escritor y lector ZIP mínimos y sin dependencias.
  *
- * Se usa para dos cosas: empaquetar los XML del lote descargable y construir el
- * contenedor OOXML de los reportes `.xlsx`. Al no comprimir, el formato queda
- * reducido a cabeceras + CRC32, que es fácil de auditar y no arrastra paquetes
- * de terceros. Los archivos que genera este prototipo pesan pocos KB.
+ * La escritura usa el método "store" (sin compresión) y se usa para dos cosas:
+ * empaquetar los XML del lote descargable y construir el contenedor OOXML de los
+ * reportes `.xlsx`. Al no comprimir, el formato queda reducido a cabeceras +
+ * CRC32, que es fácil de auditar y no arrastra paquetes de terceros.
+ *
+ * La lectura (`leerZip`) existe para el importador de Excel: descomprime con
+ * `DecompressionStream("deflate-raw")`, que ya viene en el navegador.
  */
 
 const FIRMA_ARCHIVO_LOCAL = 0x04034b50;
@@ -131,4 +134,78 @@ export function crearZip(entradas: EntradaZip[]): Uint8Array<ArrayBuffer> {
   vista.setUint16(offset + 20, 0, true); // longitud del comentario
 
   return salida;
+}
+
+/* ------------------------------------------------------------------ *
+ * Lectura (importador de Excel)
+ * ------------------------------------------------------------------ */
+
+/** Descomprime un bloque con el método "deflate" usando la API del navegador. */
+async function inflar(datos: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("Este navegador no puede descomprimir el contenido del archivo.");
+  }
+
+  const flujo = new Blob([datos])
+    .stream()
+    .pipeThrough(new DecompressionStream("deflate-raw"));
+
+  return new Uint8Array(await new Response(flujo).arrayBuffer());
+}
+
+/**
+ * Lee un ZIP en memoria y devuelve sus entradas indexadas por ruta. Recorre el
+ * directorio central (no las cabeceras locales) porque es la única lista fiable
+ * de contenido, incluso cuando el archivo incluye carpetas vacías.
+ */
+export async function leerZip(
+  datos: Uint8Array<ArrayBuffer>,
+): Promise<Map<string, Uint8Array<ArrayBuffer>>> {
+  const vista = new DataView(datos.buffer, datos.byteOffset, datos.byteLength);
+  const decodificador = new TextDecoder();
+
+  // El fin del directorio central puede llevar hasta 64 KB de comentario detrás.
+  const inicioBusqueda = Math.max(0, datos.length - 22 - 0xffff);
+  let finDirectorio = -1;
+
+  for (let posicion = datos.length - 22; posicion >= inicioBusqueda; posicion -= 1) {
+    if (vista.getUint32(posicion, true) === FIRMA_FIN_DIRECTORIO) {
+      finDirectorio = posicion;
+      break;
+    }
+  }
+
+  if (finDirectorio < 0) {
+    throw new Error("El archivo no es un ZIP/XLSX válido.");
+  }
+
+  const total = vista.getUint16(finDirectorio + 10, true);
+  let offset = vista.getUint32(finDirectorio + 16, true);
+  const archivos = new Map<string, Uint8Array<ArrayBuffer>>();
+
+  for (let indice = 0; indice < total; indice += 1) {
+    if (vista.getUint32(offset, true) !== FIRMA_DIRECTORIO_CENTRAL) {
+      throw new Error("El directorio central del ZIP está dañado o incompleto.");
+    }
+
+    const metodo = vista.getUint16(offset + 10, true);
+    const tamanoComprimido = vista.getUint32(offset + 20, true);
+    const largoNombre = vista.getUint16(offset + 28, true);
+    const largoExtra = vista.getUint16(offset + 30, true);
+    const largoComentario = vista.getUint16(offset + 32, true);
+    const inicioLocal = vista.getUint32(offset + 42, true);
+    const nombre = decodificador.decode(datos.subarray(offset + 46, offset + 46 + largoNombre));
+
+    // La cabecera local repite el nombre y los datos extra con su propio largo.
+    const largoNombreLocal = vista.getUint16(inicioLocal + 26, true);
+    const largoExtraLocal = vista.getUint16(inicioLocal + 28, true);
+    const inicioDatos = inicioLocal + 30 + largoNombreLocal + largoExtraLocal;
+    const comprimido = datos.subarray(inicioDatos, inicioDatos + tamanoComprimido);
+
+    archivos.set(nombre, metodo === 8 ? await inflar(comprimido) : comprimido);
+
+    offset += 46 + largoNombre + largoExtra + largoComentario;
+  }
+
+  return archivos;
 }

@@ -1,16 +1,34 @@
 import { CalendarRange, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { CargandoTexto } from "@/components/skeletons";
+import { etiquetaPeriodo } from "@/lib/format";
+import { PERIODOS_DEMO } from "@/lib/mock-data";
 import type { EstadoSunat, FiltrosState, TipoDocumento } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+/** Periodo de emisión que arranca seleccionado (el mes en curso del demo). */
+export const PERIODO_INICIAL = PERIODOS_DEMO[0];
+
 export const FILTROS_INICIALES: FiltrosState = {
   q: "",
+  mes: PERIODO_INICIAL,
   tipo: "TODOS",
   estadoSunat: "TODOS",
   numeroSap: "",
+  checkSap: "TODOS",
   desde: "",
   hasta: "",
 };
+
+/** Opciones del selector de periodo: un mes por periodo del demo ("Todos" lo pone el selector). */
+export const OPCIONES_PERIODO: Array<{ valor: string; etiqueta: string }> = PERIODOS_DEMO.map(
+  (periodo) => ({ valor: periodo, etiqueta: etiquetaPeriodo(periodo) }),
+);
+
+/** Opciones del filtro "Check SAP" (valor guardado → etiqueta visible). */
+export const OPCIONES_CHECK_SAP: Array<{ valor: string; etiqueta: string }> = [
+  { valor: "CON", etiqueta: "Con check SAP" },
+  { valor: "SIN", etiqueta: "Sin check SAP" },
+];
 
 export const TIPOS_DOCUMENTO: TipoDocumento[] = [
   "Factura",
@@ -21,7 +39,7 @@ export const TIPOS_DOCUMENTO: TipoDocumento[] = [
   "Comprobante de Retención",
 ];
 
-export const ESTADOS_SUNAT: EstadoSunat[] = ["Aprobado", "Pendiente", "Anulado"];
+export const ESTADOS_SUNAT: EstadoSunat[] = ["Aprobado", "Pendiente", "Anulado", "Rechazado"];
 
 interface Props {
   filtros: FiltrosState;
@@ -54,10 +72,14 @@ function Selector({
   etiqueta: string;
   valor: string;
   onChange: (valor: string) => void;
-  opciones: string[];
+  opciones: Array<string | { valor: string; etiqueta: string }>;
   deshabilitado?: boolean;
   textoInicial: string;
 }) {
+  const normalizadas = opciones.map((opcion) =>
+    typeof opcion === "string" ? { valor: opcion, etiqueta: opcion } : opcion,
+  );
+
   return (
     <div className="min-w-0">
       <Etiqueta>{etiqueta}</Etiqueta>
@@ -69,9 +91,9 @@ function Selector({
           className={cn(CLASES_CONTROL, "appearance-none py-2.5 pr-9 pl-3")}
         >
           <option value="TODOS">{textoInicial}</option>
-          {opciones.map((opcion) => (
-            <option key={opcion} value={opcion}>
-              {opcion}
+          {normalizadas.map((opcion) => (
+            <option key={opcion.valor} value={opcion.valor}>
+              {opcion.etiqueta}
             </option>
           ))}
         </select>
@@ -91,9 +113,11 @@ export function FiltersPanel({
 }: Props) {
   const hayFiltros =
     filtros.q !== "" ||
+    filtros.mes !== PERIODO_INICIAL ||
     filtros.tipo !== "TODOS" ||
     filtros.estadoSunat !== "TODOS" ||
     filtros.numeroSap !== "" ||
+    filtros.checkSap !== "TODOS" ||
     filtros.desde !== "" ||
     filtros.hasta !== "";
 
@@ -138,7 +162,7 @@ export function FiltersPanel({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
         {/* Búsqueda */}
         <div className="md:col-span-2 xl:col-span-4">
-          <Etiqueta>Buscar por N° documento, cliente o RUC</Etiqueta>
+          <Etiqueta>Buscar por N° documento, cliente, RUC u orden de compra</Etiqueta>
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-400" />
             <input
@@ -146,7 +170,7 @@ export function FiltersPanel({
               value={filtros.q}
               disabled={cargando}
               onChange={(evento) => onCambiar({ q: evento.target.value })}
-              placeholder="Ej. F001-0004521, MINERA LOS ANDES, 20536489123"
+              placeholder="Ej. F001-0004521, MINERA LOS ANDES, OC-2026-0451"
               className={cn(
                 CLASES_CONTROL,
                 "py-2.5 pr-9 pl-9 placeholder:font-normal dark:placeholder:text-slate-500",
@@ -165,18 +189,18 @@ export function FiltersPanel({
           </div>
         </div>
 
-        <div className="xl:col-span-3">
+        <div className="xl:col-span-4">
           <Selector
             etiqueta="Tipo de documento"
             valor={filtros.tipo}
             onChange={(valor) => onCambiar({ tipo: valor as FiltrosState["tipo"] })}
             opciones={TIPOS_DOCUMENTO}
-            textoInicial="Todos los documentos"
+            textoInicial="Todos"
             deshabilitado={cargando}
           />
         </div>
 
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-4">
           <Selector
             etiqueta="Estado SUNAT"
             valor={filtros.estadoSunat}
@@ -187,7 +211,18 @@ export function FiltersPanel({
           />
         </div>
 
-        <div className="xl:col-span-3">
+        <div className="xl:col-span-4">
+          <Selector
+            etiqueta="Periodo de emisión"
+            valor={filtros.mes}
+            onChange={(valor) => onCambiar({ mes: valor })}
+            opciones={OPCIONES_PERIODO}
+            textoInicial="Todos los periodos"
+            deshabilitado={cargando}
+          />
+        </div>
+
+        <div className="xl:col-span-4">
           <Etiqueta>N° SAP</Etiqueta>
           <input
             type="text"
@@ -200,6 +235,17 @@ export function FiltersPanel({
               "py-2.5 pr-3 pl-3 font-mono placeholder:font-normal dark:placeholder:text-slate-500",
             )}
             aria-label="Número SAP"
+          />
+        </div>
+
+        <div className="xl:col-span-4">
+          <Selector
+            etiqueta="Check SAP"
+            valor={filtros.checkSap}
+            onChange={(valor) => onCambiar({ checkSap: valor as FiltrosState["checkSap"] })}
+            opciones={OPCIONES_CHECK_SAP}
+            textoInicial="Todos"
+            deshabilitado={cargando}
           />
         </div>
 

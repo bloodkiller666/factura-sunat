@@ -34,6 +34,10 @@ const CODIGO_UNIDAD: Record<string, string> = {
   Rollo: "NIU",
   Ton: "TNE",
   Cilindro: "NIU",
+  Bolsa: "NIU",
+  Varilla: "NIU",
+  Plancha: "NIU",
+  Tubo: "NIU",
 };
 
 /** Prefijo legible del nombre de archivo PDF por tipo de comprobante. */
@@ -73,15 +77,32 @@ function numero(valor: number): string {
   return valor.toFixed(2);
 }
 
-/** "… - CHORRILLOS - LIMA" -> distrito y provincia para el domicilio fiscal. */
+/** Departamentos del Perú: permiten reconocer el orden de los últimos tramos. */
+const DEPARTAMENTOS = new Set([
+  "AMAZONAS", "ANCASH", "APURIMAC", "AREQUIPA", "AYACUCHO", "CAJAMARCA", "CALLAO", "CUSCO",
+  "HUANCAVELICA", "HUANUCO", "ICA", "JUNIN", "LA LIBERTAD", "LAMBAYEQUE", "LIMA", "LORETO",
+  "MADRE DE DIOS", "MOQUEGUA", "PASCO", "PIURA", "PUNO", "SAN MARTIN", "TACNA", "TUMBES",
+  "UCAYALI",
+]);
+
+/**
+ * Extrae distrito y provincia del domicilio fiscal. SUNAT suele terminar el
+ * domicilio en "… - DISTRITO - PROVINCIA", pero en algunos contribuyentes el
+ * último tramo es el distrito ("… - LIMA - LIMA - CHORRILLOS"); si el último
+ * tramo no es un departamento, se invierte la lectura.
+ */
 function partesDomicilio(domicilio: string): { distrito: string; provincia: string } {
   const partes = domicilio
     .split(" - ")
     .map((parte) => parte.trim())
     .filter(Boolean);
-  const provincia = partes[partes.length - 1] ?? "LIMA";
-  const distrito = partes[partes.length - 2] ?? provincia;
-  return { distrito, provincia };
+
+  const ultimo = partes[partes.length - 1] ?? "LIMA";
+  const penultimo = partes[partes.length - 2] ?? ultimo;
+
+  if (DEPARTAMENTOS.has(ultimo)) return { provincia: ultimo, distrito: penultimo };
+  if (DEPARTAMENTOS.has(penultimo)) return { provincia: penultimo, distrito: ultimo };
+  return { provincia: ultimo, distrito: penultimo };
 }
 
 /** Código de afectación al IGV según la operación. */
@@ -400,7 +421,11 @@ const TIPO_ZIP = "application/zip";
 /** Separador de línea del manifiesto: compatible con cualquier visor de Windows. */
 const SALTO = "\r\n";
 
-const CABECERAS_REPORTE = [
+/**
+ * Columnas de datos del portal, en el orden en que se exportan al Excel.
+ * Es la fuente única que también valida el botón "Importar Excel".
+ */
+export const CABECERAS_REPORTE = [
   "N° comprobante",
   "Tipo de documento",
   "RUC cliente",
@@ -413,6 +438,8 @@ const CABECERAS_REPORTE = [
   "Total",
   "Estado SUNAT",
   "N° SAP",
+  "Orden de compra",
+  "Check SAP",
   "Forma de pago",
 ];
 
@@ -431,6 +458,8 @@ function filaReporte(comprobante: Comprobante): (string | number)[] {
     comprobante.total,
     comprobante.estadoSunat,
     comprobante.numeroSap,
+    comprobante.ordenCompra,
+    comprobante.checkSap ? "Sí" : "No",
     comprobante.formaPago,
   ];
 }

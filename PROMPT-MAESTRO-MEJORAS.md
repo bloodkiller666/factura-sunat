@@ -176,7 +176,7 @@ Notas de diseño:
 - Endpoints internos que replican en servidor lo que hoy hace el navegador
   (filtrado, métricas) para que el frontend deje de tener la verdad del negocio.
 
-**Aceptación:** `/health` y `/ready` responden; un usuario sin permiso sobre TDM Asfaltos
+**Aceptación:** `/health` y `/ready` responden; un usuario sin permiso sobre Tecnología de Materiales
 recibe `403` en la API **y** la UI no le muestra la empresa.
 
 ### F2 · Firma digital y XML real

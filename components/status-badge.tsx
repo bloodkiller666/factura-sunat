@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { CheckCircle2, Clock, Ban } from "lucide-react";
+import { CheckCircle2, Clock, Ban, CircleX } from "lucide-react";
 import { ESTILOS_SUNAT, PUNTOS_SUNAT } from "@/lib/format";
 import type { EstadoSunat } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ const ICONOS_SUNAT: Record<EstadoSunat, typeof CheckCircle2> = {
   Aprobado: CheckCircle2,
   Pendiente: Clock,
   Anulado: Ban,
+  Rechazado: CircleX,
 };
 
 /**
@@ -44,6 +45,12 @@ const CLARO_SUNAT: Record<EstadoSunat, PaletaClara> = {
     texto: "rgb(190 18 60)",
     anillo: "rgb(225 29 72 / 0.22)",
     punto: "rgb(244 63 94)",
+  },
+  Rechazado: {
+    fondo: "rgb(254 242 242)",
+    texto: "rgb(185 28 28)",
+    anillo: "rgb(220 38 38 / 0.28)",
+    punto: "rgb(239 68 68)",
   },
 };
 

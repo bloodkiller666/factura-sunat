@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, Clock, Wallet } from "lucide-react";
+import { Ban, CheckCircle2, CircleX, Clock, Wallet } from "lucide-react";
 import { formatearMoneda } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -7,8 +7,12 @@ export interface Metricas {
   aprobados: number;
   pendientes: number;
   anulados: number;
+  rechazados: number;
   totalComprobantes: number;
+  /** Etiqueta del periodo medido: "Octubre 2026" o "Todos los periodos". */
   mesEtiqueta: string;
+  /** `true` cuando el KPI mide un mes concreto (no "todos los periodos"). */
+  delMes: boolean;
 }
 
 interface Props {
@@ -43,6 +47,13 @@ const TONOS = {
     acento: "from-rose-500/0 via-rose-400/70 to-rose-500/0",
     aura: "aura-rosa",
     valor: "text-rose-700 dark:text-rose-300",
+  },
+  red: {
+    icono:
+      "bg-red-50 text-red-600 ring-red-600/15 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30 dark:shadow-[0_0_26px_-8px_rgba(239,68,68,0.95)]",
+    acento: "from-red-600/0 via-red-500/70 to-red-600/0",
+    aura: "aura-rosa",
+    valor: "text-red-700 dark:text-red-300",
   },
 } as const;
 
@@ -102,13 +113,22 @@ function Tarjeta({
 }
 
 export function KpiCards({ metricas }: Props) {
-  const { totalFacturado, aprobados, pendientes, anulados, totalComprobantes, mesEtiqueta } = metricas;
+  const {
+    totalFacturado,
+    aprobados,
+    pendientes,
+    anulados,
+    rechazados,
+    totalComprobantes,
+    mesEtiqueta,
+    delMes,
+  } = metricas;
 
   return (
-    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
       <Tarjeta
         icono={Wallet}
-        etiqueta="Total facturado del mes"
+        etiqueta={delMes ? "Total facturado del mes" : "Total facturado"}
         valor={formatearMoneda(totalFacturado)}
         detalle={`${mesEtiqueta} · ${totalComprobantes} comprobantes`}
         tono="blue"
@@ -133,6 +153,17 @@ export function KpiCards({ metricas }: Props) {
         valor={String(anulados)}
         detalle={`${porcentaje(anulados, totalComprobantes)} del total emitido`}
         tono="rose"
+      />
+      <Tarjeta
+        icono={CircleX}
+        etiqueta="Comprobantes rechazados"
+        valor={String(rechazados)}
+        detalle={
+          rechazados > 0
+            ? `${porcentaje(rechazados, totalComprobantes)} del total emitido`
+            : "SUNAT no observó comprobantes"
+        }
+        tono="red"
       />
     </section>
   );

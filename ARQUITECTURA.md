@@ -14,25 +14,35 @@ de sus tres empresas:
 | --- | --- | --- | --- |
 | `servicios` | TDM Servicios | TDM SERVICIOS S.A.C. | 20615209385 |
 | `geosinteticos` | TDM Geosintéticos | TDM GEOSINTETICOS S.A. | 20551198058 |
-| `asfaltos` | TDM Asfaltos | TDM ASFALTOS S.A.C. | 20514831620 |
+| `materiales` | TDM (Tecnología de Materiales) | TECNOLOGIA DE MATERIALES S.A. | 20123531389 |
+
+> La ficha de **Tecnología de Materiales** reproduce la consulta RUC de SUNAT
+> (nombre comercial *TDM*, actividades 4663 y 4390, domicilio en Chorrillos, agentes de
+> retención del IGV). Su detalle ampliado se guarda en `Empresa.detalleSunat`.
 
 ### Qué resuelve
 
 1. **Cambiar de empresa emisora** sin recargar la página (pestañas de cristal).
 2. **Saber de un vistazo** cómo va el periodo: total facturado del mes, aprobados,
-   pendientes y anulados (tarjetas KPI).
-3. **Encontrar un comprobante** por N° de documento, cliente o RUC, y por tipo de
-   documento, estado SUNAT, N° SAP y rango de fechas.
-4. **Ver la representación impresa** de cualquier comprobante antes de entregarlo.
-5. **Exportar trabajo real**:
+   pendientes, anulados y rechazados (cinco tarjetas KPI).
+3. **Encontrar un comprobante** por N° de documento, cliente, RUC u orden de compra, y
+   por tipo de documento, estado SUNAT, N° SAP, **Check SAP** (con o sin marca) y rango de
+   fechas.
+4. **Marcar el Check SAP** de cada comprobante (casilla editable: se pone y se quita) y
+   **registrar la orden de compra** del cliente, dos columnas nuevas de la tabla.
+5. **Ver la representación impresa** de cualquier comprobante antes de entregarlo.
+6. **Exportar trabajo real**:
    - **PDF** del comprobante (vía diálogo de impresión del navegador → "Guardar como PDF").
    - **XML** UBL 2.1 del comprobante.
    - **Excel (.xlsx)** con los comprobantes seleccionados, o con todos los visibles si
      no hay ninguno marcado.
    - **ZIP** con el XML de cada comprobante seleccionado (o de todos los visibles, con
      la misma regla) + un manifiesto `LEEME.txt`.
-6. **Enviar por correo real** los comprobantes (XML adjunto) a cada cliente, agrupando
+7. **Enviar por correo real** los comprobantes (XML adjunto) a cada cliente, agrupando
    por destinatario, a través de Resend desde el servidor.
+8. **Importar un Excel y validarlo**: el botón *Importar Excel* lee el libro en el
+   navegador y comprueba si sus columnas concuerdan con las columnas de datos de la tabla
+   del portal (coincidentes, faltantes y sobrantes).
 
 ### Qué es real y qué es simulado (importante)
 
@@ -41,6 +51,8 @@ de sus tres empresas:
 | Datos de comprobantes y empresas | **Simulados** (`lib/mock-data.ts`) |
 | "Consulta a SUNAT" al cambiar de empresa | **Simulada**: un `setTimeout` de 700 ms |
 | Estado SUNAT y número SAP | **Simulado** en los datos |
+| "Check SAP" y orden de compra | **Simulados** como dato inicial; el check lo edita el usuario y solo vive en memoria |
+| Lectura y validación del Excel importado | **Real** (se descomprime y analiza en el navegador; nada se sube al servidor) |
 | Descarga de XML | **Real** (se genera el UBL 2.1 en el navegador) |
 | Descarga de Excel y ZIP | **Real** (se generan los binarios en el navegador) |
 | Exportación a PDF | **Real** (usa la impresión nativa del navegador) |
@@ -66,9 +78,11 @@ Ficha fiscal SUNAT + KPIs del mes + Filtros + Tabla de comprobantes
         │
         ├─► Filtrar/buscar ....... recalcula la tabla (en memoria, sin red)
         ├─► Marcar comprobantes .. selección masiva (se limpia lo que deja de ser visible)
+        ├─► Check SAP ............ casilla editable por fila (con/sin marca) → filtro
         ├─► Ver detalle .......... modal con la representación impresa
         ├─► PDF                    documento oculto → window.print()
         ├─► XML / Excel / ZIP .... Blob + <a download> en el navegador
+        ├─► Importar Excel ....... lectura + validación de columnas → modal de resultados
         └─► Correo ............... POST /api/enviar-comprobantes → Resend
 ```
 
@@ -80,8 +94,9 @@ Todo el estado vive en **memoria del navegador**:
 lib/mock-data.ts  ──►  EMPRESAS: Empresa[]  (cada Empresa trae sus Comprobante[])
                               │
    app/page.tsx  ──── useMemo ├─► empresa (la seleccionada)
-                              ├─► comprobantesFiltrados = aplicarFiltros(empresa.comprobantes, filtros)
-                              └─► metricas = calcularMetricas(empresa.comprobantes)
+                              ├─► comprobantesFiltrados = aplicarFiltros(empresa.comprobantes, filtros, checksSap)
+                              ├─► metricas = calcularMetricas(empresa.comprobantes, filtros.mes)
+                              └─► checksSap = marcas editables por comprobante (estado de React)
                               │
                               ▼
    props  ──►  components/*  (filtros, tarjetas, tabla, modal…)
@@ -89,6 +104,10 @@ lib/mock-data.ts  ──►  EMPRESAS: Empresa[]  (cada Empresa trae sus Comprob
 
 No hay peticiones de red para listar ni filtrar: **filtrar es un `useMemo` sobre un array**.
 La única llamada al servidor es la del correo.
+
+El demo cubre **dos periodos** (`PERIODOS_DEMO` en `lib/mock-data.ts`): setiembre (24 comprobantes)
+y octubre de 2026 (**18 comprobantes, 6 por empresa**). El selector *Periodo de emisión* acota la
+tabla y, con el mismo valor, recalcula las tarjetas KPI (`Octubre 2026` o `Todos los periodos`).
 
 ---
 
@@ -126,11 +145,13 @@ La única llamada al servidor es la del correo.
 └───────────────┬──────────────────────────────────────────────────┘
                 │
 ┌───────────────▼──────────────────────────────────────────────────┐
-│ GENERACIÓN DE ARCHIVOS (100 % en el navegador, sin dependencias)  │
+│ GENERACIÓN Y LECTURA DE ARCHIVOS (100 % en el navegador)          │
 │  lib/comprobante-descargas.ts ... XML UBL 2.1, nombres, blobs     │
-│  lib/xml.ts .................... escape XML                       │
+│  lib/xml.ts .................... escape y desescape XML           │
 │  lib/xlsx.ts ................... OOXML SpreadsheetML mínimo       │
-│  lib/zip.ts .................... escritor ZIP propio (store + CRC)│
+│  lib/xlsx-lectura.ts ........... lector .xlsx (ZIP + hoja)        │
+│  lib/importar-excel.ts ......... validación de columnas           │
+│  lib/zip.ts .................... escritor ZIP (store) + lector    │
 └──────────────────────────────────────────────────────────────────┘
                 │
 ┌───────────────▼──────────────────────────────────────────────────┐
@@ -150,10 +171,11 @@ La única llamada al servidor es la del correo.
 | `components/portal-header.tsx` | Cabecera sticky glass: marca, toggle de tema, perfil y barra de progreso. |
 | `components/company-selector.tsx` | Pestañas de empresa como píldoras de cristal con **indicador deslizante GSAP**. |
 | `components/company-info-card.tsx` | Ficha informativa SUNAT de la empresa (estado, condición, domicilio, actividad…). |
-| `components/kpi-cards.tsx` | Cuatro tarjetas KPI con aura, acento y glow. |
-| `components/filters-panel.tsx` | Búsqueda + 2 selectores + N° SAP + rango de fechas y atajos. Exporta `FILTROS_INICIALES`. |
-| `components/invoices-table.tsx` | Tabla de escritorio + tarjetas móviles, selección masiva, acciones por fila y acciones rápidas. |
-| `components/quick-actions-bar.tsx` | Barra de selección global y acciones masivas; exporta `CasillaSeleccion`. |
+| `components/kpi-cards.tsx` | Cinco tarjetas KPI (facturado, aprobados, pendientes, anulados y rechazados) con aura, acento y glow. Siguen el periodo elegido en los filtros. |
+| `components/filters-panel.tsx` | Búsqueda + 4 selectores (periodo, tipo, estado SUNAT, Check SAP) + N° SAP + rango de fechas y atajos. Exporta `FILTROS_INICIALES`. |
+| `components/invoices-table.tsx` | Tabla de escritorio + tarjetas móviles, selección masiva, **Check SAP editable**, columna de orden de compra, acciones por fila y acciones rápidas. |
+| `components/quick-actions-bar.tsx` | Barra de selección global y acciones masivas (incluye **Importar Excel**); exporta `CasillaSeleccion` y `BotonImportarExcel`. |
+| `components/importar-excel-modal.tsx` | Modal con el veredicto del Excel importado: columnas coincidentes, faltantes y sobrantes. |
 | `components/status-badge.tsx` | Insignia de estado SUNAT (con tono `auto` o `claro` para el papel). |
 | `components/invoice-paper.tsx` | Representación impresa del comprobante (siempre en blanco). Se reutiliza en modal y en impresión. |
 | `components/print-sheet.tsx` | Contenedor `.area-impresion`: solo se imprime al exportar a PDF. |
@@ -172,14 +194,17 @@ Empresa  ─┬─ id, nombreCorto, razonSocial, ruc
           ├─ condicion: "HABIDO" | "NO HABIDO"
           ├─ domicilioFiscal, actividadPrincipal
           ├─ comprobantesElectronicos: TipoDocumento[]
+          ├─ detalleSunat?: DatoSunat[]   (consulta RUC ampliada)
           └─ comprobantes: Comprobante[]
                       │
 Comprobante  ─┬─ numero, tipo, cliente {ruc, razonSocial}
               ├─ fechaEmision, fechaVencimiento   (ISO yyyy-mm-dd)
               ├─ descripcion, items: ItemComprobante[]
               ├─ baseImponible, igv, total
-              ├─ estadoSunat: "Aprobado" | "Pendiente" | "Anulado"
+              ├─ estadoSunat: "Aprobado" | "Pendiente" | "Anulado" | "Rechazado"
               ├─ numeroSap: string
+              ├─ ordenCompra: string        ("" si el cliente no emitió OC)
+              ├─ checkSap: boolean          (marca manual, editable en la tabla)
               └─ formaPago, observacion?
 ```
 
@@ -192,16 +217,20 @@ y `total`, de modo que el dataset nunca es inconsistente.
 | Estado | Para qué |
 | --- | --- |
 | `empresaId` | Empresa seleccionada. |
-| `filtros` | Búsqueda, tipo, estados y rango de fechas (`FiltrosState`). |
+| `filtros` | Búsqueda, **periodo** (`yyyy-mm` o "TODOS"), tipo, estado SUNAT, N° SAP, Check SAP y rango de fechas (`FiltrosState`). El periodo mueve a la vez la tabla y los KPIs. |
 | `detalle` | Comprobante abierto en el modal (`null` = cerrado). |
 | `toast` | Notificación activa; se autocierra a los 3400 ms. |
 | `imprimiendo` | Comprobante montado en `PrintSheet` para exportar a PDF. |
 | `cargando` | Simula la consulta a SUNAT (700 ms) y activa skeletons. |
 | `descargaEnCurso` | Clave `id:FORMATO` del archivo que se está entregando. |
 | `solicitudCarga` | Contador que reinicia el temporizador de carga al cambiar de empresa. |
+| `checksSap` | Mapa `id → boolean` del **Check SAP**: arranca con los valores de los mocks y el usuario lo edita. |
+| `importacion` | Estado del Excel importado (`analizando`, `listo` con reporte, o `error`); `null` = modal cerrado. |
 
 Reutiliza `useMemo` para la empresa, los comprobantes filtrados y las métricas;
-`useRef` para temporizadores y para los contenedores que anima GSAP.
+`useRef` para temporizadores y para los contenedores que anima GSAP. Las
+`comprobantesFiltrados` viajan con su `checkSap` ya resuelto para que la tabla, el reporte
+Excel y el filtro compartan el mismo valor.
 
 ---
 
@@ -243,7 +272,9 @@ cabeceras + CRC32 calculado con tabla. Eso permite:
 
 - **`.xlsx`**: `lib/xlsx.ts` escribe las seis partes mínimas de OOXML (content types,
   relaciones, libro, hoja, estilos) usando `inlineStr`, así que no hace falta la tabla
-  de cadenas compartidas. Cabeceras en negrita y anchos de columna calculados.
+  de cadenas compartidas. Cabeceras en negrita y anchos de columna calculados. Las
+  columnas del reporte son `CABECERAS_REPORTE` (incluidas **Orden de compra** y
+  **Check SAP**), la misma lista que valida el importador.
 - **`.zip`**: un XML por comprobante + `LEEME.txt` con el inventario del lote.
 
 La entrega siempre es la misma: `descargarArchivo()` crea un `Blob`, un `<a download>`
@@ -413,6 +444,28 @@ Detalles que conviene tener presentes al leer los diagramas:
 - `CORREO_DESTINO_PRUEBA` intercepta todos los destinatarios, lo que hace el diagrama
   fácil de probar con un solo buzón.
 
+### 4.6 Importación de Excel (validación de columnas)
+
+`Importar Excel`, en la barra de acciones, abre el selector de archivos; el libro nunca sale
+del navegador:
+
+1. `app/page.tsx` recibe el `File`, comprueba la extensión (`.xlsx` / `.xlsm`) y lo lee como
+   `ArrayBuffer`.
+2. `lib/xlsx-lectura.ts` descomprime el contenedor con `leerZip` y extrae las celdas de la
+   primera hoja. Un `.xlsx` es un ZIP: `DecompressionStream("deflate-raw")` descomprime sin
+   añadir dependencias, y se soportan celdas de cadena compartida (`t="s"`), en línea
+   (`inlineStr`), numéricas y booleanas.
+3. `lib/importar-excel.ts` elige la fila de encabezados (entre las ocho primeras, la que más
+   columnas del portal reconoce), normaliza los textos (sin acentos, sin signos, en
+   minúsculas) y los compara con `CABECERAS_REPORTE` admitiendo sinónimos (`Nro Comprobante`,
+   `N° SAP`, `OC`, `Check SAP`…). Un encabezado repetido cuenta como sobrante.
+4. `components/importar-excel-modal.tsx` muestra el veredicto: porcentaje de coincidencia,
+   columnas coincidentes, faltantes y sobrantes, filas con datos y fila de encabezados.
+
+La validación **no importa datos** (el portal no persiste nada todavía): sirve para
+confirmar que el archivo del usuario tiene la misma estructura que la tabla del portal antes
+de conectarla a una carga real.
+
 ---
 
 ## 5. Capa visual y de animación
@@ -459,9 +512,11 @@ con `gsap.matchMedia()` o comprobaciones explícitas.
   selección; `aria-label`/`title` en todos los botones de acción; `sr-only` en cabeceras.
 - **Teclado**: el modal se cierra con `Escape` y bloquea el scroll de fondo.
 - **Movimiento reducido**: ninguna animación se ejecuta si el sistema pide reducirlo.
-- **Sin dependencias para binarios**: el ZIP y el XLSX son escritores propios, lo que
-  reduce la superficie de la cadena de suministro (ver `pnpm-workspace.yaml` /
-  `allowBuilds` y `pnpm approve-builds`).
+- **Sin dependencias para binarios**: el ZIP y el XLSX son escritores propios y la lectura
+  del Excel importado usa la `DecompressionStream` del navegador, lo que reduce la superficie
+  de la cadena de suministro (ver `pnpm-workspace.yaml` / `allowBuilds` y `pnpm approve-builds`).
+- **Importación**: el modal del análisis se cierra con `Escape`, bloquea el scroll de fondo y
+  anuncia el resultado con `role="dialog"`; los errores se explican dentro del propio modal.
 - **Renderizado**: las animaciones de entrada usan `clearProps` para no dejar estilos
   inline que interfieran con hover, `sticky` o el propio GSAP.
 
@@ -487,6 +542,26 @@ pnpm build
 ### Limitaciones conocidas
 
 - No hay autenticación: la ruta de correo es pública (mitigada con límites de tamaño y lote).
-- No hay persistencia: al recargar se vuelve al dataset simulado.
+- No hay persistencia: al recargar se vuelve al dataset simulado (incluido el Check SAP).
 - El PDF depende del diálogo de impresión del navegador (no se genera un PDF binario).
 - El XML no está firmado digitalmente y los datos no son válidos ante SUNAT.
+- La vista previa muestra la representación impresa simulada: **los PDF reales de SharePoint
+  todavía no se leen** (el diseño está en el §8).
+
+---
+
+## 8. Pendiente: ver los PDF reales desde SharePoint
+
+El ojo de *vista previa* abre `invoice-detail-modal.tsx` y muestra la representación impresa que
+el portal arma en memoria. La meta es que ese mismo modal muestre **el PDF que facturación ya
+archiva en SharePoint**, sin exponer credenciales al navegador.
+
+El diseño completo —comparación de alternativas, registro de la app en Entra ID, permisos
+`Sites.Selected`, la ruta `/api/comprobante-pdf`, la convención de nombres de archivo, caché,
+seguridad, pruebas con `curl` y las decisiones pendientes con TI— está en
+**[INTEGRACION-SHAREPOINT.md](INTEGRACION-SHAREPOINT.md)**.
+
+Ese documento incluye además las alternativas que **no requieren acceso a Entra ID** (enlace
+directo al archivo, flujo de Power Automate como mini-API, carpeta de la biblioteca sincronizada
+en el servidor y copia programada a almacenamiento propio) y qué pedirle a TI si se quiere la vía
+definitiva: el consentimiento de administrador sobre una app, no el acceso al portal de Azure.

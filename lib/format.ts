@@ -55,6 +55,17 @@ export function coincidePeriodo(iso: string, anio: number, mes: number): boolean
   return Number(a) === anio && Number(m) === mes;
 }
 
+/** Valor del filtro de periodo cuando no se quiere acotar a un mes. */
+export const TODOS_LOS_PERIODOS = "TODOS";
+
+/** Etiqueta del filtro de periodo: "2026-10" -> "Octubre 2026". */
+export function etiquetaPeriodo(periodo: string): string {
+  if (periodo === TODOS_LOS_PERIODOS) return "Todos los periodos";
+  const [anio, mes] = periodo.split("-");
+  const nombre = MESES[Number(mes) - 1] ?? mes;
+  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`;
+}
+
 /* ------------------------------------------------------------------ *
  * Estilos de los badges (con soporte de modo oscuro)
  * ------------------------------------------------------------------ */
@@ -66,12 +77,15 @@ export const ESTILOS_SUNAT: Record<EstadoSunat, string> = {
     "bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/30 dark:shadow-[0_0_20px_-6px_rgba(245,158,11,0.85)]",
   Anulado:
     "bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-400/30 dark:shadow-[0_0_20px_-6px_rgba(244,63,94,0.85)]",
+  Rechazado:
+    "bg-red-50 text-red-700 ring-red-600/25 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/35 dark:shadow-[0_0_20px_-6px_rgba(239,68,68,0.9)]",
 };
 
 export const PUNTOS_SUNAT: Record<EstadoSunat, string> = {
   Aprobado: "bg-emerald-500 shadow-[0_0_10px_1px_rgba(16,185,129,0.75)]",
   Pendiente: "bg-amber-500 shadow-[0_0_10px_1px_rgba(245,158,11,0.75)]",
   Anulado: "bg-rose-500 shadow-[0_0_10px_1px_rgba(244,63,94,0.75)]",
+  Rechazado: "bg-red-600 shadow-[0_0_10px_1px_rgba(239,68,68,0.8)]",
 };
 
 /** Las guías de remisión no representan un importe de venta. */

@@ -1,4 +1,13 @@
-import { Activity, BadgeCheck, Building2, CalendarClock, FileStack, MapPin } from "lucide-react";
+import {
+  Activity,
+  BadgeCheck,
+  Building2,
+  CalendarClock,
+  ChevronDown,
+  FileStack,
+  MapPin,
+  ScrollText,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Pulso } from "@/components/skeletons";
 import type { Empresa } from "@/lib/types";
@@ -94,7 +103,7 @@ export function CompanyInfoCard({ empresa, cargando = false }: Props) {
           {cargando ? (
             <Pulso className="h-4 w-32" />
           ) : (
-            <span className="text-slate-600 dark:text-slate-300">26/09/2026 · 09:14 a.m.</span>
+            <span className="text-slate-600 dark:text-slate-300">01/10/2026 · 09:23 a.m.</span>
           )}
         </Dato>
 
@@ -141,6 +150,35 @@ export function CompanyInfoCard({ empresa, cargando = false }: Props) {
           )}
         </Dato>
       </div>
+
+      {/* Detalle ampliado de la consulta RUC (solo si la empresa lo declara) */}
+      {!cargando && empresa.detalleSunat && empresa.detalleSunat.length > 0 && (
+        <details className="group border-t border-slate-200/70 dark:border-white/10">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-xs font-semibold text-slate-500 transition select-none hover:bg-slate-50/70 sm:px-6 dark:text-slate-300 dark:hover:bg-white/[0.03]">
+            <span className="flex items-center gap-2">
+              <ScrollText className="h-3.5 w-3.5" />
+              Detalle de la consulta RUC en SUNAT
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 tabular-nums dark:bg-white/10 dark:text-slate-300">
+                {empresa.detalleSunat.length}
+              </span>
+            </span>
+            <ChevronDown className="h-4 w-4 transition-transform duration-300 group-open:rotate-180" />
+          </summary>
+
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-4 px-4 pt-1 pb-5 sm:grid-cols-2 sm:px-6">
+            {empresa.detalleSunat.map((dato) => (
+              <div key={dato.etiqueta} className="min-w-0">
+                <dt className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase dark:text-slate-400">
+                  {dato.etiqueta}
+                </dt>
+                <dd className="mt-1 text-sm leading-relaxed font-medium whitespace-pre-line text-slate-700 dark:text-slate-200">
+                  {dato.valor}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
     </section>
   );
 }

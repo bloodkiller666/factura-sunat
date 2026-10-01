@@ -48,6 +48,33 @@ El ZIP y el contenedor XLSX se construyen con un escritor propio en `lib/zip.ts`
 compresión) para evitar añadir dependencias; `lib/xlsx.ts` genera las seis partes OOXML
 mínimas que Excel necesita.
 
+## Estado SUNAT, periodo y Check SAP
+
+- Estados del comprobante: **Aprobado**, **Pendiente**, **Anulado** y **Rechazado** (SUNAT
+  devolvió la CDR con observaciones). Cada uno tiene su insignia, su filtro y su tarjeta KPI.
+- El selector **Periodo de emisión** (Setiembre 2026 / Octubre 2026 / Todos los periodos) mueve a
+  la vez la tabla y los KPIs del mes.
+
+## Check SAP, orden de compra e importación de Excel
+
+- La tabla tiene dos columnas nuevas: **Orden de compra** (dato del comprobante) y
+  **Check SAP**, una casilla **editable** que el usuario marca y desmarca; el filtro
+  `Check SAP` permite ver solo los comprobantes marcados o solo los que no lo están.
+  La marca vive en memoria (no se persiste al recargar) y viaja también al reporte Excel.
+- El botón **Importar Excel** lee un `.xlsx` / `.xlsm` en el navegador (nada se sube al
+  servidor) y **valida sus columnas** contra las columnas de datos de la tabla del portal:
+  indica el porcentaje de coincidencia y lista las columnas coincidentes, faltantes y
+  sobrantes. Es un análisis de estructura, no una carga de datos.
+
+## Ver los PDF reales desde SharePoint
+
+La vista previa muestra hoy la representación impresa que el portal arma en memoria. Para
+mostrar los PDF que facturación archiva en SharePoint, el diseño está en
+[INTEGRACION-SHAREPOINT.md](INTEGRACION-SHAREPOINT.md): las alternativas comparadas **con y sin
+acceso a Entra ID** (enlace directo, flujo de Power Automate, carpeta sincronizada en el
+servidor), el registro de la app en Azure, los permisos sobre el sitio, la ruta
+`/api/comprobante-pdf`, la convención de nombres y las pruebas de aceptación.
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.

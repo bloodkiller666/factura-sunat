@@ -35,9 +35,15 @@ interface Props {
   totalEmpresa: number;
   cargando: boolean;
   descargaEnCurso: string | null;
+  /** Hay un Excel en análisis: bloquea el botón de importar. */
+  importando: boolean;
   onVerDetalle: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, formato: FormatoDescarga) => void;
   onNotificar: (toast: NuevoToast) => void;
+  /** Alterna la marca manual "Check SAP" del comprobante. */
+  onAlternarCheckSap: (id: string) => void;
+  /** Entrega el Excel elegido para que la página lo analice. */
+  onImportarExcel: (archivo: File) => void;
 }
 
 const CLASES_TH =
@@ -58,9 +64,12 @@ export function InvoicesTable({
   totalEmpresa,
   cargando,
   descargaEnCurso,
+  importando,
   onVerDetalle,
   onDescargar,
   onNotificar,
+  onAlternarCheckSap,
+  onImportarExcel,
 }: Props) {
   const [seleccionados, setSeleccionados] = useState<Set<string>>(() => new Set());
   const [idsPrevios, setIdsPrevios] = useState<string[]>([]);
@@ -356,16 +365,18 @@ export function InvoicesTable({
         todosSeleccionados={todosSeleccionados}
         cargando={cargando}
         enviandoCorreo={enviandoCorreo}
+        importando={importando}
         onAlternarTodos={alternarTodos}
         onEmitir={emitirComprobante}
         onExportarExcel={exportarExcel}
         onDescargarZip={descargarZip}
         onEnviarCorreo={enviarCorreoMasivo}
+        onImportarExcel={onImportarExcel}
       />
 
       {/* Vista de tabla (escritorio) */}
       <div className="hidden overflow-x-auto lg:block">
-        <table className="w-full min-w-[1530px] border-collapse">
+        <table className="w-full min-w-[1720px] border-collapse">
           <thead>
             <tr className="border-b border-slate-200/70 bg-white/40 dark:border-white/10 dark:bg-white/[0.02]">
               <th className={cn(CLASES_TH, "w-12 pr-0")}>
@@ -381,8 +392,10 @@ export function InvoicesTable({
               <th className={cn(CLASES_TH, "text-right")}>IGV (18%)</th>
               <th className={cn(CLASES_TH, "text-right")}>Precio total</th>
               <th className={CLASES_TH}>Estado SUNAT</th>
-              <th className={CLASES_TH}>N° SAP</th>
-              <th className={cn(CLASES_TH, "text-center")}>Acciones</th>
+            <th className={CLASES_TH}>N° SAP</th>
+            <th className={CLASES_TH}>Orden de compra</th>
+            <th className={cn(CLASES_TH, "text-center")}>Check SAP</th>
+            <th className={cn(CLASES_TH, "text-center")}>Acciones</th>
             </tr>
           </thead>
 
@@ -529,6 +542,28 @@ export function InvoicesTable({
                     </td>
 
                     <td className="px-4 py-3.5 whitespace-nowrap">
+                      {comprobante.ordenCompra ? (
+                        <span
+                          className="font-mono text-[12px] font-semibold tracking-tight text-slate-600 dark:text-slate-300"
+                          title={comprobante.ordenCompra}
+                        >
+                          {comprobante.ordenCompra}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-slate-300 dark:text-slate-600">—</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                      <CasillaSeleccion
+                        tono="esmeralda"
+                        checked={comprobante.checkSap}
+                        onChange={() => onAlternarCheckSap(comprobante.id)}
+                        etiqueta={`Marcar Check SAP de ${comprobante.numero}`}
+                      />
+                    </td>
+
+                    <td className="px-4 py-3.5 whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
                         <AccionBoton
                           etiqueta="Ver detalle"
@@ -573,7 +608,7 @@ export function InvoicesTable({
 
             {!cargando && comprobantes.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-20">
+                <td colSpan={14} className="px-4 py-20">
                   <EstadoVacio />
                 </td>
               </tr>
@@ -596,6 +631,7 @@ export function InvoicesTable({
               descargaCompletada={descargaCompletada}
               enviandoCorreo={enviandoCorreo}
               onAlternar={() => alternarUno(comprobante.id)}
+              onAlternarCheckSap={onAlternarCheckSap}
               onVerDetalle={onVerDetalle}
               onDescargar={onDescargar}
               onEnviarCorreo={enviarCorreoIndividual}
@@ -632,6 +668,7 @@ function TarjetaComprobante({
   descargaCompletada,
   enviandoCorreo,
   onAlternar,
+  onAlternarCheckSap,
   onVerDetalle,
   onDescargar,
   onEnviarCorreo,
@@ -642,6 +679,7 @@ function TarjetaComprobante({
   descargaCompletada: string | null;
   enviandoCorreo: boolean;
   onAlternar: () => void;
+  onAlternarCheckSap: (id: string) => void;
   onVerDetalle: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, formato: FormatoDescarga) => void;
   onEnviarCorreo: (comprobante: Comprobante) => void;
@@ -756,6 +794,21 @@ function TarjetaComprobante({
             </>
           )}
         </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-white/60 px-3 py-2 backdrop-blur-md dark:border-white/10 dark:bg-white/5">
+        <span className="font-mono text-[11px] font-semibold tracking-tight text-slate-500 dark:text-slate-300">
+          OC {comprobante.ordenCompra || "—"}
+        </span>
+        <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-slate-600 select-none dark:text-slate-200">
+          <CasillaSeleccion
+            tono="esmeralda"
+            checked={comprobante.checkSap}
+            onChange={() => onAlternarCheckSap(comprobante.id)}
+            etiqueta={`Marcar Check SAP de ${comprobante.numero}`}
+          />
+          Check SAP
+        </label>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">

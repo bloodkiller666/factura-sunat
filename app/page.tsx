@@ -6,6 +6,7 @@ import gsap from "gsap";
 import { CompanyInfoCard } from "@/components/company-info-card";
 import { CompanySelector } from "@/components/company-selector";
 import { FILTROS_INICIALES, FiltersPanel } from "@/components/filters-panel";
+import { ImportarExcelModal } from "@/components/importar-excel-modal";
 import { InvoiceDetailModal } from "@/components/invoice-detail-modal";
 import { InvoicesTable } from "@/components/invoices-table";
 import { KpiCards, type Metricas } from "@/components/kpi-cards";
@@ -14,10 +15,16 @@ import { PrintSheet } from "@/components/print-sheet";
 import { SkeletonKpis } from "@/components/skeletons";
 import { type NuevoToast, Toast, type ToastState } from "@/components/toast";
 import { descargarXml, imprimirPdf, nombreArchivoPdf } from "@/lib/comprobante-descargas";
-import { coincidePeriodo } from "@/lib/format";
-import { EMPRESAS, PERIODO_DEMO } from "@/lib/mock-data";
+import { TODOS_LOS_PERIODOS, coincidePeriodo, etiquetaPeriodo } from "@/lib/format";
+import {
+  type EstadoImportacion,
+  analizarHoja,
+  esExcelModerno,
+} from "@/lib/importar-excel";
+import { EMPRESAS } from "@/lib/mock-data";
 import type { Comprobante, FiltrosState } from "@/lib/types";
 import { type FormatoDescarga, claveDescarga } from "@/lib/utils";
+import { leerHojaXlsx } from "@/lib/xlsx-lectura";
 
 /** Documentos que representan venta (las guías no generan importe facturado). */
 const TIPOS_FACTURABLES = new Set(["Factura", "Boleta de Venta", "Nota de Crédito", "Nota de Débito"]);
@@ -27,7 +34,28 @@ const MS_CARGA_EMPRESA = 700;
 /** Duración del indicador de progreso mientras se entrega el archivo. */
 const MS_DESCARGA = 900;
 
-function aplicarFiltros(comprobantes: Comprobante[], filtros: FiltrosState): Comprobante[] {
+/**
+ * Marcas "Check SAP" con las que arranca el portal: parten de los datos
+ * simulados y a partir de ahí el usuario las marca y desmarca a voluntad.
+ */
+const CHECKS_SAP_INICIALES: Record<string, boolean> = Object.fromEntries(
+  EMPRESAS.flatMap((empresa) =>
+    empresa.comprobantes.map((comprobante) => [comprobante.id, comprobante.checkSap] as const),
+  ),
+);
+
+/** ¿El comprobante cae dentro del periodo elegido? `"TODOS"` no acota por mes. */
+function coincideMes(iso: string, periodo: string): boolean {
+  if (periodo === TODOS_LOS_PERIODOS) return true;
+  const [anio, mes] = periodo.split("-").map(Number);
+  return coincidePeriodo(iso, anio, mes);
+}
+
+function aplicarFiltros(
+  comprobantes: Comprobante[],
+  filtros: FiltrosState,
+  checksSap: Record<string, boolean>,
+): Comprobante[] {
   const consulta = filtros.q.trim().toLowerCase();
   const filtroSap = filtros.numeroSap.trim().toLowerCase();
 
@@ -38,43 +66,58 @@ function aplicarFiltros(comprobantes: Comprobante[], filtros: FiltrosState): Com
       comprobante.descripcion.toLowerCase().includes(consulta) ||
       comprobante.tipo.toLowerCase().includes(consulta) ||
       comprobante.cliente.razonSocial.toLowerCase().includes(consulta) ||
+      comprobante.ordenCompra.toLowerCase().includes(consulta) ||
       comprobante.cliente.ruc.includes(consulta);
 
+    const coincidePeriodoElegido = coincideMes(comprobante.fechaEmision, filtros.mes);
     const coincideTipo = filtros.tipo === "TODOS" || comprobante.tipo === filtros.tipo;
     const coincideSunat =
       filtros.estadoSunat === "TODOS" || comprobante.estadoSunat === filtros.estadoSunat;
     const coincideSap =
       filtroSap === "" || comprobante.numeroSap.toLowerCase().includes(filtroSap);
+
+    const marcado = checksSap[comprobante.id] ?? false;
+    const coincideCheck =
+      filtros.checkSap === "TODOS" || (filtros.checkSap === "CON" ? marcado : !marcado);
+
     const coincideDesde = filtros.desde === "" || comprobante.fechaEmision >= filtros.desde;
     const coincideHasta = filtros.hasta === "" || comprobante.fechaEmision <= filtros.hasta;
 
     return (
       coincideTexto &&
+      coincidePeriodoElegido &&
       coincideTipo &&
       coincideSunat &&
       coincideSap &&
+      coincideCheck &&
       coincideDesde &&
       coincideHasta
     );
   });
 }
 
-function calcularMetricas(comprobantes: Comprobante[]): Metricas {
-  const totalFacturado = comprobantes
-    .filter(
-      (comprobante) =>
-        TIPOS_FACTURABLES.has(comprobante.tipo) &&
-        coincidePeriodo(comprobante.fechaEmision, PERIODO_DEMO.anio, PERIODO_DEMO.mes),
-    )
+/**
+ * Métricas del periodo elegido: alimentan las tarjetas KPI. Con
+ * `"TODOS"` se mide la empresa completa y la etiqueta lo dice.
+ */
+function calcularMetricas(comprobantes: Comprobante[], periodo: string): Metricas {
+  const delPeriodo = comprobantes.filter((comprobante) =>
+    coincideMes(comprobante.fechaEmision, periodo),
+  );
+
+  const totalFacturado = delPeriodo
+    .filter((comprobante) => TIPOS_FACTURABLES.has(comprobante.tipo))
     .reduce((suma, comprobante) => suma + comprobante.total, 0);
 
   return {
     totalFacturado: Math.round(totalFacturado * 100) / 100,
-    aprobados: comprobantes.filter((c) => c.estadoSunat === "Aprobado").length,
-    pendientes: comprobantes.filter((c) => c.estadoSunat === "Pendiente").length,
-    anulados: comprobantes.filter((c) => c.estadoSunat === "Anulado").length,
-    totalComprobantes: comprobantes.length,
-    mesEtiqueta: PERIODO_DEMO.etiqueta,
+    aprobados: delPeriodo.filter((c) => c.estadoSunat === "Aprobado").length,
+    pendientes: delPeriodo.filter((c) => c.estadoSunat === "Pendiente").length,
+    anulados: delPeriodo.filter((c) => c.estadoSunat === "Anulado").length,
+    rechazados: delPeriodo.filter((c) => c.estadoSunat === "Rechazado").length,
+    totalComprobantes: delPeriodo.length,
+    mesEtiqueta: etiquetaPeriodo(periodo),
+    delMes: periodo !== TODOS_LOS_PERIODOS,
   };
 }
 
@@ -89,6 +132,10 @@ export default function Page() {
   const [descargaEnCurso, setDescargaEnCurso] = useState<string | null>(null);
   /** Se incrementa en cada cambio de empresa para reiniciar el temporizador de carga. */
   const [solicitudCarga, setSolicitudCarga] = useState(0);
+  /** Marca manual "Check SAP" por comprobante (editable, no persiste al recargar). */
+  const [checksSap, setChecksSap] = useState<Record<string, boolean>>(CHECKS_SAP_INICIALES);
+  /** Análisis del Excel importado: `null` = modal cerrado. */
+  const [importacion, setImportacion] = useState<EstadoImportacion | null>(null);
 
   const temporizadorDescarga = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Raíz de la página: acota los selectores de GSAP. */
@@ -103,12 +150,26 @@ export default function Page() {
     [empresaId],
   );
 
+  /**
+   * Comprobantes visibles. Cada copia lleva su "Check SAP" vigente, de modo que
+   * la tabla, el reporte Excel y el filtro trabajan siempre con el mismo valor.
+   */
   const comprobantesFiltrados = useMemo(
-    () => (cargando ? [] : aplicarFiltros(empresa.comprobantes, filtros)),
-    [cargando, empresa, filtros],
+    () =>
+      cargando
+        ? []
+        : aplicarFiltros(empresa.comprobantes, filtros, checksSap).map((comprobante) => ({
+            ...comprobante,
+            checkSap: checksSap[comprobante.id] ?? false,
+          })),
+    [cargando, empresa, filtros, checksSap],
   );
 
-  const metricas = useMemo(() => calcularMetricas(empresa.comprobantes), [empresa]);
+  /** Los KPIs siguen al periodo elegido en los filtros, igual que la tabla. */
+  const metricas = useMemo(
+    () => calcularMetricas(empresa.comprobantes, filtros.mes),
+    [empresa, filtros.mes],
+  );
 
   /**
    * Entrada de la página: revelado escalonado de header, selector, contenido
@@ -134,8 +195,8 @@ export default function Page() {
   );
 
   /**
-   * Transición al alternar entre TDM Servicios, TDM Geosintéticos y
-   * TDM Asfaltos: el bloque de contenido entra con un desplazamiento suave.
+   * Transición al alternar entre TDM Servicios, TDM Geosintéticos y TDM
+   * (Tecnología de Materiales): el bloque de contenido entra con un desplazamiento suave.
    */
   useGSAP(
     () => {
@@ -209,6 +270,46 @@ export default function Page() {
   /** Notificación genérica: la usan la tabla y sus acciones masivas. */
   function notificar(nuevo: NuevoToast) {
     setToast({ id: Date.now(), ...nuevo });
+  }
+
+  /** Marca y desmarca el "Check SAP" de un comprobante (el usuario decide). */
+  function alternarCheckSap(id: string) {
+    setChecksSap((previos) => ({ ...previos, [id]: !previos[id] }));
+  }
+
+  /**
+   * Analiza un Excel elegido por el usuario contra las columnas de la tabla del
+   * portal. Todo ocurre en el navegador: el archivo no se sube a ningún servidor.
+   */
+  async function importarExcel(archivo: File) {
+    setImportacion({ fase: "analizando", archivo: archivo.name });
+
+    if (!esExcelModerno(archivo.name)) {
+      setImportacion({
+        fase: "error",
+        archivo: archivo.name,
+        mensaje:
+          "La extensión del archivo no corresponde a un libro de Excel moderno (.xlsx o .xlsm).",
+      });
+      return;
+    }
+
+    try {
+      const datos = new Uint8Array(await archivo.arrayBuffer());
+      const hoja = await leerHojaXlsx(datos);
+      const reporte = analizarHoja(hoja, archivo.name);
+
+      setImportacion({ fase: "listo", archivo: archivo.name, reporte });
+    } catch (error) {
+      setImportacion({
+        fase: "error",
+        archivo: archivo.name,
+        mensaje:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un problema inesperado al leer el archivo.",
+      });
+    }
   }
 
   function seleccionarEmpresa(id: string) {
@@ -294,9 +395,12 @@ export default function Page() {
             totalEmpresa={empresa.comprobantes.length}
             cargando={cargando}
             descargaEnCurso={descargaEnCurso}
+            importando={importacion?.fase === "analizando"}
             onVerDetalle={setDetalle}
             onDescargar={descargar}
             onNotificar={notificar}
+            onAlternarCheckSap={alternarCheckSap}
+            onImportarExcel={importarExcel}
           />
         </div>
       </main>
@@ -316,6 +420,8 @@ export default function Page() {
         onCerrar={() => setDetalle(null)}
         onDescargar={descargar}
       />
+
+      <ImportarExcelModal estado={importacion} onCerrar={() => setImportacion(null)} />
 
       {/* Hoja exclusiva de impresión: solo se renderiza (y se imprime) al exportar a PDF. */}
       <PrintSheet comprobante={imprimiendo} empresa={empresa} />
