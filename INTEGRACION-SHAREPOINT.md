@@ -4,6 +4,10 @@ Guía técnica: **cómo conectar el ojo de "vista previa" del portal con los PDF
 viven en SharePoint**, qué opciones existen y cuál conviene. Documento de diseño: describe el
 trabajo a hacer, no una integración ya implementada.
 
+> **Si no tienes acceso a Entra ID (Azure), ve directo al §2.2**: hay cuatro caminos que no
+dependen de Azure ni de permisos de administrador, y el §2.3 explica el único pedido mínimo que
+conviene hacerle a TI para habilitar la vía definitiva.
+
 ---
 
 ## 1. Punto de partida (lo que hace hoy el ojo)
@@ -25,7 +29,9 @@ ojo → modal → InvoicePaper (HTML)      ojo → modal → [Representación | 
 
 ---
 
-## 2. Las cuatro formas de hacerlo
+## 2. Las alternativas
+
+### 2.1 Con acceso a Entra ID (Azure)
 
 | Opción | Cómo funciona | Requisitos | Riesgo |
 | --- | --- | --- | --- |
@@ -38,6 +44,49 @@ ojo → modal → InvoicePaper (HTML)      ojo → modal → [Representación | 
 con bibliotecas privadas, permite cachear y auditar, y encaja con el patrón que el proyecto ya
 usa para Resend (`POST /api/enviar-comprobantes`: el secreto vive solo en el servidor y, si
 falta, la app avisa en lugar de fallar en silencio).
+
+### 2.2 Sin acceso a Entra ID (ni al consentimiento de administrador)
+
+Las opciones A y B de arriba dependen de permisos de Azure o de TI. Si no los tienes, hay cuatro
+caminos que **no tocan Azure** y que igual dejan el PDF a la vista:
+
+| Opción | Cómo funciona | Qué necesitas | Cómo se ve en el portal |
+| --- | --- | --- | --- |
+| **E. Enlace directo a SharePoint** | El portal guarda (o deriva) la URL del archivo y el ojo la abre en una pestaña nueva | Tu propio permiso de lectura en la biblioteca; si quieres que funcione para todos, un vínculo compartido | Abre el PDF fuera del portal |
+| **F. Flujo de Power Automate como mini-API** | Un flujo con disparador **HTTP** busca el archivo, lo lee y responde su contenido en base64; la ruta `/api/comprobante-pdf` consume la URL del flujo | Permiso para crear flujos; verificar que la licencia incluya el disparador HTTP (suele ser Premium) | PDF incrustado en el modal |
+| **G. Carpeta sincronizada en el servidor** | El servidor donde corre el portal mantiene la biblioteca sincronizada (OneDrive, `rclone` o unidad de red) y la ruta propia lee el PDF **del disco** | Una cuenta con acceso a la biblioteca en ese servidor y la sincronización activa | PDF incrustado en el modal |
+| **H. Copia programada a almacenamiento propio** | Una tarea programada (PowerShell + PnP, `rclone` o un flujo) copia los PDF nuevos a una carpeta o a un blob del proyecto | Cuenta con acceso y una tarea que corra sola | PDF incrustado (y además se puede inyectar al lote ZIP) |
+
+Notas para decidir:
+
+- **G es la mejor relación esfuerzo/resultado si el portal corre en un servidor de la empresa.**
+  No hace falta Azure, ni licencias nuevas, ni exponer nada: la ruta `/api/comprobante-pdf` del §3
+  se implementa igual y lo único que cambia es el origen (`fs.readFile` del PDF sincronizado en
+  lugar de la llamada a Graph). **El modal y el resto del portal no cambian.**
+- **E es el atajo de hoy mismo**: un campo con la URL del archivo y un `target="_blank"`. Cuidado
+  con los vínculos \"Cualquiera con el vínculo\": son URLs sin autenticación apuntando a documentos
+  fiscales. Preferible \"Personas de la organización con el vínculo\" + fecha de expiración.
+- **F es la única sin infraestructura propia que además incrusta el visor.** Confirmar la licencia
+  del disparador HTTP; el flujo se protege con una clave compartida en la URL y conviene limitarlo
+  a la biblioteca de comprobantes.
+- **H se combina bien con G**: la copia programada deja los PDF en el disco del servidor y el
+  portal solo los lee; de paso sirven para el lote ZIP.
+- **Credenciales delegadas**: los flujos y scripts que usan *tu* cuenta heredan tus permisos y se
+  rompen cuando cambias de contraseña o cuando la política exige un MFA nuevo. Conviene dejar
+  escrito quién es el dueño de esa credencial (idealmente una cuenta de servicio con MFA exento,
+  si TI la crea).
+
+**Recomendación sin Azure:** empezar por **E** para tener algo funcionando esta semana y montar
+**G** (o **H**) como solución estable, dejando el diseño de la opción A ya escrito para cuando TI
+habilite el consentimiento.
+
+### 2.3 Lo poco que conviene pedir a TI aunque no tengas acceso a Azure
+
+No hace falta acceso al portal de Azure: **cualquier usuario del tenant suele poder registrar una
+app** (si TI no lo ha restringido) y los permisos de *aplicación* solo necesitan **un clic de
+\"Conceder consentimiento de administrador\"** de alguien con ese rol. Es decir, el pedido real a
+TI es de una línea: \"aprueba esta app para que lea la biblioteca de comprobantes\", no \"dame acceso
+a Azure\". Con eso la opción A queda disponible y es la más sólida a largo plazo.
 
 ---
 
@@ -75,6 +124,9 @@ Claves del diseño:
   por cada PDF.
 - **Reconstruir la ruta** en el servidor a partir de `empresa + periodo + número`, en lugar de
   confiar en una ruta que venga del cliente (evita *path traversal* y rutas arbitrarias).
+- **El mismo diseño sirve para cualquier origen**: Graph (opciones A/F), un disco con la carpeta
+  sincronizada (G/H) o una URL de flujo. Lo único que cambia es la función que devuelve los bytes
+  (`descargarPdf`), no el contrato de la ruta ni el modal.
 
 ---
 
@@ -219,8 +271,8 @@ Para un portal interno con pocos usuarios, el proxy de bytes es más simple y m�
 
 | Archivo | Cambio |
 | --- | --- |
-| `lib/sharepoint.ts` *(nuevo)* | `obtenerToken()` con caché en módulo, `rutaPdf(empresa, comprobante)` (convención SUNAT) y `descargarPdf(ruta): Promise<Response>` |
-| `app/api/comprobante-pdf/route.ts` *(nuevo)* | `GET` que valida los parámetros (RUC, periodo `yyyy-mm`, número `SERIE-NUMERO`), reconstruye la ruta, verifica que empiece con `MS_RUTA_BASE`, pide el PDF y responde `application/pdf` con `Content-Disposition: inline` y `Cache-Control: private, max-age=300`. Sin variables → `503` con instrucciones; sin archivo → `404` con la ruta esperada |
+| `lib/sharepoint.ts` *(nuevo)* | `rutaPdf(empresa, comprobante)` (convención SUNAT) y el origen de los bytes: `descargarPdf(ruta): Promise<Response>` (Graph con `obtenerToken()` cacheado, `fs.readFile` de la carpeta sincronizada, o `fetch` del flujo de Power Automate) |
+| `app/api/comprobante-pdf/route.ts` *(nuevo)* | `GET` que valida los parámetros (RUC, periodo `yyyy-mm`, número `SERIE-NUMERO`), reconstruye la ruta, verifica que empiece con la ruta base permitida, obtiene el PDF y responde `application/pdf` con `Content-Disposition: inline` y `Cache-Control: private, max-age=300`. Sin configuración → `503` con instrucciones; sin archivo → `404` con la ruta esperada |
 | `lib/types.ts` | `archivoSharePoint?: string` en `Comprobante` (excepciones) |
 | `lib/mock-data.ts` | Nada obligatorio: la ruta se deriva. Opcional: rutas de ejemplo para el demo |
 | `lib/comprobante-descargas.ts` | Reutilizar `codigoTipoDocumento()` para armar el nombre del PDF de SharePoint (hoy solo se usa en el XML) |
@@ -290,10 +342,12 @@ Criterios de aceptación:
 
 ## 10. Decisiones abiertas (a confirmar con TI / facturación)
 
-1. ¿La app tendrá permiso **`Sites.Selected`** (solo el sitio de comprobantes) o se autoriza
-   `Sites.Read.All`?
-2. ¿Secreto o **certificado** para la credencial?
-3. ¿Los PDF ya archivados siguen la convención `{RUC}-{tipo}-{serie}-{número}.pdf`? Si no,
+1. **¿Qué origen se va a usar?** Graph (A, requiere consentimiento de TI), flujo de Power Automate
+   (F, verificar licencia), carpeta sincronizada en el servidor (G, sin Azure; la más simple si el
+   portal corre en un servidor de la empresa) o enlace directo (E, el atajo de hoy).
+2. Si es A: ¿permiso **`Sites.Selected`** (solo el sitio de comprobantes) o `Sites.Read.All`?
+3. Si es A: ¿secreto o **certificado** para la credencial?
+4. ¿Los PDF ya archivados siguen la convención `{RUC}-{tipo}-{serie}-{número}.pdf`? Si no,
    ¿se normalizan en SharePoint o se agrega el campo `archivoSharePoint` por comprobante?
-4. ¿El portal se pondrá detrás de **Entra ID** antes de exponer los PDF? (recomendado)
-5. ¿Hace falta también inyectar los PDF al **lote ZIP** descargable, o basta con la vista previa?
+5. ¿El portal se pondrá detrás de **Entra ID** antes de exponer los PDF? (recomendado)
+6. ¿Hace falta también inyectar los PDF al **lote ZIP** descargable, o basta con la vista previa?
