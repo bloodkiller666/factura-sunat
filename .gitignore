@@ -32,10 +32,43 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
+
+# --- Distribución de Node.js / Freebuff presente en esta carpeta ---
+# El portal vive dentro de la carpeta de instalación de Node.js; esos archivos
+# son del propio runtime y no forman parte del proyecto.
+node.exe
+pnpm.exe
+npm
+npm.cmd
+npm.ps1
+npx
+npx.cmd
+npx.ps1
+corepack
+corepack.cmd
+corepack.ps1
+install_tools.bat
+nodevars.bat
+freebuff
+freebuff.cmd
+freebuff.ps1
+opencode
+opencode.cmd
+opencode.ps1
+opencode2
+opencode2.cmd
+opencode2.ps1
+claude
+claude.cmd
+claude.ps1
+dist/
+CHANGELOG.md
+LICENSE
 next-env.d.ts

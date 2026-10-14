@@ -13,6 +13,8 @@ interface Props {
   comprobante: Comprobante | null;
   empresa: Empresa;
   descargaEnCurso: string | null;
+  /** Los ítems del detalle se están consultando al backend. */
+  cargandoDetalle?: boolean;
   onCerrar: () => void;
   onDescargar: (comprobante: Comprobante, formato: FormatoDescarga) => void;
 }
@@ -24,6 +26,7 @@ export function InvoiceDetailModal({
   comprobante,
   empresa,
   descargaEnCurso,
+  cargandoDetalle = false,
   onCerrar,
   onDescargar,
 }: Props) {
@@ -182,13 +185,14 @@ export function InvoiceDetailModal({
             className="aura-corporativa pointer-events-none absolute inset-0 opacity-40"
           />
           <div className="relative flex min-w-0 items-center gap-3">
-            <span className="rounded-md bg-amber-400/15 px-2 py-1 text-[10px] font-bold tracking-wider text-amber-300 uppercase ring-1 ring-inset ring-amber-400/30">
-              Borrador
+            <span className="rounded-md bg-indigo-400/15 px-2 py-1 text-[10px] font-bold tracking-wider text-indigo-300 uppercase ring-1 ring-inset ring-indigo-400/30">
+              SUNAT
             </span>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-white">Vista previa del comprobante</p>
               <p className="truncate text-[11px] text-slate-400">
-                Representación impresa simulada · {TITULOS[comprobante.tipo] ?? comprobante.tipo}
+                {TITULOS[comprobante.tipo] ?? comprobante.tipo}
+                {cargandoDetalle && " · cargando detalle de ítems…"}
               </p>
             </div>
           </div>
@@ -225,7 +229,7 @@ export function InvoiceDetailModal({
                 variante="suave"
                 icono={<FileCode2 className="h-4 w-4" />}
                 etiqueta="Descargar XML"
-                textoProgreso="Generando XML…"
+                textoProgreso="Descargando XML…"
                 cargando={cargandoXml}
                 completado={descargaCompletada === "XML"}
                 onClick={() => onDescargar(comprobante, "XML")}
@@ -233,8 +237,8 @@ export function InvoiceDetailModal({
               <BotonDescarga
                 variante="primario"
                 icono={<Printer className="h-4 w-4" />}
-                etiqueta="Imprimir / PDF"
-                textoProgreso="Generando PDF…"
+                etiqueta="Descargar PDF"
+                textoProgreso="Descargando PDF…"
                 cargando={cargandoPdf}
                 completado={descargaCompletada === "PDF"}
                 onClick={() => onDescargar(comprobante, "PDF")}

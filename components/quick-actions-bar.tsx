@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Archive, FileSpreadsheet, FileUp, Mail, Plus } from "lucide-react";
+import { Archive, FileSpreadsheet, FileUp, Mail, Plus, RefreshCw, UploadCloud } from "lucide-react";
 import { EXTENSIONES_EXCEL } from "@/lib/importar-excel";
 import { cn } from "@/lib/utils";
 
@@ -16,12 +16,20 @@ interface Props {
   enviandoCorreo: boolean;
   /** Hay un Excel en análisis: el botón de importar muestra su progreso. */
   importando: boolean;
+  /** Hay una sincronización con SUNAT en curso. */
+  sincronizando: boolean;
+  /** El rol del usuario en la empresa permite importar/sincronizar. */
+  puedeOperar: boolean;
   onAlternarTodos: () => void;
   onEmitir: () => void;
   onExportarExcel: () => void;
   onDescargarZip: () => void;
   onEnviarCorreo: () => void;
   onImportarExcel: (archivo: File) => void;
+  /** Abre el selector de XML/ZIP para la importación real. */
+  onImportarXml: () => void;
+  /** Consulta a SUNAT el estado de los pendientes. */
+  onSincronizar: () => void;
 }
 
 export function QuickActionsBar({
@@ -31,12 +39,16 @@ export function QuickActionsBar({
   cargando,
   enviandoCorreo,
   importando,
+  sincronizando,
+  puedeOperar,
   onAlternarTodos,
   onEmitir,
   onExportarExcel,
   onDescargarZip,
   onEnviarCorreo,
   onImportarExcel,
+  onImportarXml,
+  onSincronizar,
 }: Props) {
   const haySeleccion = seleccionados > 0;
   const sinRegistros = cargando || totalVisibles === 0;
@@ -85,6 +97,24 @@ export function QuickActionsBar({
           siempreConTexto
           onClick={onEmitir}
         />
+        {puedeOperar && (
+          <>
+            <BotonAccionRapida
+              icono={UploadCloud}
+              etiqueta="Importar XML/ZIP"
+              colorIcono="text-violet-600 dark:text-violet-400"
+              siempreConTexto
+              onClick={onImportarXml}
+            />
+            <BotonAccionRapida
+              icono={RefreshCw}
+              etiqueta="Sincronizar SUNAT"
+              colorIcono="text-sky-600 dark:text-sky-400"
+              cargando={sincronizando}
+              onClick={onSincronizar}
+            />
+          </>
+        )}
         <BotonAccionRapida
           icono={FileSpreadsheet}
           etiqueta="Exportar a Excel"

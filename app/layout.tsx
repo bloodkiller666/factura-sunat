@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Portal de Facturación Electrónica - Grupo TDM",
   description:
-    "Prototipo del portal de gestión de comprobantes electrónicos SUNAT para las empresas del Grupo TDM.",
+    "Portal de gestión de comprobantes electrónicos SUNAT de TDM ASFALTOS S.A.C. (RUC 20514831620).",
 };
 
 /**

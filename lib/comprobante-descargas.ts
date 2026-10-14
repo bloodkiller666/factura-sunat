@@ -373,6 +373,24 @@ export function descargarArchivo(
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Descarga un blob ya construido (respuestas binarias del backend: PDF, XML). */
+export function descargarBlobArchivo(blob: Blob, nombreArchivo: string): void {
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  enlace.rel = "noopener";
+  enlace.style.display = "none";
+
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+
+  // El objeto URL debe seguir vivo hasta que el navegador inicie la descarga.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Genera el XML UBL 2.1 del comprobante y dispara su descarga. */
 export function descargarXml(comprobante: Comprobante, empresa: Emisor): string {
   const nombreArchivo = nombreArchivoXml(comprobante, empresa);

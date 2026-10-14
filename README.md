@@ -1,16 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portal de Facturación Electrónica — Frontend
 
-## Getting Started
+Portal Next.js para gestionar los comprobantes electrónicos del grupo: datos
+reales del backend (FastAPI + Supabase + SUNAT), filtros, KPIs, vista de
+detalle, descargas firmadas (XML/CDR/PDF) y envío por correo.
+
+## Puesta en marcha
+
+```bash
+pnpm install
+cp .env.example .env.local   # completa las variables
+pnpm dev
+```
+
+### Variables de entorno (`.env.local`)
+
+| Variable | Qué es |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | URL del backend FastAPI (local: `http://127.0.0.1:8000`; prod: tu dominio). Sin ella el portal muestra el aviso de configuración. |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Proyecto de Supabase (Dashboard → Project Settings → API). La clave anónima es pública: va al navegador. |
+| `RESEND_API_KEY` / `CORREO_EMISOR` / `CORREO_DESTINO_PRUEBA` | Envío de correos (ver sección abajo). |
+
+Copia `.env.example` → `.env.local` y completa. En Vercel se configuran las
+mismas variables en *Project Settings → Environment Variables*.
+
+### Autenticación
+
+El login lo maneja **Supabase Auth**: el JWT que emite viaja como `Bearer` en
+cada llamada al backend, que lo verifica y aplica RLS por empresa. Sin sesión
+no se muestra ningún dato. Los roles (`admin`/`emisor`/`lector`) vienen de la
+tabla `user_companies` del backend: con rol `lector` los botones de importar y
+sincronizar quedan ocultos.
+
+## Datos reales
+
+- El listado, los ítems del detalle, los KPIs y los periodos vienen de la API:
+  `GET /companies`, `GET /companies/{ruc}/comprobantes`, `GET /comprobantes/{id}`.
+- **Descargar PDF**: el backend genera la representación impresa
+  (`GET /comprobantes/{id}/pdf`).
+- **Descargar XML/CDR**: archivos archivados en el bucket privado, descargados
+  con URL firmada temporal (`POST /archivos/{id}/download-url`).
+- **Importar XML/ZIP** (admin/emisor): `POST /companies/{ruc}/comprobantes/import`
+  e `import-paquete`; los XML repetidos se informan como duplicados.
+- **Sincronizar SUNAT** (admin/emisor): consulta el estado de los pendientes
+  (`POST /companies/{ruc}/comprobantes/refresh`) y recarga el listado.
+- Los filtros y la búsqueda se aplican sobre los comprobantes cargados (hasta
+  1000 por empresa); para volúmenes mayores el backend ya soporta filtros
+  server-side.
+- El **Check SAP** sigue siendo una marca manual de la sesión (persistirla
+  requiere un endpoint `PATCH` pendiente).
+
+## Envío de comprobantes por correo
+
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 Este proyecto usa **pnpm** (fijado en `packageManager`). No uses `npm`: el lockfile es
 `pnpm-lock.yaml`.
 
-Instala las dependencias y arranca el servidor de desarrollo:
-
 ```bash
 pnpm install
-pnpm dev
 ```
+
 
 ### Seguridad de la cadena de suministro
 

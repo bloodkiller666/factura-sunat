@@ -37,6 +37,10 @@ interface Props {
   descargaEnCurso: string | null;
   /** Hay un Excel en análisis: bloquea el botón de importar. */
   importando: boolean;
+  /** Hay una sincronización con SUNAT en curso. */
+  sincronizando?: boolean;
+  /** El rol permite importar/sincronizar (admin/emisor). */
+  puedeOperar?: boolean;
   onVerDetalle: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, formato: FormatoDescarga) => void;
   onNotificar: (toast: NuevoToast) => void;
@@ -44,6 +48,10 @@ interface Props {
   onAlternarCheckSap: (id: string) => void;
   /** Entrega el Excel elegido para que la página lo analice. */
   onImportarExcel: (archivo: File) => void;
+  /** Abre el selector de XML/ZIP (importación real al backend). */
+  onImportarXml: () => void;
+  /** Consulta a SUNAT el estado de los pendientes. */
+  onSincronizar: () => void;
 }
 
 const CLASES_TH =
@@ -65,11 +73,15 @@ export function InvoicesTable({
   cargando,
   descargaEnCurso,
   importando,
+  sincronizando = false,
+  puedeOperar = false,
   onVerDetalle,
   onDescargar,
   onNotificar,
   onAlternarCheckSap,
   onImportarExcel,
+  onImportarXml,
+  onSincronizar,
 }: Props) {
   const [seleccionados, setSeleccionados] = useState<Set<string>>(() => new Set());
   const [idsPrevios, setIdsPrevios] = useState<string[]>([]);
@@ -366,12 +378,16 @@ export function InvoicesTable({
         cargando={cargando}
         enviandoCorreo={enviandoCorreo}
         importando={importando}
+        sincronizando={sincronizando}
+        puedeOperar={puedeOperar}
         onAlternarTodos={alternarTodos}
         onEmitir={emitirComprobante}
         onExportarExcel={exportarExcel}
         onDescargarZip={descargarZip}
         onEnviarCorreo={enviarCorreoMasivo}
         onImportarExcel={onImportarExcel}
+        onImportarXml={onImportarXml}
+        onSincronizar={onSincronizar}
       />
 
       {/* Vista de tabla (escritorio) */}
@@ -575,8 +591,8 @@ export function InvoicesTable({
                         <BotonDescarga
                           variante="icono"
                           icono={<Printer className="h-4 w-4" />}
-                          etiqueta="Imprimir / Descargar PDF"
-                          textoProgreso="Generando PDF…"
+                          etiqueta="Descargar PDF"
+                          textoProgreso="Descargando PDF…"
                           cargando={descargaEnCurso === clavePdf}
                           completado={descargaCompletada === clavePdf}
                           onClick={() => onDescargar(comprobante, "PDF")}
@@ -586,7 +602,7 @@ export function InvoicesTable({
                           variante="icono"
                           icono={<FileCode2 className="h-4 w-4" />}
                           etiqueta="Descargar XML"
-                          textoProgreso="Generando XML…"
+                          textoProgreso="Descargando XML…"
                           cargando={descargaEnCurso === claveXml}
                           completado={descargaCompletada === claveXml}
                           onClick={() => onDescargar(comprobante, "XML")}
@@ -649,9 +665,9 @@ export function InvoicesTable({
           </span>{" "}
           de{" "}
           <span className="font-semibold text-slate-600 dark:text-slate-200">{totalEmpresa}</span>{" "}
-          comprobantes
+          comprobantes de la empresa
         </span>
-        <span>Datos simulados con fines de demostración · Prototipo no conectado a SUNAT</span>
+        <span>Comprobantes reales validados ante SUNAT · Descargas firmadas</span>
       </div>
     </section>
   );

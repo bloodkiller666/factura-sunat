@@ -1,12 +1,11 @@
 import { CalendarRange, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { CargandoTexto } from "@/components/skeletons";
-import { etiquetaPeriodo } from "@/lib/format";
-import { PERIODOS_DEMO } from "@/lib/mock-data";
+import { TODOS_LOS_PERIODOS, etiquetaPeriodo } from "@/lib/format";
 import type { EstadoSunat, FiltrosState, TipoDocumento } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** Periodo de emisión que arranca seleccionado (el mes en curso del demo). */
-export const PERIODO_INICIAL = PERIODOS_DEMO[0];
+/** Periodo de emisión por defecto: sin acotar por mes. */
+export const PERIODO_INICIAL = TODOS_LOS_PERIODOS;
 
 export const FILTROS_INICIALES: FiltrosState = {
   q: "",
@@ -18,11 +17,6 @@ export const FILTROS_INICIALES: FiltrosState = {
   desde: "",
   hasta: "",
 };
-
-/** Opciones del selector de periodo: un mes por periodo del demo ("Todos" lo pone el selector). */
-export const OPCIONES_PERIODO: Array<{ valor: string; etiqueta: string }> = PERIODOS_DEMO.map(
-  (periodo) => ({ valor: periodo, etiqueta: etiquetaPeriodo(periodo) }),
-);
 
 /** Opciones del filtro "Check SAP" (valor guardado → etiqueta visible). */
 export const OPCIONES_CHECK_SAP: Array<{ valor: string; etiqueta: string }> = [
@@ -48,6 +42,8 @@ interface Props {
   resultados: number;
   total: number;
   cargando?: boolean;
+  /** Periodos (`yyyy-mm`) disponibles según los comprobantes cargados. */
+  periodos?: string[];
 }
 
 function Etiqueta({ children }: { children: React.ReactNode }) {
@@ -110,7 +106,12 @@ export function FiltersPanel({
   resultados,
   total,
   cargando = false,
+  periodos = [],
 }: Props) {
+  const opcionesPeriodo = periodos.map((periodo) => ({
+    valor: periodo,
+    etiqueta: etiquetaPeriodo(periodo),
+  }));
   const hayFiltros =
     filtros.q !== "" ||
     filtros.mes !== PERIODO_INICIAL ||
@@ -216,7 +217,7 @@ export function FiltersPanel({
             etiqueta="Periodo de emisión"
             valor={filtros.mes}
             onChange={(valor) => onCambiar({ mes: valor })}
-            opciones={OPCIONES_PERIODO}
+            opciones={opcionesPeriodo}
             textoInicial="Todos los periodos"
             deshabilitado={cargando}
           />
@@ -277,12 +278,12 @@ export function FiltersPanel({
               <AtajoFecha
                 etiqueta="Últimos 7 días"
                 deshabilitado={cargando}
-                onAplicar={() => onCambiar({ desde: "2026-09-19", hasta: "2026-09-26" })}
+                onAplicar={() => onCambiar(rangoUltimosDias(7))}
               />
               <AtajoFecha
-                etiqueta="Setiembre"
+                etiqueta="Mes actual"
                 deshabilitado={cargando}
-                onAplicar={() => onCambiar({ desde: "2026-09-01", hasta: "2026-09-30" })}
+                onAplicar={() => onCambiar(rangoMesActual())}
               />
             </div>
           </div>
@@ -290,6 +291,29 @@ export function FiltersPanel({
       </div>
     </section>
   );
+}
+
+/** `yyyy-mm-dd` local (sin UTC) para los atajos de rango. */
+function aIso(fecha: Date): string {
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
+}
+
+/** Rango de los últimos `dias` días, incluido hoy. */
+function rangoUltimosDias(dias: number): { desde: string; hasta: string } {
+  const hasta = new Date();
+  const desde = new Date();
+  desde.setDate(desde.getDate() - (dias - 1));
+  return { desde: aIso(desde), hasta: aIso(hasta) };
+}
+
+/** Primer y último día del mes en curso. */
+function rangoMesActual(): { desde: string; hasta: string } {
+  const hoy = new Date();
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const hasta = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+  return { desde: aIso(desde), hasta: aIso(hasta) };
 }
 
 function AtajoFecha({
