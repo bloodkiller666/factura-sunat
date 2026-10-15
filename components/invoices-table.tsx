@@ -543,7 +543,7 @@ export function InvoicesTable({
                               : "text-slate-900 dark:text-white",
                           )}
                         >
-                          {formatearMoneda(comprobante.total)}
+                          {formatearMoneda(comprobante.total, comprobante.moneda)}
                         </span>
                       )}
                     </td>
@@ -801,7 +801,7 @@ function TarjetaComprobante({
                     : "text-slate-900 dark:text-white",
                 )}
               >
-                {formatearMoneda(comprobante.total)}
+                {formatearMoneda(comprobante.total, comprobante.moneda)}
               </p>
               <p className="text-[11px] tabular-nums text-slate-400 dark:text-slate-400">
                 Base {formatearMoneda(comprobante.baseImponible)} · IGV{" "}

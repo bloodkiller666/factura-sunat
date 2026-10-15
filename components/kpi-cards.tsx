@@ -3,7 +3,10 @@ import { formatearMoneda } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export interface Metricas {
+  /** Total facturado neto en soles (notas de crédito restan; sin anulados). */
   totalFacturado: number;
+  /** Total facturado neto en dólares, aparte: no se convierte a soles. */
+  totalFacturadoUsd: number;
   aprobados: number;
   pendientes: number;
   anulados: number;
@@ -115,6 +118,7 @@ function Tarjeta({
 export function KpiCards({ metricas }: Props) {
   const {
     totalFacturado,
+    totalFacturadoUsd,
     aprobados,
     pendientes,
     anulados,
@@ -130,7 +134,9 @@ export function KpiCards({ metricas }: Props) {
         icono={Wallet}
         etiqueta={delMes ? "Total facturado del mes" : "Total facturado"}
         valor={formatearMoneda(totalFacturado)}
-        detalle={`${mesEtiqueta} · ${totalComprobantes} comprobantes`}
+        detalle={`${mesEtiqueta} · ${totalComprobantes} comprobantes${
+          totalFacturadoUsd !== 0 ? ` · + ${formatearMoneda(totalFacturadoUsd, "USD")}` : ""
+        }`}
         tono="blue"
       />
       <Tarjeta

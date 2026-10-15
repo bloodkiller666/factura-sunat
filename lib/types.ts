@@ -55,6 +55,8 @@ export interface Comprobante {
   /** Marca manual del usuario: el comprobante ya fue verificado en SAP. */
   checkSap: boolean;
   formaPago: string;
+  /** Moneda del comprobante (`PEN` o `USD`): los importes no se convierten. */
+  moneda: string;
   observacion?: string;
 }
 

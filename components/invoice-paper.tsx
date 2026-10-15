@@ -176,7 +176,7 @@ export function InvoicePaper({ comprobante, empresa }: { comprobante: Comprobant
               <div className="flex items-center justify-between border-t-2 border-slate-800 pt-2">
                 <span className="text-sm font-bold text-slate-900">Importe total</span>
                 <span className="text-base font-bold tabular-nums text-slate-900">
-                  {formatearMoneda(comprobante.total)}
+                  {formatearMoneda(comprobante.total, comprobante.moneda)}
                 </span>
               </div>
             </>

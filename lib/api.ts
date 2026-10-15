@@ -45,6 +45,8 @@ export interface ApiComprobante {
   numero: string;
   nombre_archivo: string;
   fecha_emision: string | null;
+  fecha_vencimiento?: string | null;
+  forma_pago?: string | null;
   moneda: string;
   monto_total: string | null;
   estado: string;
@@ -329,6 +331,19 @@ export async function apiImportarPaquete(
   );
 }
 
+/** Persiste el Check SAP de un comprobante (admin/emisor; `lector` recibe 403). */
+export async function apiActualizarCheckSap(
+  token: string,
+  id: string,
+  checkSap: boolean,
+): Promise<ApiComprobante> {
+  return pedir<ApiComprobante>(`/api/v1/comprobantes/${id}`, token, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ check_sap: checkSap }),
+  });
+}
+
 /** Sincroniza con SUNAT el estado de todos los pendientes (admin/emisor). */
 export async function apiSincronizarPendientes(
   token: string,
@@ -380,9 +395,9 @@ export function mapItem(api: ApiItem): ItemComprobante {
 
 /**
  * Convierte un comprobante de la API al modelo del portal. Los campos que el
- * backend aún no registra (vencimiento, forma de pago) llevan valores por
- * defecto documentados; base e IGV se derivan del total (IGV 18%) hasta que
- * llega el detalle con los ítems reales.
+ * XML no declara (vencimiento, forma de pago) llevan valores por defecto;
+ * base e IGV se derivan del total (IGV 18%) hasta que llega el detalle con
+ * los ítems reales.
  */
 export function mapComprobante(api: ApiComprobante): Comprobante {
   const esCompra = api.origen === "recibido";
@@ -400,7 +415,8 @@ export function mapComprobante(api: ApiComprobante): Comprobante {
     tipo: TIPOS_POR_CODIGO[api.tipo_documento] ?? "Factura",
     cliente,
     fechaEmision: api.fecha_emision ?? "",
-    fechaVencimiento: api.fecha_emision ?? "",
+    // Sin vencimiento en el XML se muestra la emisión (la UI no admite fecha vacía).
+    fechaVencimiento: api.fecha_vencimiento ?? api.fecha_emision ?? "",
     descripcion: api.cdr_descripcion || api.nombre_archivo,
     items: [],
     baseImponible: base,
@@ -410,7 +426,8 @@ export function mapComprobante(api: ApiComprobante): Comprobante {
     numeroSap: api.n_sap ?? "",
     ordenCompra: api.orden_compra ?? "",
     checkSap: api.check_sap,
-    formaPago: api.moneda || "PEN",
+    formaPago: api.forma_pago ?? "—",
+    moneda: api.moneda || "PEN",
     observacion: api.cdr_descripcion ?? undefined,
   };
 }

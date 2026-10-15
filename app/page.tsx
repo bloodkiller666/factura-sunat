@@ -17,6 +17,8 @@ import { SkeletonKpis } from "@/components/skeletons";
 import { type NuevoToast, Toast, type ToastState } from "@/components/toast";
 import {
   API_BASE,
+  ApiError,
+  apiActualizarCheckSap,
   apiConfigurado,
   apiComprobantes,
   apiDetalle,
@@ -105,7 +107,7 @@ function aplicarFiltros(
     const coincideSap =
       filtroSap === "" || comprobante.numeroSap.toLowerCase().includes(filtroSap);
 
-    const marcado = checksSap[comprobante.id] ?? false;
+    const marcado = checksSap[comprobante.id] ?? comprobante.checkSap;
     const coincideCheck =
       filtros.checkSap === "TODOS" || (filtros.checkSap === "CON" ? marcado : !marcado);
 
@@ -131,12 +133,29 @@ function calcularMetricas(comprobantes: Comprobante[], periodo: string): Metrica
     coincideMes(comprobante.fechaEmision, periodo),
   );
 
-  const totalFacturado = delPeriodo
-    .filter((comprobante) => TIPOS_FACTURABLES.has(comprobante.tipo))
-    .reduce((suma, comprobante) => suma + comprobante.total, 0);
+  // Solo cuenta lo vigente (ni anulados ni rechazados). Las notas de crédito
+  // restan y cada moneda se suma por separado: no hay tipo de cambio para
+  // mezclar soles con dólares.
+  const vigentes = delPeriodo.filter(
+    (comprobante) =>
+      TIPOS_FACTURABLES.has(comprobante.tipo) &&
+      comprobante.estadoSunat !== "Anulado" &&
+      comprobante.estadoSunat !== "Rechazado",
+  );
+  const sumar = (moneda: string) =>
+    Math.round(
+      vigentes
+        .filter((comprobante) => comprobante.moneda === moneda)
+        .reduce(
+          (suma, comprobante) =>
+            suma + (comprobante.tipo === "Nota de Crédito" ? -comprobante.total : comprobante.total),
+          0,
+        ) * 100,
+    ) / 100;
 
   return {
-    totalFacturado: Math.round(totalFacturado * 100) / 100,
+    totalFacturado: sumar("PEN"),
+    totalFacturadoUsd: sumar("USD"),
     aprobados: delPeriodo.filter((c) => c.estadoSunat === "Aprobado").length,
     pendientes: delPeriodo.filter((c) => c.estadoSunat === "Pendiente").length,
     anulados: delPeriodo.filter((c) => c.estadoSunat === "Anulado").length,
@@ -176,7 +195,7 @@ export default function Page() {
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [descargaEnCurso, setDescargaEnCurso] = useState<string | null>(null);
   const [sincronizando, setSincronizando] = useState(false);
-  /** Marca manual "Check SAP" por comprobante (editable en la sesión). */
+  /** Cambios de "Check SAP" aún no reflejados en la lista (optimistas). */
   const [checksSap, setChecksSap] = useState<Record<string, boolean>>({});
   /** Análisis del Excel importado: `null` = modal cerrado. */
   const [importacion, setImportacion] = useState<EstadoImportacion | null>(null);
@@ -375,8 +394,30 @@ export default function Page() {
   }, [sesion.token, rucActivo, empresas, descargarComprobantes]);
 
   /** Marca y desmarca el "Check SAP" de un comprobante (el usuario decide). */
-  function alternarCheckSap(id: string) {
-    setChecksSap((previos) => ({ ...previos, [id]: !previos[id] }));
+  async function alternarCheckSap(id: string) {
+    const token = sesion.token;
+    const original = comprobantes.find((c) => c.id === id);
+    if (!token || !original) return;
+
+    const anterior = checksSap[id] ?? original.checkSap;
+    const nuevo = !anterior;
+    // Optimista: la casilla responde al instante y se revierte si el backend falla.
+    setChecksSap((previos) => ({ ...previos, [id]: nuevo }));
+    try {
+      await apiActualizarCheckSap(token, id, nuevo);
+    } catch (error) {
+      setChecksSap((previos) => ({ ...previos, [id]: anterior }));
+      const sinPermiso = error instanceof ApiError && error.status === 403;
+      notificar({
+        titulo: sinPermiso ? "Sin permiso" : "No se guardó el Check SAP",
+        detalle: sinPermiso
+          ? "Tu rol en esta empresa no permite modificar el Check SAP."
+          : error instanceof Error
+            ? error.message
+            : "Inténtalo nuevamente.",
+        tono: "aviso",
+      });
+    }
   }
 
   /**

@@ -28,8 +28,16 @@ const MESES = [
   "diciembre",
 ];
 
-export function formatearMoneda(valor: number): string {
-  return formatoMoneda.format(valor);
+const formatoDolares = new Intl.NumberFormat("es-PE", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** Formatea en soles; con `moneda="USD"` en dólares (sin convertir). */
+export function formatearMoneda(valor: number, moneda = "PEN"): string {
+  return (moneda === "USD" ? formatoDolares : formatoMoneda).format(valor);
 }
 
 /** Igual que formatearMoneda pero sin el prefijo "S/ ", útil en tablas. */
