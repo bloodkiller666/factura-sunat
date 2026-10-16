@@ -1,22 +1,17 @@
 /**
- * Modelo de dominio del Portal de Gestión de Facturación Electrónica SUNAT.
- * Solo frontend: los datos provienen de mocks, pero los tipos reflejan
- * la estructura real de un comprobante electrónico peruano.
+ * Modelo de dominio del portal. Refleja lo que realmente entrega el backend:
+ * nada aquí es dato inventado por el frontend.
  */
 
-export type TipoDocumento =
-  | "Factura"
-  | "Boleta de Venta"
-  | "Guía de Remisión"
-  | "Nota de Crédito"
-  | "Nota de Débito"
-  | "Comprobante de Retención";
+export type TipoDocumento = "Factura" | "Boleta de Venta" | "Nota de Crédito" | "Nota de Débito";
 
-/**
- * Estado de validación del comprobante ante SUNAT.
- * `Rechazado`: SUNAT devolvió la CDR con observaciones y el comprobante no tiene validez.
- */
+/** Estado del comprobante ante SUNAT. */
 export type EstadoSunat = "Aprobado" | "Pendiente" | "Anulado" | "Rechazado";
+
+/** De dónde salió el registro: su XML o la propuesta de SIRE (solo cabecera). */
+export type Fuente = "xml" | "sire";
+
+export type RolEmpresa = "admin" | "emisor" | "lector";
 
 export interface Cliente {
   ruc: string;
@@ -33,69 +28,75 @@ export interface ItemComprobante {
 
 export interface Comprobante {
   id: string;
+  /** Serie y correlativo: `F001-00000123`. */
   numero: string;
   tipo: TipoDocumento;
+  /** Código del catálogo 01 de SUNAT (`01`, `03`, `07`, `08`). */
+  codigoTipo: string;
   cliente: Cliente;
-  /** ISO date: yyyy-mm-dd */
+  /** ISO `yyyy-mm-dd` (vacío si el registro no la trae). */
   fechaEmision: string;
-  /** ISO date: yyyy-mm-dd */
-  fechaVencimiento: string;
-  /** Descripción general mostrada en la tabla. */
-  descripcion: string;
-  /** Detalle de líneas mostrado en el modal de vista previa. */
+  /** ISO `yyyy-mm-dd`; `null` cuando el comprobante no declara vencimiento. */
+  fechaVencimiento: string | null;
   items: ItemComprobante[];
   baseImponible: number;
   igv: number;
   total: number;
   estadoSunat: EstadoSunat;
-  /** Número SAP (orden/entrada de pedido) asociado al comprobante. */
   numeroSap: string;
-  /** Orden de compra del cliente asociada al comprobante (`""` si no tiene). */
   ordenCompra: string;
-  /** Marca manual del usuario: el comprobante ya fue verificado en SAP. */
+  /** Marca manual del usuario: ya se verificó el comprobante en SAP. */
   checkSap: boolean;
-  formaPago: string;
-  /** Moneda del comprobante (`PEN` o `USD`): los importes no se convierten. */
+  /** `Contado`, `Crédito N días`…; `null` si el XML no la declara. */
+  formaPago: string | null;
+  /** `PEN` o `USD`: los importes no se convierten entre monedas. */
   moneda: string;
-  observacion?: string;
-}
-
-/** Fila adicional de la consulta RUC de SUNAT mostrada en la ficha de la empresa. */
-export interface DatoSunat {
-  etiqueta: string;
-  /** Texto del dato; los saltos de línea separan los valores de una lista. */
-  valor: string;
+  fuente: Fuente;
+  origen: "emitido" | "recibido";
+  nombreArchivo: string;
+  cdrCodigo: string | null;
+  cdrDescripcion: string | null;
+  /** Qué respaldos hay archivados en R2 para este comprobante. */
+  tieneXml: boolean;
+  tieneCdr: boolean;
+  tienePdf: boolean;
 }
 
 export interface Empresa {
   id: string;
-  nombreCorto: string;
-  razonSocial: string;
   ruc: string;
-  estado: "ACTIVO" | "BAJA DE OFICIO";
-  condicion: "HABIDO" | "NO HABIDO";
-  domicilioFiscal: string;
-  actividadPrincipal: string;
-  comprobantesElectronicos: TipoDocumento[];
-  /** Detalle ampliado de la consulta RUC (opcional en las empresas del demo). */
-  detalleSunat?: DatoSunat[];
-  comprobantes: Comprobante[];
+  razonSocial: string;
+  nombreCorto: string;
+  rol: RolEmpresa;
+  /** Ambiente SUNAT fijado para la empresa, si lo tiene. */
+  ambiente: string | null;
 }
 
+/** Filtro por cobertura de respaldo: clave para preparar una auditoría. */
+export type FiltroRespaldo = "TODOS" | "SIN_XML" | "SIN_CDR" | "COMPLETO";
+
+export type FiltroCheckSap = "TODOS" | "CON" | "SIN";
+
 export interface FiltrosState {
-  /** Búsqueda por N° documento o cliente/RUC. */
+  /** Búsqueda por N° de documento, cliente, RUC u orden de compra. */
   q: string;
-  /** Periodo de emisión en formato `yyyy-mm`, o `"TODOS"` (sin filtrar por mes). */
+  /** Periodo `yyyy-mm`, o `"TODOS"` para no acotar por mes. */
   mes: string;
   tipo: TipoDocumento | "TODOS";
   estadoSunat: EstadoSunat | "TODOS";
-  /** Número SAP a buscar (coincidencia exacta). */
+  respaldo: FiltroRespaldo;
   numeroSap: string;
-  /** Filtra por la marca manual "Check SAP" del comprobante. */
   checkSap: FiltroCheckSap;
   desde: string;
   hasta: string;
 }
 
-/** Valores del filtro "Check SAP". */
-export type FiltroCheckSap = "TODOS" | "CON" | "SIN";
+/** Archivo guardado en R2 (XML, CDR, PDF o ZIP de SIRE). */
+export interface ArchivoGuardado {
+  id: string;
+  tipo: "pdf" | "xml" | "cdr" | "zip";
+  nombre: string;
+  tamano: number | null;
+  hashSha256: string | null;
+  creado: string | null;
+}

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,26 +13,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Portal de Facturación Electrónica - Grupo TDM",
+  title: "Portal de Facturación · TDM",
   description:
-    "Portal de gestión de comprobantes electrónicos SUNAT de TDM ASFALTOS S.A.C. (RUC 20514831620).",
+    "Gestión de comprobantes electrónicos SUNAT de TDM ASFALTOS S.A.C.: consulta, respaldo y trazabilidad.",
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f5f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d12" },
+  ],
 };
 
 /**
- * Se ejecuta antes del primer pintado para evitar el "flash" de tema.
- * El portal es dark-first: si el usuario nunca eligió un tema se aplica el
- * modo oscuro premium; si eligió "claro" esa preferencia se respeta.
+ * Se ejecuta antes del primer pintado para evitar el parpadeo de tema.
+ * Respeta la elección guardada y, si no hay ninguna, el tema del sistema.
  */
 const scriptTema = `
 (function () {
   try {
     var guardado = window.localStorage.getItem("tdm-tema");
-    if (guardado === "oscuro" || !guardado) {
-      document.documentElement.classList.add("dark");
-    }
-  } catch (e) {
-    document.documentElement.classList.add("dark");
-  }
+    var oscuro = guardado
+      ? guardado === "oscuro"
+      : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (oscuro) document.documentElement.classList.add("dark");
+  } catch (e) {}
 })();
 `;
 
@@ -46,9 +51,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: scriptTema }} />
       </head>
-      <body className="min-h-full font-sans text-slate-900 antialiased dark:text-slate-100">
-        {children}
-      </body>
+      <body className="min-h-full bg-bg font-sans text-fg antialiased">{children}</body>
     </html>
   );
 }

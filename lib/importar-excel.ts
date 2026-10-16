@@ -1,4 +1,4 @@
-import { CABECERAS_REPORTE } from "./comprobante-descargas";
+import { CABECERAS_REPORTE } from "./exportar";
 import type { HojaXlsxLeida } from "./xlsx-lectura";
 
 /**

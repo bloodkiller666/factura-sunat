@@ -1,17 +1,4 @@
-import type { EstadoSunat } from "./types";
-
-/** Navegador/Node: formateo consistente en soles peruanos. */
-const formatoMoneda = new Intl.NumberFormat("es-PE", {
-  style: "currency",
-  currency: "PEN",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-const formatoNumero = new Intl.NumberFormat("es-PE", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+/** Formateo consistente para Perú (es-PE): importes, fechas y periodos. */
 
 const MESES = [
   "enero",
@@ -28,6 +15,13 @@ const MESES = [
   "diciembre",
 ];
 
+const formatoSoles = new Intl.NumberFormat("es-PE", {
+  style: "currency",
+  currency: "PEN",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 const formatoDolares = new Intl.NumberFormat("es-PE", {
   style: "currency",
   currency: "USD",
@@ -35,38 +29,80 @@ const formatoDolares = new Intl.NumberFormat("es-PE", {
   maximumFractionDigits: 2,
 });
 
+const formatoNumero = new Intl.NumberFormat("es-PE", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const formatoEntero = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 0 });
+
+const formatoCompacto = new Intl.NumberFormat("es-PE", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 /** Formatea en soles; con `moneda="USD"` en dólares (sin convertir). */
 export function formatearMoneda(valor: number, moneda = "PEN"): string {
-  return (moneda === "USD" ? formatoDolares : formatoMoneda).format(valor);
+  return (moneda === "USD" ? formatoDolares : formatoSoles).format(valor);
 }
 
-/** Igual que formatearMoneda pero sin el prefijo "S/ ", útil en tablas. */
+/** Importe sin símbolo de moneda (para tablas donde la moneda va aparte). */
 export function formatearNumero(valor: number): string {
   return formatoNumero.format(valor);
 }
 
-/** "2026-09-02" -> "02/09/2026" */
-export function formatearFecha(iso: string): string {
+export function formatearEntero(valor: number): string {
+  return formatoEntero.format(valor);
+}
+
+/** `1 234 567` → `1,2 M` (tarjetas con poco ancho). */
+export function formatearCompacto(valor: number): string {
+  return formatoCompacto.format(valor);
+}
+
+/** Símbolo corto de la moneda: `S/` o `US$`. */
+export function simboloMoneda(moneda: string): string {
+  return moneda === "USD" ? "US$" : "S/";
+}
+
+/** `"2026-09-02"` → `"02/09/2026"`; vacío o inválido → `"—"`. */
+export function formatearFecha(iso: string | null | undefined): string {
+  if (!iso) return "—";
   const [anio, mes, dia] = iso.split("-");
+  if (!anio || !mes || !dia) return "—";
   return `${dia}/${mes}/${anio}`;
 }
 
-/** "2026-09-02" -> "2 de setiembre de 2026" */
-export function formatearFechaLarga(iso: string): string {
+/** `"2026-09-02"` → `"2 de setiembre de 2026"`. */
+export function formatearFechaLarga(iso: string | null | undefined): string {
+  if (!iso) return "—";
   const [anio, mes, dia] = iso.split("-");
-  const nombreMes = MESES[Number(mes) - 1] ?? mes;
-  return `${Number(dia)} de ${nombreMes} de ${anio}`;
+  if (!anio || !mes || !dia) return "—";
+  return `${Number(dia)} de ${MESES[Number(mes) - 1] ?? mes} de ${anio}`;
 }
 
-export function coincidePeriodo(iso: string, anio: number, mes: number): boolean {
-  const [a, m] = iso.split("-");
-  return Number(a) === anio && Number(m) === mes;
+/** Fecha y hora locales de una marca ISO con zona horaria. */
+export function formatearFechaHora(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return "—";
+  return new Intl.DateTimeFormat("es-PE", { dateStyle: "short", timeStyle: "short" }).format(
+    fecha,
+  );
+}
+
+/** Tamaño legible: `8,4 KB`, `1,2 MB`. */
+export function formatearTamano(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace(".", ",")} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 }
 
 /** Valor del filtro de periodo cuando no se quiere acotar a un mes. */
 export const TODOS_LOS_PERIODOS = "TODOS";
 
-/** Etiqueta del filtro de periodo: "2026-10" -> "Octubre 2026". */
+/** `"2026-10"` → `"Octubre 2026"`. */
 export function etiquetaPeriodo(periodo: string): string {
   if (periodo === TODOS_LOS_PERIODOS) return "Todos los periodos";
   const [anio, mes] = periodo.split("-");
@@ -74,29 +110,23 @@ export function etiquetaPeriodo(periodo: string): string {
   return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`;
 }
 
-/* ------------------------------------------------------------------ *
- * Estilos de los badges (con soporte de modo oscuro)
- * ------------------------------------------------------------------ */
+/** `"2026-10"` → `"202610"` (formato de periodo tributario de SIRE). */
+export function periodoSire(periodoIso: string): string {
+  return periodoIso.replace("-", "");
+}
 
-export const ESTILOS_SUNAT: Record<EstadoSunat, string> = {
-  Aprobado:
-    "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/30 dark:shadow-[0_0_20px_-6px_rgba(16,185,129,0.85)]",
-  Pendiente:
-    "bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/30 dark:shadow-[0_0_20px_-6px_rgba(245,158,11,0.85)]",
-  Anulado:
-    "bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-400/30 dark:shadow-[0_0_20px_-6px_rgba(244,63,94,0.85)]",
-  Rechazado:
-    "bg-red-50 text-red-700 ring-red-600/25 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/35 dark:shadow-[0_0_20px_-6px_rgba(239,68,68,0.9)]",
-};
+/** Porcentaje entero seguro frente a divisiones por cero. */
+export function porcentaje(parte: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.round((parte / total) * 100);
+}
 
-export const PUNTOS_SUNAT: Record<EstadoSunat, string> = {
-  Aprobado: "bg-emerald-500 shadow-[0_0_10px_1px_rgba(16,185,129,0.75)]",
-  Pendiente: "bg-amber-500 shadow-[0_0_10px_1px_rgba(245,158,11,0.75)]",
-  Anulado: "bg-rose-500 shadow-[0_0_10px_1px_rgba(244,63,94,0.75)]",
-  Rechazado: "bg-red-600 shadow-[0_0_10px_1px_rgba(239,68,68,0.8)]",
-};
-
-/** Las guías de remisión no representan un importe de venta. */
-export function esSinImporte(tipo: string): boolean {
-  return tipo === "Guía de Remisión";
+/** Iniciales para el avatar de una empresa: `TDM ASFALTOS` → `TA`. */
+export function iniciales(texto: string): string {
+  const letras = texto
+    .split(/\s+/)
+    .filter((palabra) => /^[\p{L}\p{N}]/u.test(palabra))
+    .slice(0, 2)
+    .map((palabra) => palabra[0]?.toUpperCase() ?? "");
+  return letras.join("") || "?";
 }
