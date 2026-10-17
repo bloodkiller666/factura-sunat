@@ -45,7 +45,7 @@ const SINONIMOS: Record<string, string[]> = {
   Descripción: ["detalle", "concepto", "descripcion del comprobante", "glosa"],
   "Base imponible": ["base", "base gravada", "valor de venta", "subtotal", "op gravada"],
   "IGV (18%)": ["igv", "igv 18", "impuesto igv", "igv 18 %", "impuesto"],
-  Total: ["importe total", "precio total", "total general", "total a pagar"],
+  "Total (con IGV)": ["total", "importe total", "precio total", "total general", "total a pagar"],
   "Estado SUNAT": ["estado sunat", "estado del comprobante", "estado", "sunat"],
   "N° SAP": ["numero sap", "nro sap", "n sap", "sap", "documento sap"],
   "Orden de compra": [

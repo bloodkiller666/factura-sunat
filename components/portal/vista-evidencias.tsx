@@ -1,8 +1,17 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Download, RefreshCw, ShieldCheck } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
+import { EncabezadoOrden } from "@/components/ui/encabezado-orden";
 import { BotonCopiar, Esqueleto, EstadoVacio } from "@/components/ui/varios";
+import {
+  ORDEN_EVIDENCIA_INICIAL,
+  alternarOrdenEvidencia,
+  ordenarEvidencias,
+  periodoDeEvidencia,
+  type OrdenEvidencia,
+} from "@/lib/evidencias";
 import { etiquetaPeriodo, formatearFechaHora, formatearTamano } from "@/lib/format";
 import type { ArchivoGuardado } from "@/lib/types";
 
@@ -16,12 +25,6 @@ interface Props {
   onReintentar: () => void;
 }
 
-/** `…-RVIE-202609-…zip` → `2026-09`. */
-export function periodoDeEvidencia(nombre: string): string | null {
-  const coincidencia = /RVIE-(\d{4})(\d{2})/.exec(nombre);
-  return coincidencia ? `${coincidencia[1]}-${coincidencia[2]}` : null;
-}
-
 export function VistaEvidencias({
   evidencias,
   error,
@@ -31,6 +34,14 @@ export function VistaEvidencias({
   onSire,
   onReintentar,
 }: Props) {
+  const [orden, setOrden] = useState<OrdenEvidencia>(ORDEN_EVIDENCIA_INICIAL);
+  const ordenadas = useMemo(
+    () => (evidencias ? ordenarEvidencias(evidencias, orden) : []),
+    [evidencias, orden],
+  );
+  const alOrdenar = (campo: OrdenEvidencia["campo"]) =>
+    setOrden((previo) => alternarOrdenEvidencia(previo, campo));
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
@@ -74,19 +85,31 @@ export function VistaEvidencias({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse text-left">
               <thead className="bg-surface-2 shadow-[0_1px_0_var(--line)]">
-                <tr className="text-[11.5px] tracking-wide text-fg-3 uppercase">
-                  <th className="px-4 py-2.5 font-medium">Periodo</th>
-                  <th className="px-3 py-2.5 font-medium">Archivo</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Tamaño</th>
-                  <th className="px-3 py-2.5 font-medium">SHA-256</th>
-                  <th className="px-3 py-2.5 font-medium">Guardado</th>
+                <tr>
+                  <EncabezadoOrden
+                    etiqueta="Periodo"
+                    campo="periodo"
+                    orden={orden}
+                    onOrden={alOrdenar}
+                    className="pl-4"
+                  />
+                  <EncabezadoOrden etiqueta="Archivo" campo="archivo" orden={orden} onOrden={alOrdenar} />
+                  <EncabezadoOrden
+                    etiqueta="Tamaño"
+                    campo="tamano"
+                    orden={orden}
+                    onOrden={alOrdenar}
+                    alinear="derecha"
+                  />
+                  <EncabezadoOrden etiqueta="SHA-256" campo="hash" orden={orden} onOrden={alOrdenar} />
+                  <EncabezadoOrden etiqueta="Guardado" campo="guardado" orden={orden} onOrden={alOrdenar} />
                   <th className="w-[1%] px-4 py-2.5">
                     <span className="sr-only">Descargar</span>
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {evidencias.map((evidencia) => {
+                {ordenadas.map((evidencia) => {
                   const periodo = periodoDeEvidencia(evidencia.nombre);
                   return (
                     <tr key={evidencia.id} className="hover:bg-surface-2">

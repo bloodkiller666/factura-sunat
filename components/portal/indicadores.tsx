@@ -8,7 +8,10 @@ import type { EstadoSunat, FiltroRespaldo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface Props {
-  metricas: Metricas;
+  /** `null` mientras llega el primer resumen del servidor. */
+  metricas: Metricas | null;
+  /** Hay un resumen anterior en pantalla y se está recalculando. */
+  actualizando?: boolean;
   cargando: boolean;
   onFiltrarEstado: (estado: EstadoSunat) => void;
   onFiltrarRespaldo: (filtro: FiltroRespaldo) => void;
@@ -62,8 +65,14 @@ function CargandoTarjeta() {
   );
 }
 
-export function Indicadores({ metricas, cargando, onFiltrarEstado, onFiltrarRespaldo }: Props) {
-  if (cargando) {
+export function Indicadores({
+  metricas,
+  actualizando = false,
+  cargando,
+  onFiltrarEstado,
+  onFiltrarRespaldo,
+}: Props) {
+  if (cargando || metricas === null) {
     return (
       <div className={CONTENEDOR}>
         <CargandoTarjeta />
@@ -80,9 +89,12 @@ export function Indicadores({ metricas, cargando, onFiltrarEstado, onFiltrarResp
   const vigentes = total - metricas.anulados - metricas.rechazados;
 
   return (
-    <div className={CONTENEDOR}>
+    <div
+      className={cn(CONTENEDOR, actualizando && "opacity-70 transition-opacity")}
+      aria-busy={actualizando || undefined}
+    >
       {/* Facturado */}
-      <Tarjeta titulo="Facturado neto" subtitulo={metricas.etiquetaPeriodo}>
+      <Tarjeta titulo="Facturado neto" subtitulo={metricas.etiquetaRango}>
         <p className="tnum text-[26px] leading-8 font-semibold tracking-tight text-fg">
           {formatearMoneda(metricas.facturadoPen)}
         </p>
@@ -100,7 +112,7 @@ export function Indicadores({ metricas, cargando, onFiltrarEstado, onFiltrarResp
       </Tarjeta>
 
       {/* Estado SUNAT */}
-      <Tarjeta titulo="Estado ante SUNAT" subtitulo={`${formatearEntero(total)} comprobantes`}>
+      <Tarjeta titulo="Estado SUNAT">
         <div
           className="flex h-2 w-full overflow-hidden rounded-full bg-surface-3"
           role="img"

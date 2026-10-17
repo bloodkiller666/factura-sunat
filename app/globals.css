@@ -268,6 +268,18 @@ dialog[open].panel-lateral {
   }
 }
 
+/* Hoja inferior del selector de fechas en móvil */
+@keyframes sube {
+  from {
+    opacity: 0.4;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Marcador de carga: barra tenue, sin brillos llamativos */
 .esqueleto {
   background-image: linear-gradient(

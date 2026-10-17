@@ -35,12 +35,15 @@ app/page.tsx ── sesión (Supabase) ── Login | Portal
 components/portal/portal.tsx ── layout y diálogos
    └─ use-portal.ts ── estado y acciones (carga por empresa y periodo, selección, descargas)
 lib/api.ts ── cliente HTTP + mapeo snake_case → modelo del portal
-lib/filtros.ts · lote.ts · sire-lote.ts · exportar.ts ── lógica pura (con pruebas)
+lib/filtros.ts · calendario.ts · evidencias.ts · lote.ts · sire-lote.ts · exportar.ts ── lógica pura (con pruebas)
 ```
 
-- **Carga de datos**: el periodo se pide al servidor (`fecha_desde/hasta`); los demás
-  filtros se aplican en memoria. Al recargar la misma consulta se siguen mostrando los datos
-  anteriores (con un indicador) para no vaciar la tabla.
+- **Carga de datos (por páginas)**: el servidor filtra, ordena, pagina y cuenta. El portal pide
+  una página (`limit/offset`) y, en paralelo, los indicadores del rango de fechas
+  (`/comprobantes/resumen`). El total se pide una sola vez por conjunto filtrado
+  (`contar=true` en la 1.ª página); la página siguiente se precarga y las vistas se guardan en
+  una caché pequeña. La búsqueda de texto espera 300 ms tras la última tecla. Mientras llega
+  otra página se siguen mostrando las filas anteriores (atenuadas) para no vaciar la tabla.
 - **Diálogos** con el elemento `<dialog>` nativo (foco, Escape y fondo inerte gratis).
 - **Diseño**: tokens de color en `app/globals.css` (claro/oscuro), Tailwind v4, tipografía
   Geist, cifras tabulares. El color semántico se reserva para el estado de los datos.

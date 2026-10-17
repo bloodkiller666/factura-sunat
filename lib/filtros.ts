@@ -1,11 +1,16 @@
-/** Filtros y métricas del listado: lógica pura, sin React (se prueba con vitest). */
+/**
+ * Filtros, orden y métricas del listado: lógica pura, sin React (se prueba con vitest).
+ *
+ * Filtrar, ordenar, paginar y totalizar lo hace el servidor; aquí solo se traduce el estado
+ * de la pantalla a parámetros de la API y la respuesta de resumen al modelo de los indicadores.
+ */
 
-import { TODOS_LOS_PERIODOS, etiquetaPeriodo } from "./format";
-import type { Comprobante, FiltrosState } from "./types";
+import type { ApiResumen, FiltrosApi } from "./api";
+import { describirRango } from "./calendario";
+import type { Comprobante, FiltrosState, TipoDocumento } from "./types";
 
 export const FILTROS_INICIALES: FiltrosState = {
   q: "",
-  mes: TODOS_LOS_PERIODOS,
   tipo: "TODOS",
   estadoSunat: "TODOS",
   respaldo: "TODOS",
@@ -22,14 +27,6 @@ export function hayFiltrosActivos(filtros: FiltrosState): boolean {
   );
 }
 
-/** ¿El comprobante cae dentro del periodo elegido? `"TODOS"` no acota por mes. */
-export function coincideMes(iso: string, periodo: string): boolean {
-  if (periodo === TODOS_LOS_PERIODOS) return true;
-  const [anio, mes] = periodo.split("-").map(Number);
-  const [a, m] = iso.split("-").map(Number);
-  return anio === a && mes === m;
-}
-
 /** Valor vigente del Check SAP: el cambio optimista pendiente manda sobre el guardado. */
 export function checkVigente(
   comprobante: Comprobante,
@@ -38,48 +35,106 @@ export function checkVigente(
   return pendientes[comprobante.id] ?? comprobante.checkSap;
 }
 
-export function aplicarFiltros(
-  comprobantes: Comprobante[],
-  filtros: FiltrosState,
-  checksPendientes: Record<string, boolean> = {},
-): Comprobante[] {
-  const consulta = filtros.q.trim().toLowerCase();
-  const filtroSap = filtros.numeroSap.trim().toLowerCase();
+/* ------------------------------ Orden ------------------------------ */
 
-  return comprobantes.filter((comprobante) => {
-    if (consulta !== "") {
-      const coincide =
-        comprobante.numero.toLowerCase().includes(consulta) ||
-        comprobante.tipo.toLowerCase().includes(consulta) ||
-        comprobante.cliente.razonSocial.toLowerCase().includes(consulta) ||
-        comprobante.ordenCompra.toLowerCase().includes(consulta) ||
-        comprobante.cliente.ruc.includes(consulta);
-      if (!coincide) return false;
-    }
-    if (!coincideMes(comprobante.fechaEmision, filtros.mes)) return false;
-    if (filtros.tipo !== "TODOS" && comprobante.tipo !== filtros.tipo) return false;
-    if (filtros.estadoSunat !== "TODOS" && comprobante.estadoSunat !== filtros.estadoSunat) {
-      return false;
-    }
-    if (filtroSap !== "" && !comprobante.numeroSap.toLowerCase().includes(filtroSap)) {
-      return false;
-    }
-
-    const marcado = checkVigente(comprobante, checksPendientes);
-    if (filtros.checkSap === "CON" && !marcado) return false;
-    if (filtros.checkSap === "SIN" && marcado) return false;
-
-    if (filtros.respaldo === "SIN_XML" && comprobante.tieneXml) return false;
-    if (filtros.respaldo === "SIN_CDR" && comprobante.tieneCdr) return false;
-    if (filtros.respaldo === "COMPLETO" && !(comprobante.tieneXml && comprobante.tieneCdr)) {
-      return false;
-    }
-
-    if (filtros.desde !== "" && comprobante.fechaEmision < filtros.desde) return false;
-    if (filtros.hasta !== "" && comprobante.fechaEmision > filtros.hasta) return false;
-    return true;
-  });
+export type CampoOrden = "fecha" | "numero" | "cliente" | "importe";
+export interface Orden {
+  campo: CampoOrden;
+  direccion: "asc" | "desc";
 }
+
+export const ORDEN_INICIAL: Orden = { campo: "fecha", direccion: "desc" };
+
+/** Al pulsar una columna: la activa invierte; una nueva arranca en su sentido natural. */
+export function alternarOrden(actual: Orden, campo: CampoOrden): Orden {
+  if (actual.campo === campo) {
+    return { campo, direccion: actual.direccion === "asc" ? "desc" : "asc" };
+  }
+  return { campo, direccion: campo === "fecha" || campo === "importe" ? "desc" : "asc" };
+}
+
+/* ------------------------- Traducción a la API ------------------------- */
+
+const CODIGO_DE_TIPO: Record<TipoDocumento, string> = {
+  Factura: "01",
+  "Boleta de Venta": "03",
+  "Nota de Crédito": "07",
+  "Nota de Débito": "08",
+};
+
+const RESPALDO_API = {
+  SIN_XML: "sin_xml",
+  SIN_CDR: "sin_cdr",
+  COMPLETO: "completo",
+} as const;
+
+/** El servidor exige al menos 2 caracteres para buscar (evita escaneos por una letra). */
+export const MINIMO_BUSQUEDA = 2;
+
+export interface OpcionesPagina {
+  pagina: number;
+  tamano: number;
+  /** Pedir el total del conjunto filtrado (solo en la primera página o al cambiar de filtro). */
+  contar: boolean;
+}
+
+/** Filtros de la pantalla → parámetros comunes de la API (sin paginación ni orden). */
+export function filtrosParaApi(filtros: FiltrosState): FiltrosApi {
+  const q = filtros.q.trim();
+  const sap = filtros.numeroSap.trim();
+  return {
+    ...(q.length >= MINIMO_BUSQUEDA ? { q } : {}),
+    ...(filtros.tipo !== "TODOS" ? { tipo_documento: CODIGO_DE_TIPO[filtros.tipo] } : {}),
+    ...(filtros.estadoSunat !== "TODOS" ? { estado: filtros.estadoSunat.toLowerCase() } : {}),
+    ...(filtros.respaldo !== "TODOS" ? { respaldo: RESPALDO_API[filtros.respaldo] } : {}),
+    ...(sap ? { n_sap: sap } : {}),
+    ...(filtros.checkSap !== "TODOS" ? { check_sap: filtros.checkSap === "CON" } : {}),
+    ...(filtros.desde ? { fecha_desde: filtros.desde } : {}),
+    ...(filtros.hasta ? { fecha_hasta: filtros.hasta } : {}),
+  };
+}
+
+/** Parámetros de una página del listado. */
+export function consultaDePagina(
+  filtros: FiltrosState,
+  orden: Orden,
+  { pagina, tamano, contar }: OpcionesPagina,
+): FiltrosApi {
+  return {
+    ...filtrosParaApi(filtros),
+    orden: orden.campo,
+    direccion: orden.direccion,
+    limit: tamano,
+    offset: pagina * tamano,
+    contar,
+  };
+}
+
+/**
+ * Los indicadores dependen solo del rango de fechas (no del resto de filtros): así no se
+ * mueven al buscar o filtrar, y al tocar un estado el listado se acota sin cambiar la tarjeta.
+ */
+export function consultaDeResumen(filtros: FiltrosState): FiltrosApi {
+  return {
+    ...(filtros.desde ? { fecha_desde: filtros.desde } : {}),
+    ...(filtros.hasta ? { fecha_hasta: filtros.hasta } : {}),
+  };
+}
+
+/**
+ * Clave de los filtros que definen QUÉ comprobantes hay (sin orden ni tamaño de página):
+ * el total del conjunto solo cambia con ellos, así que ordenar o cambiar de tamaño no recuenta.
+ */
+export function claveDeFiltros(filtros: FiltrosState): string {
+  return JSON.stringify(filtrosParaApi(filtros));
+}
+
+/** Clave de un conjunto paginable (filtros + orden + tamaño), sin el número de página. */
+export function claveDeConjunto(filtros: FiltrosState, orden: Orden, tamano: number): string {
+  return JSON.stringify([filtrosParaApi(filtros), orden, tamano]);
+}
+
+/* ------------------------------ Métricas ------------------------------ */
 
 export interface Cobertura {
   /** Comprobantes que deberían tener respaldo (todos menos los anulados). */
@@ -100,58 +155,36 @@ export interface Metricas {
   /** Facturado neto en dólares, aparte: no se convierte a soles. */
   facturadoUsd: number;
   cobertura: Cobertura;
-  periodo: string;
-  etiquetaPeriodo: string;
+  /** Texto del rango de fechas que cubren los indicadores. */
+  etiquetaRango: string;
 }
 
-function redondear(valor: number): number {
-  return Math.round(valor * 100) / 100;
+function numero(valor: string | number | undefined): number {
+  const n = Number(valor ?? 0);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
 }
 
-/** Métricas del periodo elegido; alimentan la franja de indicadores. */
-export function calcularMetricas(comprobantes: Comprobante[], periodo: string): Metricas {
-  const delPeriodo = comprobantes.filter((c) => coincideMes(c.fechaEmision, periodo));
-
-  // Solo cuenta lo vigente. Cada moneda se suma por separado: no hay tipo de
-  // cambio para mezclar soles con dólares.
-  const vigentes = delPeriodo.filter(
-    (c) => c.estadoSunat !== "Anulado" && c.estadoSunat !== "Rechazado",
-  );
-  const neto = (moneda: string) =>
-    redondear(
-      vigentes
-        .filter((c) => c.moneda === moneda)
-        .reduce((suma, c) => suma + (c.tipo === "Nota de Crédito" ? -c.total : c.total), 0),
-    );
-
-  const exigibles = delPeriodo.filter((c) => c.estadoSunat !== "Anulado");
-
+/** Respuesta de `/comprobantes/resumen` → métricas de las tarjetas. */
+export function metricasDeResumen(
+  api: ApiResumen,
+  rango: Pick<FiltrosState, "desde" | "hasta">,
+): Metricas {
   return {
-    totalComprobantes: delPeriodo.length,
-    aprobados: delPeriodo.filter((c) => c.estadoSunat === "Aprobado").length,
-    pendientes: delPeriodo.filter((c) => c.estadoSunat === "Pendiente").length,
-    anulados: delPeriodo.filter((c) => c.estadoSunat === "Anulado").length,
-    rechazados: delPeriodo.filter((c) => c.estadoSunat === "Rechazado").length,
-    facturadoPen: neto("PEN"),
-    facturadoUsd: neto("USD"),
+    totalComprobantes: api.total,
+    aprobados: api.por_estado.aprobado ?? 0,
+    pendientes: api.por_estado.pendiente ?? 0,
+    anulados: api.por_estado.anulado ?? 0,
+    rechazados: api.por_estado.rechazado ?? 0,
+    facturadoPen: numero(api.facturado_neto.PEN),
+    facturadoUsd: numero(api.facturado_neto.USD),
     cobertura: {
-      total: exigibles.length,
-      conXml: exigibles.filter((c) => c.tieneXml).length,
-      conCdr: exigibles.filter((c) => c.tieneCdr).length,
-      conPdf: exigibles.filter((c) => c.tienePdf).length,
+      total: api.cobertura.exigibles,
+      conXml: api.cobertura.con_xml,
+      conCdr: api.cobertura.con_cdr,
+      conPdf: api.cobertura.con_pdf,
     },
-    periodo,
-    etiquetaPeriodo: etiquetaPeriodo(periodo),
+    etiquetaRango: describirRango(rango.desde, rango.hasta),
   };
-}
-
-/** Periodos `yyyy-mm` presentes en los comprobantes, del más nuevo al más viejo. */
-export function derivarPeriodos(comprobantes: Comprobante[]): string[] {
-  const periodos = new Set<string>();
-  for (const comprobante of comprobantes) {
-    if (comprobante.fechaEmision.length >= 7) periodos.add(comprobante.fechaEmision.slice(0, 7));
-  }
-  return [...periodos].sort().reverse();
 }
 
 /** Meses `yyyy-mm` desde `desde` hasta `hasta` (ambos inclusive), del más antiguo al más nuevo. */
@@ -170,41 +203,4 @@ export function mesesEntre(desde: string, hasta: string): string[] {
     }
   }
   return meses;
-}
-
-export type CampoOrden = "fecha" | "numero" | "cliente" | "importe";
-export interface Orden {
-  campo: CampoOrden;
-  direccion: "asc" | "desc";
-}
-
-export const ORDEN_INICIAL: Orden = { campo: "fecha", direccion: "desc" };
-
-/** Importe con signo: las notas de crédito restan, así que ordenan como negativas. */
-function importeConSigno(comprobante: Comprobante): number {
-  return comprobante.tipo === "Nota de Crédito" ? -comprobante.total : comprobante.total;
-}
-
-/** Copia ordenada. El desempate por número hace el orden estable y predecible. */
-export function ordenar(comprobantes: Comprobante[], orden: Orden): Comprobante[] {
-  const sentido = orden.direccion === "asc" ? 1 : -1;
-  const clave = (c: Comprobante): number | string => {
-    switch (orden.campo) {
-      case "fecha":
-        return c.fechaEmision;
-      case "numero":
-        return c.numero;
-      case "cliente":
-        return c.cliente.razonSocial.toLowerCase();
-      case "importe":
-        return importeConSigno(c);
-    }
-  };
-  return [...comprobantes].sort((a, b) => {
-    const ka = clave(a);
-    const kb = clave(b);
-    if (ka < kb) return -1 * sentido;
-    if (ka > kb) return 1 * sentido;
-    return a.numero < b.numero ? 1 : a.numero > b.numero ? -1 : 0;
-  });
 }

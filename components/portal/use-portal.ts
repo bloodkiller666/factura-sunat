@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiError,
   apiActualizarCheckSap,
@@ -14,27 +14,34 @@ import {
   apiEvidencias,
   apiImportarXml,
   apiPdf,
+  apiResumen,
   apiSincronizarPendientes,
   conDetalle,
   mapArchivo,
   mapComprobante,
   mapEmpresa,
+  type ApiDetalle,
+  type ApiPagina,
+  type ApiResumen,
 } from "@/lib/api";
 import { aviso } from "@/lib/avisos";
 import {
   FILTROS_INICIALES,
-  aplicarFiltros,
-  calcularMetricas,
+  ORDEN_INICIAL,
+  alternarOrden,
   checkVigente,
+  claveDeConjunto,
+  claveDeFiltros,
+  consultaDePagina,
+  consultaDeResumen,
   hayFiltrosActivos,
+  metricasDeResumen,
+  type CampoOrden,
+  type Orden,
 } from "@/lib/filtros";
-import { TODOS_LOS_PERIODOS } from "@/lib/format";
-import {
-  MAX_COMPROBANTES_LOTE,
-  construirLoteRespaldo,
-} from "@/lib/lote";
-import { descargarBlob, descargarExcel, documentosAExportar, TIPO_ZIP } from "@/lib/exportar";
-import { mesesDisponibles } from "@/lib/sire-lote";
+import { formatearEntero } from "@/lib/format";
+import { MAX_COMPROBANTES_LOTE, construirLoteRespaldo } from "@/lib/lote";
+import { descargarBlob, descargarExcel, TIPO_ZIP } from "@/lib/exportar";
 import type {
   ArchivoGuardado,
   Comprobante,
@@ -44,29 +51,47 @@ import type {
   FiltrosState,
 } from "@/lib/types";
 
-const LOTE_PAGINA = 100;
-/** Tope de comprobantes que se cargan de una vez (los más recientes primero). */
-export const LIMITE_CARGA = 1500;
+export const TAMANO_PAGINA_INICIAL = 50;
+/** Espera tras la última tecla antes de buscar en el servidor. */
+const RETARDO_BUSQUEDA_MS = 300;
+/** Tope de filas de un reporte Excel de «todo lo filtrado» (con selección no aplica). */
+export const MAX_EXPORTACION = 5000;
+const POR_PAGINA_EXPORTACION = 100;
+/** Páginas ya pedidas que se conservan para ir y volver sin esperar. */
+const MAX_PAGINAS_EN_CACHE = 40;
 
-interface Carga {
+interface PaginaCargada {
   ruc: string;
-  mes: string;
-  /** Versión de la consulta que produjo estos datos (sube con cada recarga). */
-  version: number;
+  /** Clave de la consulta que produjo estos datos (empresa + filtros + orden + página). */
+  clave: string;
   items: Comprobante[];
   hayMas: boolean;
+  /** Total del conjunto filtrado; `null` solo si el servidor aún no lo ha contado. */
+  total: number | null;
   error: string | null;
+}
+
+interface ResumenCargado {
+  ruc: string;
+  clave: string;
+  api: ApiResumen;
+  desde: string;
+  hasta: string;
 }
 
 function mensajeDe(error: unknown, porDefecto: string): string {
   return error instanceof Error && error.message ? error.message : porDefecto;
 }
 
-/** Último día del mes `yyyy-mm`, como `yyyy-mm-dd`. */
-function finDeMes(mes: string): string {
-  const [anio, m] = mes.split("-").map(Number);
-  const dia = new Date(anio, m, 0).getDate();
-  return `${mes}-${String(dia).padStart(2, "0")}`;
+/** Guarda en un Map con tope: al llenarse se descarta lo más antiguo. */
+function guardarEnCache<T>(cache: Map<string, T>, clave: string, valor: T): void {
+  cache.delete(clave);
+  cache.set(clave, valor);
+  while (cache.size > MAX_PAGINAS_EN_CACHE) {
+    const masAntigua = cache.keys().next().value;
+    if (masAntigua === undefined) break;
+    cache.delete(masAntigua);
+  }
 }
 
 export function usePortal(token: string | null) {
@@ -76,19 +101,33 @@ export function usePortal(token: string | null) {
   const [errorEmpresas, setErrorEmpresas] = useState<string | null>(null);
 
   const [filtros, setFiltros] = useState<FiltrosState>(FILTROS_INICIALES);
-  const [carga, setCarga] = useState<Carga | null>(null);
+  const [qEfectiva, setQEfectiva] = useState(FILTROS_INICIALES.q);
+  const [orden, setOrden] = useState<Orden>(ORDEN_INICIAL);
+  const [pagina, setPagina] = useState(0);
+  const [tamano, setTamano] = useState(TAMANO_PAGINA_INICIAL);
   const [version, setVersion] = useState(0);
+
+  const [cargada, setCargada] = useState<PaginaCargada | null>(null);
+  const [resumen, setResumen] = useState<ResumenCargado | null>(null);
+  const [errorResumen, setErrorResumen] = useState<string | null>(null);
   const [checksPendientes, setChecksPendientes] = useState<Record<string, boolean>>({});
-  const [seleccionados, setSeleccionados] = useState<Set<string>>(() => new Set());
+  const [seleccionMapa, setSeleccionMapa] = useState<Map<string, Comprobante>>(() => new Map());
 
   const [detalleId, setDetalleId] = useState<string | null>(null);
-  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [detalleBase, setDetalleBase] = useState<Comprobante | null>(null);
+  const [detalleApi, setDetalleApi] = useState<Record<string, ApiDetalle>>({});
   const [descargando, setDescargando] = useState<Set<string>>(() => new Set());
   const [consultando, setConsultando] = useState<Set<string>>(() => new Set());
   const [sincronizando, setSincronizando] = useState(false);
   const [generandoLote, setGenerandoLote] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [evidencias, setEvidencias] = useState<ArchivoGuardado[] | null>(null);
   const [errorEvidencias, setErrorEvidencias] = useState<string | null>(null);
+
+  // Páginas ya pedidas y totales ya contados: ir y volver es instantáneo y no se recuenta.
+  const cachePaginas = useRef(new Map<string, ApiPagina>());
+  const cacheTotales = useRef(new Map<string, number>());
+  const cacheResumen = useRef(new Map<string, ApiResumen>());
 
   const empresa = useMemo(
     () => empresas.find((e) => e.ruc === rucActivo) ?? null,
@@ -96,19 +135,39 @@ export function usePortal(token: string | null) {
   );
   const puedeOperar = empresa?.rol === "admin" || empresa?.rol === "emisor";
 
-  /**
-   * Clave de la consulta vigente: cambia con la empresa, el periodo o una recarga.
-   * Mientras se recarga la MISMA empresa y periodo se siguen mostrando los datos
-   * anteriores (con un indicador discreto) en vez de vaciar la tabla.
-   */
-  const claveCarga = rucActivo ? `${rucActivo}|${filtros.mes}|${version}` : null;
-  const hayDatos = Boolean(carga && carga.ruc === rucActivo && carga.mes === filtros.mes);
+  /* La búsqueda de texto espera a que el usuario deje de teclear; el resto es inmediato. */
+  useEffect(() => {
+    const espera = filtros.q === "" ? 0 : RETARDO_BUSQUEDA_MS;
+    const temporizador = window.setTimeout(() => setQEfectiva(filtros.q), espera);
+    return () => window.clearTimeout(temporizador);
+  }, [filtros.q]);
+  const filtrosEfectivos = useMemo(() => ({ ...filtros, q: qEfectiva }), [filtros, qEfectiva]);
+
+  const claveConjunto = claveDeConjunto(filtrosEfectivos, orden, tamano);
+  const clavePagina = rucActivo ? `${rucActivo}|${claveConjunto}|${pagina}|${version}` : null;
+  const claveTotal = rucActivo
+    ? `${rucActivo}|${claveDeFiltros(filtrosEfectivos)}|${version}`
+    : null;
+  const claveResumen = rucActivo
+    ? `${rucActivo}|${JSON.stringify(consultaDeResumen(filtros))}|${version}`
+    : null;
+
+  /* Se muestra lo último cargado de esta empresa mientras llega la página nueva. */
+  const hayDatos = Boolean(cargada && cargada.ruc === rucActivo);
   const cargando = Boolean(token && rucActivo && !hayDatos);
-  const actualizando = hayDatos && carga?.version !== version;
-  const comprobantes = useMemo(
-    () => (hayDatos && carga ? carga.items : []),
-    [hayDatos, carga],
+  const actualizando = hayDatos && cargada?.clave !== clavePagina;
+  const items = useMemo(() => (hayDatos && cargada ? cargada.items : []), [hayDatos, cargada]);
+  const total = hayDatos && cargada ? cargada.total : null;
+
+  const hayResumen = Boolean(resumen && resumen.ruc === rucActivo);
+  const metricas = useMemo(
+    () =>
+      hayResumen && resumen
+        ? metricasDeResumen(resumen.api, { desde: resumen.desde, hasta: resumen.hasta })
+        : null,
+    [hayResumen, resumen],
   );
+  const actualizandoResumen = hayResumen && resumen?.clave !== claveResumen;
 
   /* 1. Empresas del usuario. */
   useEffect(() => {
@@ -135,80 +194,185 @@ export function usePortal(token: string | null) {
     };
   }, [token]);
 
-  /* 2. Comprobantes de la empresa y el periodo elegidos (el periodo se pide al servidor). */
+  /* 2. Una página de comprobantes (filtros, orden y paginación los resuelve el servidor). */
   useEffect(() => {
-    if (!token || !rucActivo || !claveCarga) return;
+    if (!token || !rucActivo || !clavePagina || !claveTotal) return;
+    const ruc = rucActivo;
+    const clave = clavePagina;
+    const siguiente = pagina + 1;
     let vigente = true;
+
+    const pedir = (numeroPagina: number, contar: boolean) =>
+      apiComprobantes(
+        token,
+        ruc,
+        consultaDePagina(filtrosEfectivos, orden, { pagina: numeroPagina, tamano, contar }),
+      );
+
+    /** Precarga la página siguiente en segundo plano para que "Siguiente" sea inmediato. */
+    const precargar = (hayMas: boolean) => {
+      if (!hayMas) return;
+      const claveSiguiente = `${ruc}|${claveConjunto}|${siguiente}|${version}`;
+      if (cachePaginas.current.has(claveSiguiente)) return;
+      pedir(siguiente, false)
+        .then((respuesta) => guardarEnCache(cachePaginas.current, claveSiguiente, respuesta))
+        .catch(() => {
+          // La precarga es oportunista: si falla, la página se pedirá al navegar.
+        });
+    };
+
+    const aplicar = (respuesta: ApiPagina) => {
+      if (respuesta.total !== null && respuesta.total !== undefined) {
+        cacheTotales.current.set(claveTotal, respuesta.total);
+      }
+      const nuevos = respuesta.items.map(mapComprobante);
+      setCargada({
+        ruc,
+        clave,
+        items: nuevos,
+        hayMas: respuesta.has_more,
+        total: cacheTotales.current.get(claveTotal) ?? null,
+        error: null,
+      });
+      // La selección guarda copias: se refrescan con lo último que trajo el servidor.
+      setSeleccionMapa((previa) => {
+        if (previa.size === 0) return previa;
+        const porId = new Map(nuevos.map((c) => [c.id, c]));
+        let cambio = false;
+        const siguienteMapa = new Map(previa);
+        for (const id of previa.keys()) {
+          const fresco = porId.get(id);
+          if (fresco) {
+            siguienteMapa.set(id, fresco);
+            cambio = true;
+          }
+        }
+        return cambio ? siguienteMapa : previa;
+      });
+      precargar(respuesta.has_more);
+    };
+
+    const enCache = cachePaginas.current.get(clave);
+    if (enCache) {
+      aplicar(enCache);
+      return () => {
+        vigente = false;
+      };
+    }
+
     (async () => {
       try {
-        const acumulado: Comprobante[] = [];
-        let offset = 0;
-        let hayMas = false;
-        const mes = filtros.mes;
-        do {
-          const pagina = await apiComprobantes(token, rucActivo, {
-            limit: LOTE_PAGINA,
-            offset,
-            ...(mes !== TODOS_LOS_PERIODOS
-              ? { fecha_desde: `${mes}-01`, fecha_hasta: finDeMes(mes) }
-              : {}),
-          });
-          acumulado.push(...pagina.items.map(mapComprobante));
-          offset += pagina.items.length;
-          hayMas = pagina.has_more;
-        } while (hayMas && acumulado.length < LIMITE_CARGA);
-        if (vigente) {
-          setCarga({ ruc: rucActivo, mes, version, items: acumulado, hayMas, error: null });
-        }
+        // El servidor solo cuenta si todavía no se conoce el total de este conjunto filtrado.
+        const contar = !cacheTotales.current.has(claveTotal);
+        const respuesta = await pedir(pagina, contar);
+        if (!vigente) return;
+        guardarEnCache(cachePaginas.current, clave, respuesta);
+        aplicar(respuesta);
       } catch (error) {
-        if (vigente) {
-          setCarga({
-            ruc: rucActivo,
-            mes: filtros.mes,
-            version,
-            items: [],
-            hayMas: false,
-            error: mensajeDe(error, "No se pudieron cargar los comprobantes."),
-          });
-        }
+        if (!vigente) return;
+        setCargada({
+          ruc,
+          clave,
+          items: [],
+          hayMas: false,
+          total: null,
+          error: mensajeDe(error, "No se pudieron cargar los comprobantes."),
+        });
       }
     })();
+
     return () => {
       vigente = false;
     };
-    // `filtros.mes` ya forma parte de `claveCarga`.
-  }, [token, rucActivo, claveCarga]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Todo lo que influye en la consulta ya forma parte de `clavePagina`.
+  }, [token, rucActivo, clavePagina]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const recargar = useCallback(() => setVersion((v) => v + 1), []);
+  /* 3. Indicadores: dependen solo de la empresa y el rango de fechas, no de la página. */
+  useEffect(() => {
+    if (!token || !rucActivo || !claveResumen) return;
+    const ruc = rucActivo;
+    const clave = claveResumen;
+    const { desde, hasta } = filtros;
+    let vigente = true;
+    const guardado = cacheResumen.current.get(clave);
+    if (guardado) {
+      setResumen({ ruc, clave, api: guardado, desde, hasta });
+      setErrorResumen(null);
+      return;
+    }
+    apiResumen(token, ruc, consultaDeResumen(filtros))
+      .then((api) => {
+        if (!vigente) return;
+        guardarEnCache(cacheResumen.current, clave, api);
+        setResumen({ ruc, clave, api, desde, hasta });
+        setErrorResumen(null);
+      })
+      .catch((error) => {
+        if (vigente) setErrorResumen(mensajeDe(error, "No se pudieron calcular los indicadores."));
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [token, rucActivo, claveResumen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtrados = useMemo(
-    () => aplicarFiltros(comprobantes, filtros, checksPendientes),
-    [comprobantes, filtros, checksPendientes],
-  );
-  const metricas = useMemo(
-    () => calcularMetricas(comprobantes, filtros.mes),
-    [comprobantes, filtros.mes],
-  );
+  /* 4. Detalle del comprobante abierto (ítems reales); se refresca tras cada recarga. */
+  useEffect(() => {
+    if (!token || !detalleId) return;
+    let vigente = true;
+    apiDetalle(token, detalleId)
+      .then((api) => {
+        if (vigente) setDetalleApi((previo) => ({ ...previo, [detalleId]: api }));
+      })
+      .catch(() => {
+        // Sin detalle se muestra la cabecera: no es un error bloqueante.
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [token, detalleId, version]);
 
-  /** Los periodos del selector: todos los que SIRE puede entregar (más los cargados). */
-  const periodos = useMemo(() => {
-    const ahora = new Date();
-    const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}`;
-    return mesesDisponibles(hoy).reverse();
+  // Carga el detalle la primera vez; al recargar se refresca sin parpadeo.
+  const cargandoDetalle = detalleId !== null && detalleApi[detalleId] === undefined;
+
+  const recargar = useCallback(() => {
+    cachePaginas.current.clear();
+    cacheTotales.current.clear();
+    cacheResumen.current.clear();
+    setVersion((v) => v + 1);
   }, []);
 
-  const detalle = useMemo(
-    () => comprobantes.find((c) => c.id === detalleId) ?? null,
-    [comprobantes, detalleId],
-  );
+  const detalle = useMemo(() => {
+    if (!detalleId) return null;
+    const enPagina = items.find((c) => c.id === detalleId);
+    const comprobante = enPagina ?? (detalleBase?.id === detalleId ? detalleBase : null);
+    if (!comprobante) return null;
+    const api = detalleApi[detalleId];
+    return api ? conDetalle(comprobante, api) : comprobante;
+  }, [detalleId, detalleBase, detalleApi, items]);
 
   /* ----------------------------- Acciones ----------------------------- */
 
   const cambiarFiltros = useCallback((parcial: Partial<FiltrosState>) => {
     setFiltros((previos) => ({ ...previos, ...parcial }));
+    setPagina(0);
   }, []);
 
-  const limpiarFiltros = useCallback(() => setFiltros(FILTROS_INICIALES), []);
+  const limpiarFiltros = useCallback(() => {
+    setFiltros(FILTROS_INICIALES);
+    setPagina(0);
+  }, []);
+
+  const ordenarPor = useCallback((campo: CampoOrden) => {
+    setOrden((previo) => alternarOrden(previo, campo));
+    setPagina(0);
+  }, []);
+
+  const cambiarTamano = useCallback((nuevo: number) => {
+    setTamano(nuevo);
+    setPagina(0);
+  }, []);
+
+  const irAPagina = useCallback((destino: number) => setPagina(Math.max(0, destino)), []);
 
   const filtrarPorEstado = useCallback(
     (estado: EstadoSunat) => cambiarFiltros({ estadoSunat: estado }),
@@ -220,51 +384,56 @@ export function usePortal(token: string | null) {
   );
 
   const cambiarEmpresa = useCallback((ruc: string) => {
+    cachePaginas.current.clear();
+    cacheTotales.current.clear();
+    cacheResumen.current.clear();
     setRucActivo(ruc);
     setChecksPendientes({});
-    setSeleccionados(new Set());
+    setSeleccionMapa(new Map());
     setDetalleId(null);
     setEvidencias(null);
     setErrorEvidencias(null);
     setFiltros(FILTROS_INICIALES);
+    setQEfectiva(FILTROS_INICIALES.q);
+    setOrden(ORDEN_INICIAL);
+    setPagina(0);
   }, []);
 
-  const alternarSeleccion = useCallback((id: string) => {
-    setSeleccionados((previos) => {
-      const siguientes = new Set(previos);
-      if (siguientes.has(id)) siguientes.delete(id);
-      else siguientes.add(id);
-      return siguientes;
+  const alternarSeleccion = useCallback((comprobante: Comprobante) => {
+    setSeleccionMapa((previa) => {
+      const siguiente = new Map(previa);
+      if (siguiente.has(comprobante.id)) siguiente.delete(comprobante.id);
+      else siguiente.set(comprobante.id, comprobante);
+      return siguiente;
     });
   }, []);
 
-  const seleccionarVisibles = useCallback((ids: string[], marcar: boolean) => {
-    setSeleccionados((previos) => {
-      const siguientes = new Set(previos);
-      for (const id of ids) {
-        if (marcar) siguientes.add(id);
-        else siguientes.delete(id);
+  const seleccionarVisibles = useCallback((visibles: Comprobante[], marcar: boolean) => {
+    setSeleccionMapa((previa) => {
+      const siguiente = new Map(previa);
+      for (const c of visibles) {
+        if (marcar) siguiente.set(c.id, c);
+        else siguiente.delete(c.id);
       }
-      return siguientes;
+      return siguiente;
     });
   }, []);
 
-  const limpiarSeleccion = useCallback(() => setSeleccionados(new Set()), []);
+  const limpiarSeleccion = useCallback(() => setSeleccionMapa(new Map()), []);
 
-  /** Selección vigente: solo cuenta lo que sigue visible tras filtrar. */
-  const seleccion = useMemo(
-    () => filtrados.filter((c) => seleccionados.has(c.id)),
-    [filtrados, seleccionados],
-  );
+  const seleccionados = useMemo(() => new Set(seleccionMapa.keys()), [seleccionMapa]);
+  const seleccion = useMemo(() => [...seleccionMapa.values()], [seleccionMapa]);
 
   const alternarCheckSap = useCallback(
     async (id: string) => {
-      const original = comprobantes.find((c) => c.id === id);
-      if (!token || !original) return;
+      const original = items.find((c) => c.id === id) ?? seleccionMapa.get(id) ?? detalle ?? undefined;
+      if (!token || !original || original.id !== id) return;
       const anterior = checkVigente(original, checksPendientes);
       setChecksPendientes((previos) => ({ ...previos, [id]: !anterior }));
       try {
         await apiActualizarCheckSap(token, id, !anterior);
+        // Lo guardado cambió: las páginas en caché ya no lo reflejan.
+        cachePaginas.current.clear();
       } catch (error) {
         setChecksPendientes((previos) => ({ ...previos, [id]: anterior }));
         aviso.error(
@@ -277,29 +446,13 @@ export function usePortal(token: string | null) {
         );
       }
     },
-    [token, comprobantes, checksPendientes],
+    [token, items, seleccionMapa, detalle, checksPendientes],
   );
 
-  const abrirDetalle = useCallback(
-    async (comprobante: Comprobante) => {
-      setDetalleId(comprobante.id);
-      if (!token || comprobante.items.length > 0) return;
-      setCargandoDetalle(true);
-      try {
-        const completo = conDetalle(comprobante, await apiDetalle(token, comprobante.id));
-        setCarga((previa) =>
-          previa
-            ? { ...previa, items: previa.items.map((c) => (c.id === completo.id ? completo : c)) }
-            : previa,
-        );
-      } catch {
-        // Sin detalle se muestra la cabecera: no es un error bloqueante.
-      } finally {
-        setCargandoDetalle(false);
-      }
-    },
-    [token],
-  );
+  const abrirDetalle = useCallback((comprobante: Comprobante) => {
+    setDetalleBase(comprobante);
+    setDetalleId(comprobante.id);
+  }, []);
 
   const cerrarDetalle = useCallback(() => setDetalleId(null), []);
 
@@ -418,38 +571,93 @@ export function usePortal(token: string | null) {
     [token],
   );
 
-  const exportarExcel = useCallback(() => {
-    if (!empresa) return;
-    const conjunto = documentosAExportar(seleccion, filtrados).map((c) => ({
-      ...c,
-      checkSap: checkVigente(c, checksPendientes),
-    }));
-    if (conjunto.length === 0) {
-      aviso.error("No hay comprobantes para exportar", "Ajusta los filtros o selecciona filas.");
-      return;
+  /**
+   * Trae del servidor, página a página, todo lo que cumple los filtros vigentes (con un
+   * tope). Sirve para exportar «todo lo filtrado» sin haberlo cargado en pantalla.
+   */
+  const traerFiltrados = useCallback(
+    async (maximo: number): Promise<{ items: Comprobante[]; truncado: boolean }> => {
+      if (!token || !rucActivo) return { items: [], truncado: false };
+      const acumulado: Comprobante[] = [];
+      let offset = 0;
+      let hayMas = true;
+      while (hayMas && acumulado.length < maximo) {
+        const respuesta = await apiComprobantes(
+          token,
+          rucActivo,
+          consultaDePagina(filtros, orden, {
+            pagina: offset / POR_PAGINA_EXPORTACION,
+            tamano: POR_PAGINA_EXPORTACION,
+            contar: false,
+          }),
+        );
+        acumulado.push(...respuesta.items.map(mapComprobante));
+        offset += POR_PAGINA_EXPORTACION;
+        hayMas = respuesta.has_more;
+      }
+      return { items: acumulado.slice(0, maximo), truncado: hayMas || acumulado.length > maximo };
+    },
+    [token, rucActivo, filtros, orden],
+  );
+
+  const exportarExcel = useCallback(async () => {
+    if (!empresa || exportando) return;
+    setExportando(true);
+    try {
+      let conjunto = seleccion;
+      let truncado = false;
+      if (conjunto.length === 0) {
+        aviso.info("Preparando el reporte…", "Trayendo del servidor los comprobantes filtrados.");
+        ({ items: conjunto, truncado } = await traerFiltrados(MAX_EXPORTACION));
+      }
+      if (conjunto.length === 0) {
+        aviso.error("No hay comprobantes para exportar", "Ajusta los filtros o selecciona filas.");
+        return;
+      }
+      const nombre = descargarExcel(
+        conjunto.map((c) => ({ ...c, checkSap: checkVigente(c, checksPendientes) })),
+        empresa,
+      );
+      aviso.ok(
+        "Reporte Excel descargado",
+        truncado
+          ? `${nombre} · solo los primeros ${formatearEntero(MAX_EXPORTACION)}; acota los filtros para el resto`
+          : `${nombre} · ${formatearEntero(conjunto.length)} comprobantes`,
+      );
+    } catch (error) {
+      aviso.error("No se pudo preparar el reporte", mensajeDe(error, "Reintenta."));
+    } finally {
+      setExportando(false);
     }
-    const nombre = descargarExcel(conjunto, empresa);
-    aviso.ok("Reporte Excel descargado", `${nombre} · ${conjunto.length} comprobantes`);
-  }, [empresa, seleccion, filtrados, checksPendientes]);
+  }, [empresa, exportando, seleccion, traerFiltrados, checksPendientes]);
 
   const generarLote = useCallback(async () => {
     if (!token || !empresa || generandoLote) return;
-    const conjunto = seleccion.length > 0 ? seleccion : filtrados;
-    if (conjunto.length === 0) {
-      aviso.error("No hay comprobantes para el lote", "Selecciona filas o ajusta los filtros.");
-      return;
-    }
-    if (conjunto.length > MAX_COMPROBANTES_LOTE) {
-      aviso.error(
-        `Un lote admite hasta ${MAX_COMPROBANTES_LOTE} comprobantes`,
-        `Hay ${conjunto.length}: selecciona menos o filtra por periodo.`,
-      );
-      return;
-    }
     setGenerandoLote(true);
-    const id = aviso.info(`Armando el lote de ${conjunto.length} comprobantes…`, "Descargando XML, CDR y PDF.");
-    void id;
     try {
+      let conjunto = seleccion;
+      if (conjunto.length === 0) {
+        if ((total ?? Infinity) > MAX_COMPROBANTES_LOTE) {
+          aviso.error(
+            `Un lote admite hasta ${MAX_COMPROBANTES_LOTE} comprobantes`,
+            `Hay ${total === null ? "demasiados" : formatearEntero(total)}: selecciona menos o filtra por fechas.`,
+          );
+          return;
+        }
+        ({ items: conjunto } = await traerFiltrados(MAX_COMPROBANTES_LOTE));
+      }
+      if (conjunto.length === 0) {
+        aviso.error("No hay comprobantes para el lote", "Selecciona filas o ajusta los filtros.");
+        return;
+      }
+      if (conjunto.length > MAX_COMPROBANTES_LOTE) {
+        aviso.error(
+          `Un lote admite hasta ${MAX_COMPROBANTES_LOTE} comprobantes`,
+          `Hay ${conjunto.length}: selecciona menos o filtra por fechas.`,
+        );
+        return;
+      }
+      aviso.info(`Armando el lote de ${conjunto.length} comprobantes…`, "Descargando XML, CDR y PDF.");
       const resultado = await construirLoteRespaldo(token, empresa, conjunto);
       descargarBlob(new Blob([resultado.zip], { type: TIPO_ZIP }), resultado.nombre);
       const incompletos = resultado.faltantes.length;
@@ -465,7 +673,7 @@ export function usePortal(token: string | null) {
     } finally {
       setGenerandoLote(false);
     }
-  }, [token, empresa, generandoLote, seleccion, filtrados, recargar]);
+  }, [token, empresa, generandoLote, seleccion, total, traerFiltrados, recargar]);
 
   const cargarEvidencias = useCallback(async () => {
     if (!token || !rucActivo) return;
@@ -506,14 +714,21 @@ export function usePortal(token: string | null) {
     hayFiltros: hayFiltrosActivos(filtros),
     filtrarPorEstado,
     filtrarPorRespaldo,
-    periodos,
+    orden,
+    ordenarPor,
+    pagina,
+    tamano,
+    irAPagina,
+    cambiarTamano,
     cargando,
     actualizando,
-    errorCarga: hayDatos && carga ? carga.error : null,
-    hayMas: hayDatos && carga ? carga.hayMas : false,
-    comprobantes,
-    filtrados,
+    errorCarga: hayDatos && cargada ? cargada.error : null,
+    hayMas: hayDatos && cargada ? cargada.hayMas : false,
+    comprobantes: items,
+    total,
     metricas,
+    actualizandoResumen,
+    errorResumen,
     checksPendientes,
     seleccionados,
     seleccion,
@@ -528,6 +743,7 @@ export function usePortal(token: string | null) {
     consultando,
     sincronizando,
     generandoLote,
+    exportando,
     descargar,
     consultarCdr,
     alternarCheckSap,

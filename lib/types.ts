@@ -80,8 +80,6 @@ export type FiltroCheckSap = "TODOS" | "CON" | "SIN";
 export interface FiltrosState {
   /** Búsqueda por N° de documento, cliente, RUC u orden de compra. */
   q: string;
-  /** Periodo `yyyy-mm`, o `"TODOS"` para no acotar por mes. */
-  mes: string;
   tipo: TipoDocumento | "TODOS";
   estadoSunat: EstadoSunat | "TODOS";
   respaldo: FiltroRespaldo;

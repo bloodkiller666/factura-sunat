@@ -35,7 +35,7 @@ describe("reporte Excel", () => {
       "Fecha de vencimiento": "04/11/2026",
       "Base imponible": 100,
       "IGV (18%)": 18,
-      Total: 118,
+      "Total (con IGV)": 118,
       "Estado SUNAT": "Aprobado",
       "N° SAP": "4500926001",
       "Check SAP": "Sí",

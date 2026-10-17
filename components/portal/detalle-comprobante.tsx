@@ -99,7 +99,7 @@ function Resumen({
           <span className="tnum text-fg">{formatearMoneda(c.igv, c.moneda)}</span>
         </div>
         <div className="flex items-center justify-between bg-surface-2 px-4 py-3 text-[14px] font-semibold">
-          <span>Total</span>
+          <span>Total (con IGV)</span>
           <span className="tnum">{formatearMoneda(c.total, c.moneda)}</span>
         </div>
       </div>

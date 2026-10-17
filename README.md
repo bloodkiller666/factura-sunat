@@ -36,10 +36,11 @@ o el navegador bloqueará la descarga de XML/CDR con URL firmada.
 - **Login** con Supabase Auth. El JWT viaja como `Bearer` al backend, que aplica RLS por
   empresa. Los roles `admin`/`emisor`/`lector` vienen del backend: con `lector` las
   acciones de escritura (importar, sincronizar, Check SAP) quedan deshabilitadas.
-- **Comprobantes**: indicadores (facturado neto por moneda, estado SUNAT, cobertura de
-  respaldo), filtros (texto, periodo, tipo, estado, respaldo, N° SAP, Check SAP, rango),
-  orden, paginación, selección múltiple y panel de detalle con pestañas Resumen / Ítems /
-  Archivos / Vista PDF.
+- **Comprobantes**: indicadores (facturado neto por moneda, Estado SUNAT, cobertura de
+  respaldo), filtros (texto, **calendario de rango de fechas**, tipo, Estado SUNAT, respaldo,
+  N° SAP, Check SAP), orden por columna, **paginación en el servidor**, selección múltiple
+  (también entre páginas) y panel de detalle con pestañas Resumen / Ítems / Archivos / Vista
+  PDF. El importe de la tabla es el **total con IGV**.
 - **Respaldo por comprobante**: cada fila indica si tiene XML, CDR y PDF archivados en R2.
   El filtro «Respaldo» y los atajos de la tarjeta de cobertura listan lo que falta.
 - **Sincronizar SIRE**: trae las ventas de uno o varios meses (desde julio de 2023). Es de
@@ -50,7 +51,8 @@ o el navegador bloqueará la descarga de XML/CDR con URL firmada.
   (emitido por otro sistema), el CDR hay que importarlo desde ese sistema.
 - **Exportar**: reporte Excel y **lote de respaldo ZIP** con los XML, CDR y PDF reales de
   cada comprobante más `LEEME.txt` y `manifiesto.csv` (SHA-256).
-- **Evidencias SIRE**: lista de los archivos originales de SUNAT guardados, con su hash.
+- **Evidencias SIRE**: lista de los archivos originales de SUNAT guardados, con su hash;
+  todas las columnas se ordenan de menor a mayor y al revés.
 
 ## Decisiones que conviene conocer
 
@@ -60,8 +62,11 @@ o el navegador bloqueará la descarga de XML/CDR con URL firmada.
   sale del XML firmado. La evidencia ante SUNAT es el XML con su CDR.
 - No hay envío de comprobantes por correo: no existen direcciones reales de los clientes y
   la ruta anterior era pública. Si se necesita, debe hacerse en el backend, autenticado.
-- El periodo elegido se pide al servidor. Con «Todos los periodos» se cargan los 1500
-  comprobantes más recientes.
+- **Nada se carga de golpe.** El servidor filtra, ordena, pagina y cuenta; el portal pide una
+  página (50 filas) y los indicadores del rango de fechas, en paralelo. La página siguiente se
+  precarga y las ya vistas se recuerdan, así que ir y volver es instantáneo. «Exportar» trae
+  del servidor, página a página, todo lo filtrado (hasta 5 000 filas; con selección, solo lo
+  marcado).
 
 ## Estructura
 

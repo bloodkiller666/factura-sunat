@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Download,
   Eye,
   FileArchive,
@@ -19,16 +18,11 @@ import {
 } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
 import { Casilla, Seleccion } from "@/components/ui/campos";
+import { EncabezadoOrden } from "@/components/ui/encabezado-orden";
 import { ChipRespaldo, EstadoPill } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
 import { Esqueleto, EstadoVacio } from "@/components/ui/varios";
-import {
-  ORDEN_INICIAL,
-  checkVigente,
-  ordenar,
-  type CampoOrden,
-  type Orden,
-} from "@/lib/filtros";
+import { checkVigente, type CampoOrden, type Orden } from "@/lib/filtros";
 import { formatearEntero, formatearFecha, formatearMoneda } from "@/lib/format";
 import type { Comprobante } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -36,16 +30,28 @@ import { cn } from "@/lib/utils";
 export type TipoDescarga = "pdf" | "xml" | "cdr";
 
 interface Props {
+  /** Solo la página actual: el servidor ya filtró, ordenó y paginó. */
   comprobantes: Comprobante[];
+  /** Total del conjunto filtrado (todas las páginas); `null` mientras se cuenta. */
+  total: number | null;
+  pagina: number;
+  tamano: number;
+  hayMas: boolean;
+  orden: Orden;
   cargando: boolean;
+  /** Hay datos en pantalla y se está pidiendo otra página, orden o filtro. */
+  actualizando: boolean;
   hayFiltros: boolean;
   seleccionados: Set<string>;
   checksPendientes: Record<string, boolean>;
   descargando: Set<string>;
   consultando: Set<string>;
   puedeOperar: boolean;
-  onAlternar: (id: string) => void;
-  onAlternarVisibles: (ids: string[], marcar: boolean) => void;
+  onOrden: (campo: CampoOrden) => void;
+  onPagina: (pagina: number) => void;
+  onTamano: (tamano: number) => void;
+  onAlternar: (comprobante: Comprobante) => void;
+  onAlternarVisibles: (comprobantes: Comprobante[], marcar: boolean) => void;
   onLimpiarSeleccion: () => void;
   onAbrir: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, tipo: TipoDescarga) => void;
@@ -61,48 +67,6 @@ const TAMANOS_PAGINA = [25, 50, 100] as const;
 
 function importeFirmado(c: Comprobante): number {
   return c.tipo === "Nota de Crédito" ? -c.total : c.total;
-}
-
-function EncabezadoOrden({
-  etiqueta,
-  campo,
-  orden,
-  onOrden,
-  alinear = "izquierda",
-  className,
-}: {
-  etiqueta: string;
-  campo: CampoOrden;
-  orden: Orden;
-  onOrden: (campo: CampoOrden) => void;
-  alinear?: "izquierda" | "derecha";
-  className?: string;
-}) {
-  const activo = orden.campo === campo;
-  const Flecha = orden.direccion === "asc" ? ArrowUp : ArrowDown;
-  return (
-    <th
-      scope="col"
-      aria-sort={activo ? (orden.direccion === "asc" ? "ascending" : "descending") : "none"}
-      className={cn("px-3 py-2.5 font-medium", alinear === "derecha" && "text-right", className)}
-    >
-      <button
-        type="button"
-        onClick={() => onOrden(campo)}
-        className={cn(
-          "inline-flex items-center gap-1 rounded text-[11.5px] font-medium tracking-wide uppercase transition-colors hover:text-fg",
-          activo ? "text-fg" : "text-fg-3",
-          alinear === "derecha" && "flex-row-reverse",
-        )}
-      >
-        {etiqueta}
-        <Flecha
-          className={cn("h-3 w-3 transition-opacity", activo ? "opacity-100" : "opacity-0")}
-          aria-hidden
-        />
-      </button>
-    </th>
-  );
 }
 
 const TH = "px-3 py-2.5 text-left text-[11.5px] font-medium tracking-wide text-fg-3 uppercase";
@@ -187,13 +151,22 @@ function Respaldos({ c }: { c: Comprobante }) {
 
 export function TablaComprobantes({
   comprobantes,
+  total,
+  pagina,
+  tamano,
+  hayMas,
+  orden,
   cargando,
+  actualizando,
   hayFiltros,
   seleccionados,
   checksPendientes,
   descargando,
   consultando,
   puedeOperar,
+  onOrden,
+  onPagina,
+  onTamano,
   onAlternar,
   onAlternarVisibles,
   onLimpiarSeleccion,
@@ -206,38 +179,23 @@ export function TablaComprobantes({
   onLimpiarFiltros,
   generandoLote,
 }: Props) {
-  const [orden, setOrden] = useState<Orden>(ORDEN_INICIAL);
-  const [tamano, setTamano] = useState<number>(50);
-  const [pagina, setPagina] = useState(0);
-  const [referencia, setReferencia] = useState(comprobantes);
+  // El servidor ya filtró, ordenó y paginó: aquí solo se pinta la página recibida.
+  const visibles = comprobantes;
+  const marcadosEnPagina = visibles.filter((c) => seleccionados.has(c.id)).length;
+  const todosMarcados = visibles.length > 0 && marcadosEnPagina === visibles.length;
 
-  // Si cambia el conjunto (filtros, periodo, recarga) se vuelve a la primera página.
-  if (referencia !== comprobantes) {
-    setReferencia(comprobantes);
-    setPagina(0);
-  }
-
-  const ordenados = useMemo(() => ordenar(comprobantes, orden), [comprobantes, orden]);
-  const paginas = Math.max(1, Math.ceil(ordenados.length / tamano));
-  const actual = Math.min(pagina, paginas - 1);
-  const visibles = ordenados.slice(actual * tamano, (actual + 1) * tamano);
-  const idsVisibles = visibles.map((c) => c.id);
-
-  const marcadosEnPagina = idsVisibles.filter((id) => seleccionados.has(id)).length;
-  const todosMarcados = idsVisibles.length > 0 && marcadosEnPagina === idsVisibles.length;
-
-  const alOrdenar = (campo: CampoOrden) =>
-    setOrden((previo) =>
-      previo.campo === campo
-        ? { campo, direccion: previo.direccion === "asc" ? "desc" : "asc" }
-        : { campo, direccion: campo === "fecha" || campo === "importe" ? "desc" : "asc" },
-    );
-
-  const desde = ordenados.length === 0 ? 0 : actual * tamano + 1;
-  const hasta = Math.min((actual + 1) * tamano, ordenados.length);
+  const paginas = total === null ? null : Math.max(1, Math.ceil(total / tamano));
+  const ultima = paginas === null ? pagina : paginas - 1;
+  const hayAnterior = pagina > 0;
+  const haySiguiente = paginas === null ? hayMas : pagina < paginas - 1;
+  const desde = visibles.length === 0 ? 0 : pagina * tamano + 1;
+  const hasta = pagina * tamano + visibles.length;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+    <section
+      className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm"
+      aria-busy={actualizando || undefined}
+    >
       {/* Barra de selección */}
       {seleccionados.size > 0 && (
         <div className="flex flex-wrap items-center gap-3 border-b border-accent-line bg-accent-soft px-4 py-2.5">
@@ -273,23 +231,24 @@ export function TablaComprobantes({
                 <Casilla
                   checked={todosMarcados}
                   indeterminada={marcadosEnPagina > 0 && !todosMarcados}
-                  disabled={cargando || idsVisibles.length === 0}
-                  onChange={() => onAlternarVisibles(idsVisibles, !todosMarcados)}
+                  disabled={cargando || visibles.length === 0}
+                  onChange={() => onAlternarVisibles(visibles, !todosMarcados)}
                   etiqueta="Seleccionar los comprobantes de esta página"
                 />
               </th>
-              <EncabezadoOrden etiqueta="Documento" campo="numero" orden={orden} onOrden={alOrdenar} />
-              <EncabezadoOrden etiqueta="Cliente" campo="cliente" orden={orden} onOrden={alOrdenar} />
-              <EncabezadoOrden etiqueta="Emisión" campo="fecha" orden={orden} onOrden={alOrdenar} />
+              <EncabezadoOrden etiqueta="Documento" campo="numero" orden={orden} onOrden={onOrden} />
+              <EncabezadoOrden etiqueta="Cliente" campo="cliente" orden={orden} onOrden={onOrden} />
+              <EncabezadoOrden etiqueta="Emisión" campo="fecha" orden={orden} onOrden={onOrden} />
               <EncabezadoOrden
-                etiqueta="Importe"
+                etiqueta="Importe total"
+                nota="con IGV"
                 campo="importe"
                 orden={orden}
-                onOrden={alOrdenar}
+                onOrden={onOrden}
                 alinear="derecha"
               />
               <th scope="col" className={TH}>
-                Estado
+                Estado SUNAT
               </th>
               <th scope="col" className={TH}>
                 Respaldo
@@ -302,7 +261,9 @@ export function TablaComprobantes({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">
+          <tbody
+            className={cn("divide-y divide-line transition-opacity", actualizando && "opacity-55")}
+          >
             {cargando &&
               Array.from({ length: 8 }, (_, i) => (
                 <tr key={`e${i}`}>
@@ -331,7 +292,7 @@ export function TablaComprobantes({
                     <td className="py-2.5 pr-0 pl-4">
                       <Casilla
                         checked={marcado}
-                        onChange={() => onAlternar(c.id)}
+                        onChange={() => onAlternar(c)}
                         etiqueta={`Seleccionar ${c.numero}`}
                       />
                     </td>
@@ -478,22 +439,20 @@ export function TablaComprobantes({
       </ul>
 
       {/* Paginación */}
-      {comprobantes.length > 0 && (
+      {(comprobantes.length > 0 || pagina > 0) && (
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface-2 px-4 py-2.5">
-          <p className="tnum text-[12.5px] text-fg-3">
-            {formatearEntero(desde)}–{formatearEntero(hasta)} de {formatearEntero(ordenados.length)}
+          <p className="tnum text-[12.5px] text-fg-3" aria-live="polite">
+            {formatearEntero(desde)}–{formatearEntero(hasta)}
+            {total !== null && <> de {formatearEntero(total)}</>}
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-[12.5px] text-fg-3">
               Filas
               <div className="w-[76px]">
                 <Seleccion
                   aria-label="Filas por página"
                   value={tamano}
-                  onChange={(e) => {
-                    setTamano(Number(e.target.value));
-                    setPagina(0);
-                  }}
+                  onChange={(e) => onTamano(Number(e.target.value))}
                   className="h-8 text-[12.5px]"
                 >
                   {TAMANOS_PAGINA.map((n) => (
@@ -504,27 +463,44 @@ export function TablaComprobantes({
                 </Seleccion>
               </div>
             </label>
-            <div className="flex items-center gap-1">
+            <nav className="flex items-center gap-1" aria-label="Paginación">
+              <Boton
+                variante="secundario"
+                tamano="sm"
+                icono={ChevronsLeft}
+                etiqueta="Primera página"
+                disabled={!hayAnterior}
+                onClick={() => onPagina(0)}
+              />
               <Boton
                 variante="secundario"
                 tamano="sm"
                 icono={ChevronLeft}
                 etiqueta="Página anterior"
-                disabled={actual === 0}
-                onClick={() => setPagina(actual - 1)}
+                disabled={!hayAnterior}
+                onClick={() => onPagina(pagina - 1)}
               />
-              <span className="tnum min-w-[64px] text-center text-[12.5px] text-fg-2">
-                {actual + 1} / {paginas}
+              <span className="tnum min-w-[72px] text-center text-[12.5px] text-fg-2">
+                {formatearEntero(pagina + 1)}
+                {paginas !== null && <> / {formatearEntero(paginas)}</>}
               </span>
               <Boton
                 variante="secundario"
                 tamano="sm"
                 icono={ChevronRight}
                 etiqueta="Página siguiente"
-                disabled={actual >= paginas - 1}
-                onClick={() => setPagina(actual + 1)}
+                disabled={!haySiguiente}
+                onClick={() => onPagina(pagina + 1)}
               />
-            </div>
+              <Boton
+                variante="secundario"
+                tamano="sm"
+                icono={ChevronsRight}
+                etiqueta="Última página"
+                disabled={paginas === null || pagina >= ultima}
+                onClick={() => onPagina(ultima)}
+              />
+            </nav>
           </div>
         </footer>
       )}

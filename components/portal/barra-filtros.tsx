@@ -4,17 +4,15 @@ import { useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
 import { Campo, CampoBusqueda, Grupo, Seleccion } from "@/components/ui/campos";
-import { TODOS_LOS_PERIODOS, etiquetaPeriodo, formatearFecha } from "@/lib/format";
-import { FILTROS_INICIALES, hayFiltrosActivos } from "@/lib/filtros";
+import { SelectorFechas } from "@/components/ui/selector-fechas";
+import { describirRango } from "@/lib/calendario";
+import { MINIMO_BUSQUEDA, hayFiltrosActivos } from "@/lib/filtros";
 import type { FiltrosState } from "@/lib/types";
 
 interface Props {
   filtros: FiltrosState;
   onCambiar: (parcial: Partial<FiltrosState>) => void;
   onLimpiar: () => void;
-  periodos: string[];
-  /** Si el periodo se pide al servidor, el selector no depende de lo cargado. */
-  deshabilitado?: boolean;
 }
 
 const ETIQUETA_RESPALDO: Record<FiltrosState["respaldo"], string> = {
@@ -25,46 +23,65 @@ const ETIQUETA_RESPALDO: Record<FiltrosState["respaldo"], string> = {
 };
 
 interface Chip {
-  clave: keyof FiltrosState;
+  clave: string;
   texto: string;
+  /** Lo que se restablece al quitar el chip. */
+  quitar: Partial<FiltrosState>;
 }
 
 function chipsActivos(filtros: FiltrosState): Chip[] {
   const chips: Chip[] = [];
-  if (filtros.q.trim()) chips.push({ clave: "q", texto: `“${filtros.q.trim()}”` });
-  if (filtros.mes !== TODOS_LOS_PERIODOS) {
-    chips.push({ clave: "mes", texto: etiquetaPeriodo(filtros.mes) });
+  if (filtros.q.trim()) {
+    chips.push({ clave: "q", texto: `“${filtros.q.trim()}”`, quitar: { q: "" } });
   }
-  if (filtros.tipo !== "TODOS") chips.push({ clave: "tipo", texto: filtros.tipo });
+  if (filtros.desde || filtros.hasta) {
+    chips.push({
+      clave: "fechas",
+      texto: describirRango(filtros.desde, filtros.hasta),
+      quitar: { desde: "", hasta: "" },
+    });
+  }
+  if (filtros.tipo !== "TODOS") {
+    chips.push({ clave: "tipo", texto: filtros.tipo, quitar: { tipo: "TODOS" } });
+  }
   if (filtros.estadoSunat !== "TODOS") {
-    chips.push({ clave: "estadoSunat", texto: filtros.estadoSunat });
+    chips.push({
+      clave: "estadoSunat",
+      texto: filtros.estadoSunat,
+      quitar: { estadoSunat: "TODOS" },
+    });
   }
   if (filtros.respaldo !== "TODOS") {
-    chips.push({ clave: "respaldo", texto: ETIQUETA_RESPALDO[filtros.respaldo] });
+    chips.push({
+      clave: "respaldo",
+      texto: ETIQUETA_RESPALDO[filtros.respaldo],
+      quitar: { respaldo: "TODOS" },
+    });
   }
   if (filtros.numeroSap.trim()) {
-    chips.push({ clave: "numeroSap", texto: `SAP ${filtros.numeroSap.trim()}` });
+    chips.push({
+      clave: "numeroSap",
+      texto: `SAP ${filtros.numeroSap.trim()}`,
+      quitar: { numeroSap: "" },
+    });
   }
   if (filtros.checkSap !== "TODOS") {
     chips.push({
       clave: "checkSap",
       texto: filtros.checkSap === "CON" ? "Con Check SAP" : "Sin Check SAP",
+      quitar: { checkSap: "TODOS" },
     });
   }
-  if (filtros.desde) chips.push({ clave: "desde", texto: `Desde ${formatearFecha(filtros.desde)}` });
-  if (filtros.hasta) chips.push({ clave: "hasta", texto: `Hasta ${formatearFecha(filtros.hasta)}` });
   return chips;
 }
 
-export function BarraFiltros({ filtros, onCambiar, onLimpiar, periodos, deshabilitado }: Props) {
+export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
   const [masAbierto, setMasAbierto] = useState(false);
   const chips = chipsActivos(filtros);
-  const extrasActivos = [
-    filtros.numeroSap.trim(),
-    filtros.checkSap !== "TODOS",
-    filtros.desde,
-    filtros.hasta,
-  ].filter(Boolean).length;
+  const extrasActivos = [filtros.numeroSap.trim(), filtros.checkSap !== "TODOS"].filter(
+    Boolean,
+  ).length;
+  const busquedaCorta = filtros.q.trim().length > 0 && filtros.q.trim().length < MINIMO_BUSQUEDA;
 
   return (
     <div className="space-y-3">
@@ -75,23 +92,15 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, periodos, deshabil
             onChange={(e) => onCambiar({ q: e.target.value })}
             placeholder="Buscar por N°, cliente, RUC u orden de compra"
             aria-label="Buscar comprobantes"
+            aria-describedby={busquedaCorta ? "ayuda-busqueda" : undefined}
           />
         </div>
-        <div className="w-[168px]">
-          <Seleccion
-            aria-label="Periodo"
-            value={filtros.mes}
-            disabled={deshabilitado}
-            onChange={(e) => onCambiar({ mes: e.target.value })}
-          >
-            <option value={TODOS_LOS_PERIODOS}>Todos los periodos</option>
-            {periodos.map((periodo) => (
-              <option key={periodo} value={periodo}>
-                {etiquetaPeriodo(periodo)}
-              </option>
-            ))}
-          </Seleccion>
-        </div>
+        <SelectorFechas
+          desde={filtros.desde}
+          hasta={filtros.hasta}
+          onChange={(rango) => onCambiar(rango)}
+          className="w-full sm:w-[220px]"
+        />
         <div className="w-[160px]">
           <Seleccion
             aria-label="Tipo de documento"
@@ -105,13 +114,13 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, periodos, deshabil
             <option value="Nota de Débito">Notas de débito</option>
           </Seleccion>
         </div>
-        <div className="w-[148px]">
+        <div className="w-[168px]">
           <Seleccion
             aria-label="Estado SUNAT"
             value={filtros.estadoSunat}
             onChange={(e) => onCambiar({ estadoSunat: e.target.value as FiltrosState["estadoSunat"] })}
           >
-            <option value="TODOS">Todo estado</option>
+            <option value="TODOS">Estado SUNAT: todos</option>
             <option value="Aprobado">Aprobado</option>
             <option value="Pendiente">Pendiente</option>
             <option value="Rechazado">Rechazado</option>
@@ -144,8 +153,14 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, periodos, deshabil
         </Boton>
       </div>
 
+      {busquedaCorta && (
+        <p id="ayuda-busqueda" className="text-[12px] text-fg-3">
+          Escribe al menos {MINIMO_BUSQUEDA} caracteres para buscar.
+        </p>
+      )}
+
       {masAbierto && (
-        <div className="grid gap-3 rounded-xl border border-line bg-surface p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 rounded-xl border border-line bg-surface p-3 shadow-sm sm:grid-cols-2">
           <Grupo etiqueta="N° SAP">
             <Campo
               value={filtros.numeroSap}
@@ -163,22 +178,6 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, periodos, deshabil
               <option value="SIN">Sin marcar</option>
             </Seleccion>
           </Grupo>
-          <Grupo etiqueta="Emitidos desde">
-            <Campo
-              type="date"
-              value={filtros.desde}
-              max={filtros.hasta || undefined}
-              onChange={(e) => onCambiar({ desde: e.target.value })}
-            />
-          </Grupo>
-          <Grupo etiqueta="Emitidos hasta">
-            <Campo
-              type="date"
-              value={filtros.hasta}
-              min={filtros.desde || undefined}
-              onChange={(e) => onCambiar({ hasta: e.target.value })}
-            />
-          </Grupo>
         </div>
       )}
 
@@ -189,7 +188,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, periodos, deshabil
             <button
               key={chip.clave}
               type="button"
-              onClick={() => onCambiar({ [chip.clave]: FILTROS_INICIALES[chip.clave] })}
+              onClick={() => onCambiar(chip.quitar)}
               className="group inline-flex items-center gap-1 rounded-full border border-accent-line bg-accent-soft py-0.5 pr-1.5 pl-2.5 text-[12px] font-medium text-accent transition-colors hover:brightness-95"
               aria-label={`Quitar filtro ${chip.texto}`}
             >

@@ -23,7 +23,7 @@ export const CABECERAS_REPORTE = [
   "Descripción",
   "Base imponible",
   "IGV (18%)",
-  "Total",
+  "Total (con IGV)",
   "Estado SUNAT",
   "N° SAP",
   "Orden de compra",

@@ -20,7 +20,7 @@ import { DialogoSire } from "@/components/portal/dialogo-sire";
 import { Indicadores } from "@/components/portal/indicadores";
 import { Marca } from "@/components/portal/marca";
 import { TablaComprobantes } from "@/components/portal/tabla-comprobantes";
-import { usePortal, LIMITE_CARGA } from "@/components/portal/use-portal";
+import { usePortal } from "@/components/portal/use-portal";
 import { VistaEvidencias } from "@/components/portal/vista-evidencias";
 import { Boton } from "@/components/ui/boton";
 import { Etiqueta } from "@/components/ui/etiqueta";
@@ -56,6 +56,13 @@ export function Portal({ token, email, onSalir }: Props) {
   }, [vista, rucActivo]);
 
   const detalleCheck = p.detalle ? checkVigente(p.detalle, p.checksPendientes) : false;
+  // Lo que exportan «Reporte Excel» y «Lote»: la selección o, sin ella, todo lo filtrado.
+  const cuentaExportable =
+    p.seleccion.length > 0
+      ? formatearEntero(p.seleccion.length)
+      : p.total === null
+        ? undefined
+        : formatearEntero(p.total);
 
   const lateral = (alElegir?: () => void) => (
     <ContenidoLateral
@@ -139,15 +146,16 @@ export function Portal({ token, email, onSalir }: Props) {
                   >
                     <ItemMenu
                       icono={Download}
-                      onClick={p.exportarExcel}
-                      ayuda={`${formatearEntero(p.seleccion.length || p.filtrados.length)}`}
+                      deshabilitado={p.exportando}
+                      onClick={() => void p.exportarExcel()}
+                      ayuda={cuentaExportable}
                     >
                       Reporte Excel
                     </ItemMenu>
                     <ItemMenu
                       icono={FileArchive}
                       onClick={() => void p.generarLote()}
-                      ayuda={`${formatearEntero(p.seleccion.length || p.filtrados.length)}`}
+                      ayuda={cuentaExportable}
                     >
                       Lote de respaldo (ZIP)
                     </ItemMenu>
@@ -170,14 +178,14 @@ export function Portal({ token, email, onSalir }: Props) {
                 </div>
               </div>
 
-              {(p.errorEmpresas || p.errorCarga) && (
+              {(p.errorEmpresas || p.errorCarga || p.errorResumen) && (
                 <div
                   role="alert"
                   className="flex items-start gap-3 rounded-xl border border-warn-line bg-warn-bg px-4 py-3 text-[13px] text-warn"
                 >
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                  <span className="flex-1">{p.errorEmpresas ?? p.errorCarga}</span>
-                  {p.errorCarga && (
+                  <span className="flex-1">{p.errorEmpresas ?? p.errorCarga ?? p.errorResumen}</span>
+                  {(p.errorCarga || p.errorResumen) && (
                     <Boton tamano="sm" onClick={p.recargar}>
                       Reintentar
                     </Boton>
@@ -187,7 +195,8 @@ export function Portal({ token, email, onSalir }: Props) {
 
               <Indicadores
                 metricas={p.metricas}
-                cargando={p.cargando}
+                actualizando={p.actualizandoResumen}
+                cargando={false}
                 onFiltrarEstado={p.filtrarPorEstado}
                 onFiltrarRespaldo={p.filtrarPorRespaldo}
               />
@@ -196,18 +205,26 @@ export function Portal({ token, email, onSalir }: Props) {
                 filtros={p.filtros}
                 onCambiar={p.cambiarFiltros}
                 onLimpiar={p.limpiarFiltros}
-                periodos={p.periodos}
               />
 
               <TablaComprobantes
-                comprobantes={p.filtrados}
+                comprobantes={p.comprobantes}
+                total={p.total}
+                pagina={p.pagina}
+                tamano={p.tamano}
+                hayMas={p.hayMas}
+                orden={p.orden}
                 cargando={p.cargando}
+                actualizando={p.actualizando}
                 hayFiltros={p.hayFiltros}
                 seleccionados={p.seleccionados}
                 checksPendientes={p.checksPendientes}
                 descargando={p.descargando}
                 consultando={p.consultando}
                 puedeOperar={p.puedeOperar}
+                onOrden={p.ordenarPor}
+                onPagina={p.irAPagina}
+                onTamano={p.cambiarTamano}
                 onAlternar={p.alternarSeleccion}
                 onAlternarVisibles={p.seleccionarVisibles}
                 onLimpiarSeleccion={p.limpiarSeleccion}
@@ -215,18 +232,12 @@ export function Portal({ token, email, onSalir }: Props) {
                 onDescargar={(c, tipo) => void p.descargar(c, tipo)}
                 onConsultarCdr={(c) => void p.consultarCdr(c)}
                 onCheckSap={(id) => void p.alternarCheckSap(id)}
-                onExportarExcel={p.exportarExcel}
+                onExportarExcel={() => void p.exportarExcel()}
                 onLote={() => void p.generarLote()}
                 onLimpiarFiltros={p.limpiarFiltros}
                 generandoLote={p.generandoLote}
               />
 
-              {p.hayMas && (
-                <p className="text-center text-[12.5px] text-fg-3">
-                  Se muestran los {formatearEntero(LIMITE_CARGA)} comprobantes más recientes.
-                  Elige un periodo para ver los demás.
-                </p>
-              )}
             </>
           ) : (
             <>

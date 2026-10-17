@@ -95,6 +95,17 @@ export interface ApiPagina {
   limit: number;
   offset: number;
   has_more: boolean;
+  /** Total del conjunto filtrado; ausente si se pidió `contar=false`. */
+  total?: number | null;
+}
+
+/** Indicadores del conjunto filtrado, calculados en la base de datos. */
+export interface ApiResumen {
+  total: number;
+  por_estado: Record<string, number>;
+  /** Neto por moneda (decimales como texto): notas de crédito restan; sin anulados/rechazados. */
+  facturado_neto: Record<string, string | number>;
+  cobertura: { exigibles: number; con_xml: number; con_cdr: number; con_pdf: number };
 }
 
 export interface ApiArchivo {
@@ -283,8 +294,16 @@ export interface FiltrosApi {
   tipo_documento?: string;
   serie?: string;
   q?: string;
+  n_sap?: string;
+  check_sap?: boolean;
+  moneda?: string;
+  respaldo?: "sin_xml" | "sin_cdr" | "completo";
+  orden?: "fecha" | "numero" | "cliente" | "importe";
+  direccion?: "asc" | "desc";
   limit?: number;
   offset?: number;
+  /** Incluir `total` en la respuesta (el servidor cuenta; pídelo solo cuando haga falta). */
+  contar?: boolean;
 }
 
 function paramsDe(filtros: FiltrosApi): string {
@@ -302,6 +321,18 @@ export async function apiComprobantes(
   filtros: FiltrosApi = {},
 ): Promise<ApiPagina> {
   return pedir<ApiPagina>(`/api/v1/companies/${ruc}/comprobantes${paramsDe(filtros)}`, token);
+}
+
+/** Indicadores (estados, facturado neto, cobertura de respaldo) del conjunto filtrado. */
+export async function apiResumen(
+  token: string,
+  ruc: string,
+  filtros: FiltrosApi = {},
+): Promise<ApiResumen> {
+  return pedir<ApiResumen>(
+    `/api/v1/companies/${ruc}/comprobantes/resumen${paramsDe(filtros)}`,
+    token,
+  );
 }
 
 export async function apiDetalle(token: string, id: string): Promise<ApiDetalle> {
