@@ -36,9 +36,11 @@ import {
   consultaDeResumen,
   hayFiltrosActivos,
   metricasDeResumen,
+  sapVigente,
   type CampoOrden,
   type Orden,
 } from "@/lib/filtros";
+import { extraerNumeroSap } from "@/lib/sap";
 import { formatearEntero } from "@/lib/format";
 import { MAX_COMPROBANTES_LOTE, construirLoteRespaldo } from "@/lib/lote";
 import { descargarBlob, descargarExcel, TIPO_ZIP } from "@/lib/exportar";
@@ -111,6 +113,7 @@ export function usePortal(token: string | null) {
   const [resumen, setResumen] = useState<ResumenCargado | null>(null);
   const [errorResumen, setErrorResumen] = useState<string | null>(null);
   const [checksPendientes, setChecksPendientes] = useState<Record<string, boolean>>({});
+  const [sapPendientes, setSapPendientes] = useState<Record<string, string>>({});
   const [seleccionMapa, setSeleccionMapa] = useState<Map<string, Comprobante>>(() => new Map());
 
   const [detalleId, setDetalleId] = useState<string | null>(null);
@@ -449,6 +452,38 @@ export function usePortal(token: string | null) {
     [token, items, seleccionMapa, detalle, checksPendientes],
   );
 
+  /** EXTRACCIÓN SIMULADA del N° de SAP: calcula un número, marca verificado y lo guarda.
+   *  La consulta real a SAP está pendiente; ver `lib/sap.ts`. */
+  const extraerSap = useCallback(
+    async (id: string) => {
+      const original = items.find((c) => c.id === id) ?? seleccionMapa.get(id) ?? detalle ?? undefined;
+      if (!token || !original || original.id !== id) return;
+      const numero = extraerNumeroSap(original.numero);
+      const checkAnterior = checkVigente(original, checksPendientes);
+      const sapAnterior = sapVigente(original, sapPendientes);
+      setChecksPendientes((previos) => ({ ...previos, [id]: true }));
+      setSapPendientes((previos) => ({ ...previos, [id]: numero }));
+      try {
+        await apiActualizarCheckSap(token, id, true, numero);
+        // Lo guardado cambió: las páginas en caché ya no lo reflejan.
+        cachePaginas.current.clear();
+        aviso.ok(`N° de SAP extraído: ${numero}`, "Marcado como verificado en SAP (simulado).");
+      } catch (error) {
+        setChecksPendientes((previos) => ({ ...previos, [id]: checkAnterior }));
+        setSapPendientes((previos) => ({ ...previos, [id]: sapAnterior }));
+        aviso.error(
+          error instanceof ApiError && error.status === 403
+            ? "Sin permiso para guardar el N° de SAP"
+            : "No se guardó el N° de SAP",
+          error instanceof ApiError && error.status === 403
+            ? "Tu rol en esta empresa es de solo lectura."
+            : mensajeDe(error, "Inténtalo de nuevo."),
+        );
+      }
+    },
+    [token, items, seleccionMapa, detalle, checksPendientes, sapPendientes],
+  );
+
   const abrirDetalle = useCallback((comprobante: Comprobante) => {
     setDetalleBase(comprobante);
     setDetalleId(comprobante.id);
@@ -615,7 +650,11 @@ export function usePortal(token: string | null) {
         return;
       }
       const nombre = descargarExcel(
-        conjunto.map((c) => ({ ...c, checkSap: checkVigente(c, checksPendientes) })),
+        conjunto.map((c) => ({
+      ...c,
+      checkSap: checkVigente(c, checksPendientes),
+      numeroSap: sapVigente(c, sapPendientes),
+    })),
         empresa,
       );
       aviso.ok(
@@ -629,7 +668,7 @@ export function usePortal(token: string | null) {
     } finally {
       setExportando(false);
     }
-  }, [empresa, exportando, seleccion, traerFiltrados, checksPendientes]);
+  }, [empresa, exportando, seleccion, traerFiltrados, checksPendientes, sapPendientes]);
 
   const generarLote = useCallback(async () => {
     if (!token || !empresa || generandoLote) return;
@@ -747,6 +786,8 @@ export function usePortal(token: string | null) {
     descargar,
     consultarCdr,
     alternarCheckSap,
+    extraerSap,
+    sapPendientes,
     sincronizarPendientes,
     importarXmlDeComprobante,
     cargarArchivos,

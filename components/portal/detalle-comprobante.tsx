@@ -35,12 +35,14 @@ interface Props {
   cargandoDetalle: boolean;
   puedeOperar: boolean;
   checkSap: boolean;
+  numeroSap: string;
   descargando: Set<string>;
   consultando: boolean;
   onCerrar: () => void;
   onDescargar: (c: Comprobante, tipo: "pdf" | "xml" | "cdr") => void;
   onConsultarCdr: (c: Comprobante) => void;
   onCheckSap: (id: string) => void;
+  onExtraerSap: (id: string) => void;
   onImportarXml: (archivo: File) => void;
   onAbrirImportarCdr: () => void;
   cargarArchivos: (c: Comprobante) => Promise<ArchivoGuardado[]>;
@@ -60,14 +62,19 @@ function Resumen({
   c,
   empresa,
   checkSap,
+  numeroSap,
   puedeOperar,
   onCheckSap,
+  onExtraerSap,
 }: {
   c: Comprobante;
   empresa: Empresa | null;
   checkSap: boolean;
+  /** Valor vigente del N° de SAP (con el cambio optimista pendiente aplicado). */
+  numeroSap: string;
   puedeOperar: boolean;
   onCheckSap: (id: string) => void;
+  onExtraerSap: (id: string) => void;
 }) {
   return (
     <div className="space-y-6 p-5">
@@ -86,7 +93,6 @@ function Resumen({
         </Dato>
         <Dato etiqueta="Forma de pago">{c.formaPago ?? "—"}</Dato>
         <Dato etiqueta="Moneda">{c.moneda === "USD" ? "Dólares (USD)" : "Soles (PEN)"}</Dato>
-        <Dato etiqueta="Orden de compra">{c.ordenCompra || "—"}</Dato>
       </dl>
 
       <div className="rounded-xl border border-line">
@@ -123,9 +129,16 @@ function Resumen({
             Verificado en SAP
           </label>
           <span className="font-mono text-[12.5px] text-fg-3">
-            {c.numeroSap ? `N° ${c.numeroSap}` : "Sin N° SAP"}
+            {numeroSap ? `N° de SAP: ${numeroSap}` : "Sin N° de SAP"}
           </span>
         </div>
+        {puedeOperar && (
+          <div className="mt-3">
+            <Boton tamano="sm" variante="fantasma" onClick={() => onExtraerSap(c.id)}>
+              Extraer N° de SAP
+            </Boton>
+          </div>
+        )}
         {!puedeOperar && (
           <p className="mt-2 text-[12px] text-fg-4">Tu rol es de solo lectura en esta empresa.</p>
         )}
@@ -536,7 +549,7 @@ function VistaPdf({
 }
 
 export function DetalleComprobante(props: Props) {
-  const { comprobante: c, empresa, cargandoDetalle, puedeOperar, checkSap, onCerrar } = props;
+  const { comprobante: c, empresa, cargandoDetalle, puedeOperar, checkSap, numeroSap, onCerrar } = props;
   const [pestana, setPestana] = useState<Pestana>("resumen");
 
   // Cada comprobante empieza en «Resumen».
@@ -628,8 +641,10 @@ export function DetalleComprobante(props: Props) {
                 c={c}
                 empresa={empresa}
                 checkSap={checkSap}
+                numeroSap={numeroSap}
                 puedeOperar={puedeOperar}
                 onCheckSap={props.onCheckSap}
+                onExtraerSap={props.onExtraerSap}
               />
             )}
             {pestana === "items" && (

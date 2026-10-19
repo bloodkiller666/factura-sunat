@@ -510,11 +510,16 @@ export async function apiActualizarCheckSap(
   token: string,
   id: string,
   checkSap: boolean,
+  nSap?: string,
 ): Promise<ApiComprobante> {
   return pedir<ApiComprobante>(`/api/v1/comprobantes/${id}`, token, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ check_sap: checkSap }),
+    body: JSON.stringify(
+      nSap === undefined
+        ? { check_sap: checkSap }
+        : { check_sap: checkSap, n_sap: nSap },
+    ),
   });
 }
 

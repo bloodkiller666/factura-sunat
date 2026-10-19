@@ -22,7 +22,7 @@ import { EncabezadoOrden } from "@/components/ui/encabezado-orden";
 import { ChipRespaldo, EstadoPill } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
 import { Esqueleto, EstadoVacio } from "@/components/ui/varios";
-import { checkVigente, type CampoOrden, type Orden } from "@/lib/filtros";
+import { checkVigente, sapVigente, type CampoOrden, type Orden } from "@/lib/filtros";
 import { formatearEntero, formatearFecha, formatearMoneda } from "@/lib/format";
 import type { Comprobante } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -44,6 +44,7 @@ interface Props {
   hayFiltros: boolean;
   seleccionados: Set<string>;
   checksPendientes: Record<string, boolean>;
+sapPendientes: Record<string, string>;
   descargando: Set<string>;
   consultando: Set<string>;
   puedeOperar: boolean;
@@ -174,6 +175,7 @@ export function TablaComprobantes({
   onDescargar,
   onConsultarCdr,
   onCheckSap,
+  sapPendientes,
   onExportarExcel,
   onLote,
   onLimpiarFiltros,
@@ -254,7 +256,7 @@ export function TablaComprobantes({
                 Respaldo
               </th>
               <th scope="col" className={cn(TH, "hidden xl:table-cell")}>
-                SAP
+                N° de SAP
               </th>
               <th scope="col" className="w-[84px] px-3 py-2.5">
                 <span className="sr-only">Acciones</span>
@@ -343,7 +345,7 @@ export function TablaComprobantes({
                           disabled={!puedeOperar}
                         />
                         <span className="font-mono text-[12px] text-fg-3">
-                          {c.numeroSap || (checkSap ? "Verificado" : "—")}
+                          {sapVigente(c, sapPendientes) || (checkSap ? "Verificado" : "—")}
                         </span>
                       </label>
                     </td>

@@ -61,7 +61,7 @@ function chipsActivos(filtros: FiltrosState): Chip[] {
   if (filtros.numeroSap.trim()) {
     chips.push({
       clave: "numeroSap",
-      texto: `SAP ${filtros.numeroSap.trim()}`,
+      texto: `N° de SAP ${filtros.numeroSap.trim()}`,
       quitar: { numeroSap: "" },
     });
   }
@@ -90,7 +90,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
           <CampoBusqueda
             value={filtros.q}
             onChange={(e) => onCambiar({ q: e.target.value })}
-            placeholder="Buscar por N°, cliente, RUC u orden de compra"
+            placeholder="Buscar por N°, cliente o RUC"
             aria-label="Buscar comprobantes"
             aria-describedby={busquedaCorta ? "ayuda-busqueda" : undefined}
           />
@@ -127,18 +127,6 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="Anulado">Anulado</option>
           </Seleccion>
         </div>
-        <div className="w-[168px]">
-          <Seleccion
-            aria-label="Respaldo"
-            value={filtros.respaldo}
-            onChange={(e) => onCambiar({ respaldo: e.target.value as FiltrosState["respaldo"] })}
-          >
-            <option value="TODOS">Todo respaldo</option>
-            <option value="SIN_XML">Sin XML</option>
-            <option value="SIN_CDR">Sin CDR</option>
-            <option value="COMPLETO">Con XML y CDR</option>
-          </Seleccion>
-        </div>
         <Boton
           icono={SlidersHorizontal}
           onClick={() => setMasAbierto((previo) => !previo)}
@@ -161,7 +149,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
 
       {masAbierto && (
         <div className="grid gap-3 rounded-xl border border-line bg-surface p-3 shadow-sm sm:grid-cols-2">
-          <Grupo etiqueta="N° SAP">
+          <Grupo etiqueta="N° de SAP">
             <Campo
               value={filtros.numeroSap}
               onChange={(e) => onCambiar({ numeroSap: e.target.value })}

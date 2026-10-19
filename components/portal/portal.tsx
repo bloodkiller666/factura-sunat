@@ -28,7 +28,7 @@ import { Boton } from "@/components/ui/boton";
 import { Etiqueta } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
 import { formatearEntero } from "@/lib/format";
-import { checkVigente } from "@/lib/filtros";
+import { checkVigente, sapVigente } from "@/lib/filtros";
 
 interface Props {
   token: string;
@@ -59,6 +59,7 @@ export function Portal({ token, email, onSalir }: Props) {
   }, [vista, rucActivo]);
 
   const detalleCheck = p.detalle ? checkVigente(p.detalle, p.checksPendientes) : false;
+const detalleSap = p.detalle ? sapVigente(p.detalle, p.sapPendientes) : "";
   // Lo que exportan «Reporte Excel» y «Lote»: la selección o, sin ella, todo lo filtrado.
   const cuentaExportable =
     p.seleccion.length > 0
@@ -227,6 +228,7 @@ export function Portal({ token, email, onSalir }: Props) {
                 hayFiltros={p.hayFiltros}
                 seleccionados={p.seleccionados}
                 checksPendientes={p.checksPendientes}
+                sapPendientes={p.sapPendientes}
                 descargando={p.descargando}
                 consultando={p.consultando}
                 puedeOperar={p.puedeOperar}
@@ -277,12 +279,14 @@ export function Portal({ token, email, onSalir }: Props) {
         cargandoDetalle={p.cargandoDetalle}
         puedeOperar={p.puedeOperar}
         checkSap={detalleCheck}
+        numeroSap={detalleSap}
         descargando={p.descargando}
         consultando={p.detalle ? p.consultando.has(p.detalle.id) : false}
         onCerrar={p.cerrarDetalle}
         onDescargar={(c, tipo) => void p.descargar(c, tipo)}
         onConsultarCdr={(c) => void p.consultarCdr(c)}
         onCheckSap={(id) => void p.alternarCheckSap(id)}
+        onExtraerSap={(id) => void p.extraerSap(id)}
         onImportarXml={(archivo) => void p.importarXmlDeComprobante(archivo)}
         onAbrirImportarCdr={() => {
           p.cerrarDetalle();

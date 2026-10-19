@@ -35,6 +35,14 @@ export function checkVigente(
   return pendientes[comprobante.id] ?? comprobante.checkSap;
 }
 
+/** Valor vigente del N° de SAP: el cambio optimista pendiente manda sobre el guardado. */
+export function sapVigente(
+  comprobante: Comprobante,
+  pendientes: Record<string, string>,
+): string {
+  return pendientes[comprobante.id] ?? comprobante.numeroSap;
+}
+
 /* ------------------------------ Orden ------------------------------ */
 
 export type CampoOrden = "fecha" | "numero" | "cliente" | "importe";
