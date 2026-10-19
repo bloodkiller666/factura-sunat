@@ -47,8 +47,13 @@ o el navegador bloqueará la descarga de XML/CDR con URL firmada.
   solo lectura, idempotente, y guarda además el archivo original de SUNAT como evidencia.
 - **Importar**: XML/ZIP de comprobantes (completan los registros que vinieron de SIRE),
   ZIP de CDR (`R-RUC-tipo-serie-número`) y análisis de columnas de un Excel.
+- **Traer XML y CDR** (Bizlinks): recupera del OSE los archivos firmados que falten de los
+  comprobantes emitidos y los archiva con su hash. Respeta el rango de fechas del filtro, se
+  puede repetir sin duplicar nada y muestra, comprobante por comprobante, qué se archivó y
+  por qué se detuvo el lote (credenciales, bloqueo del portal o cuota diaria).
 - **Consultar CDR** de un comprobante en SUNAT. Si SUNAT responde que no lo reconoce
-  (emitido por otro sistema), el CDR hay que importarlo desde ese sistema.
+  (emitido por otro sistema), el CDR hay que importarlo desde ese sistema o traerlo de
+  Bizlinks.
 - **Exportar**: reporte Excel y **lote de respaldo ZIP** con los XML, CDR y PDF reales de
   cada comprobante más `LEEME.txt` y `manifiesto.csv` (SHA-256).
 - **Evidencias SIRE**: lista de los archivos originales de SUNAT guardados, con su hash;
@@ -75,7 +80,7 @@ app/               página única y layout (tema sin parpadeo)
 components/ui/     primitivas: botón, diálogo (<dialog> nativo), menú, campos, avisos…
 components/portal/ pantallas: barra lateral, tabla, detalle, diálogos, evidencias, login
 components/portal/use-portal.ts   estado y acciones del portal
-lib/               API, mapeo, filtros/métricas, lote de respaldo, SIRE por meses, exportación
+lib/               API, mapeo, filtros/métricas, lote de respaldo, SIRE por meses, Bizlinks, exportación
 ```
 
 La lógica de `lib/` es pura y está cubierta por pruebas (`lib/*.test.ts`).

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ChevronDown,
+  CloudDownload,
   Download,
   FileArchive,
   FileSearch,
@@ -16,6 +17,7 @@ import { ContenidoLateral, PanelLateralMovil, type Vista } from "@/components/po
 import { BarraFiltros } from "@/components/portal/barra-filtros";
 import { DetalleComprobante } from "@/components/portal/detalle-comprobante";
 import { DialogoImportar, type PestanaImportar } from "@/components/portal/dialogo-importar";
+import { DialogoRespaldos } from "@/components/portal/dialogo-respaldos";
 import { DialogoSire } from "@/components/portal/dialogo-sire";
 import { Indicadores } from "@/components/portal/indicadores";
 import { Marca } from "@/components/portal/marca";
@@ -39,6 +41,7 @@ export function Portal({ token, email, onSalir }: Props) {
   const [vista, setVista] = useState<Vista>("comprobantes");
   const [menuMovil, setMenuMovil] = useState(false);
   const [sireAbierto, setSireAbierto] = useState(false);
+  const [respaldosAbierto, setRespaldosAbierto] = useState(false);
   const [importar, setImportar] = useState<{ abierto: boolean; pestana: PestanaImportar }>({
     abierto: false,
     pestana: "comprobantes",
@@ -133,6 +136,11 @@ export function Portal({ token, email, onSalir }: Props) {
                       onClick={() => void p.sincronizarPendientes()}
                     >
                       Consultar pendientes
+                    </Boton>
+                  )}
+                  {p.puedeOperar && (
+                    <Boton icono={CloudDownload} onClick={() => setRespaldosAbierto(true)}>
+                      Traer XML y CDR
                     </Boton>
                   )}
                   <Menu
@@ -282,6 +290,15 @@ export function Portal({ token, email, onSalir }: Props) {
         }}
         cargarArchivos={p.cargarArchivos}
         cargarPdf={p.cargarPdf}
+      />
+
+      <DialogoRespaldos
+        abierto={respaldosAbierto}
+        token={token}
+        ruc={rucActivo}
+        filtros={p.filtros}
+        onCerrar={() => setRespaldosAbierto(false)}
+        onRecuperado={p.recargar}
       />
 
       <DialogoSire

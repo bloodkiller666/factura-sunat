@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
   apiActualizarCheckSap,
+  apiBizlinksRespaldos,
   apiDescargarArchivo,
   apiDescargarTipo,
   apiImportarCdr,
@@ -242,6 +243,54 @@ describe("llamadas a la API", () => {
       periodo: "202609",
       ticket: "20260300000071",
     });
+  });
+
+  it("apiBizlinksRespaldos llama al endpoint de respaldos con límite y fechas", async () => {
+    fetchMock.mockResolvedValueOnce(
+      respuesta({
+        ruc: "20514831620",
+        canal: "portal",
+        revisados: 1,
+        completos: 1,
+        parciales: 0,
+        sin_resultado: 0,
+        fallidos: 0,
+        xml_guardados: 1,
+        cdr_guardados: 1,
+        detenido_por: null,
+        mensaje: null,
+        cuota_restante: 49,
+        reanuda_at: null,
+        items: [],
+        consultado_at: "2026-10-19T15:48:05Z",
+      }),
+    );
+
+    const r = await apiBizlinksRespaldos("T", "20514831620", {
+      limit: 5,
+      desde: "2026-09-01",
+      hasta: "2026-09-30",
+    });
+
+    expect(r.cdr_guardados).toBe(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    const texto = String(url);
+    expect(texto).toContain("/api/v1/companies/20514831620/bizlinks/respaldos/sync?");
+    expect(texto).toContain("limit=5");
+    expect(texto).toContain("fecha_desde=2026-09-01");
+    expect(texto).toContain("fecha_hasta=2026-09-30");
+    expect(init.method).toBe("POST");
+    expect(init.headers.Authorization).toBe("Bearer T");
+  });
+
+  it("apiBizlinksRespaldos sin fechas no envía parámetros vacíos", async () => {
+    fetchMock.mockResolvedValueOnce(respuesta({ revisados: 0, items: [] }));
+
+    await apiBizlinksRespaldos("T", "205");
+
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      "/api/v1/companies/205/bizlinks/respaldos/sync",
+    );
   });
 
   it("apiDescargarTipo explica qué hacer cuando no hay XML archivado", async () => {

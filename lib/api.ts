@@ -206,7 +206,49 @@ export interface ApiSireSync {
   anulados: number;
   omitidos: Record<string, number>;
   evidencias: ApiArchivo[];
+  /** Solo si se pidió `traer_respaldos`: resultado de la consulta a Bizlinks. */
+  respaldos?: ApiBizlinksSync | null;
+  respaldos_error?: string | null;
   mensaje: string;
+}
+
+/* ------------------------------------------------------------------ *
+ * Bizlinks (OSE): XML firmado y CDR
+ * ------------------------------------------------------------------ */
+
+export type ApiResultadoRespaldo = "completo" | "parcial" | "sin_resultado" | "error";
+
+export interface ApiBizlinksItem {
+  comprobante_id: string;
+  numero: string | null;
+  resultado: ApiResultadoRespaldo;
+  xml_guardado: boolean;
+  cdr_guardado: boolean;
+  items_cargados: number;
+  mensaje: string | null;
+  error_code: string | null;
+}
+
+export interface ApiBizlinksSync {
+  ruc: string;
+  /** `api` es el web service del OSE; `portal`, la consulta anónima pública. */
+  canal: "api" | "portal";
+  revisados: number;
+  completos: number;
+  parciales: number;
+  sin_resultado: number;
+  fallidos: number;
+  xml_guardados: number;
+  cdr_guardados: number;
+  /** Motivo por el que el lote se detuvo (bloqueo, cuota, credenciales…). */
+  detenido_por: string | null;
+  mensaje: string | null;
+  /** Consultas que quedan hoy (solo canal `portal`). */
+  cuota_restante: number | null;
+  /** Cuándo se pueden reanudar las consultas tras un bloqueo. */
+  reanuda_at: string | null;
+  items: ApiBizlinksItem[];
+  consultado_at: string;
 }
 
 /* ------------------------------------------------------------------ *
@@ -508,6 +550,26 @@ export async function apiSireSync(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(ticket ? { periodo, ticket } : { periodo }),
   });
+}
+
+/**
+ * Recupera desde Bizlinks (el OSE) el XML firmado y el CDR que falten de los comprobantes
+ * emitidos (admin/emisor). Es idempotente: lo ya archivado no se vuelve a pedir.
+ */
+export async function apiBizlinksRespaldos(
+  token: string,
+  ruc: string,
+  opciones: { limit?: number; desde?: string; hasta?: string } = {},
+): Promise<ApiBizlinksSync> {
+  return pedir<ApiBizlinksSync>(
+    `/api/v1/companies/${ruc}/bizlinks/respaldos/sync${paramsDe({
+      limit: opciones.limit,
+      fecha_desde: opciones.desde,
+      fecha_hasta: opciones.hasta,
+    })}`,
+    token,
+    { method: "POST" },
+  );
 }
 
 /** ZIP originales de SIRE archivados como evidencia de auditoría. */
