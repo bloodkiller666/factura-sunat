@@ -58,7 +58,6 @@ export interface ApiComprobante {
   fuente?: "xml" | "sire";
   tiene_xml?: boolean;
   tiene_cdr?: boolean;
-  tiene_pdf?: boolean;
   moneda: string;
   monto_total: string | null;
   estado: string;
@@ -66,7 +65,6 @@ export interface ApiComprobante {
   sunat_ambiente: string;
   n_sap: string | null;
   orden_compra: string | null;
-  check_sap: boolean;
   cdr_codigo: string | null;
   cdr_descripcion: string | null;
 }
@@ -105,7 +103,7 @@ export interface ApiResumen {
   por_estado: Record<string, number>;
   /** Neto por moneda (decimales como texto): notas de crédito restan; sin anulados/rechazados. */
   facturado_neto: Record<string, string | number>;
-  cobertura: { exigibles: number; con_xml: number; con_cdr: number; con_pdf: number };
+  cobertura: { exigibles: number; con_xml: number; con_cdr: number };
 }
 
 export interface ApiArchivo {
@@ -299,26 +297,6 @@ async function pedir<T>(ruta: string, token: string, init: RequestInit = {}): Pr
   return (await respuesta.json()) as T;
 }
 
-/** Descarga binaria autenticada: devuelve el blob y el nombre de archivo. */
-async function pedirBlob(
-  ruta: string,
-  token: string,
-  nombrePorDefecto: string,
-): Promise<{ blob: Blob; nombre: string }> {
-  let respuesta: Response;
-  try {
-    respuesta = await fetch(`${API_BASE}${ruta}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch {
-    throw new ApiError("No se pudo conectar con el servidor.", "sin_conexion", 0);
-  }
-  if (!respuesta.ok) throw await errorDeRespuesta(respuesta);
-  const disposicion = respuesta.headers.get("content-disposition") ?? "";
-  const coincidencia = /filename="?([^";]+)"?/i.exec(disposicion);
-  return { blob: await respuesta.blob(), nombre: coincidencia?.[1] ?? nombrePorDefecto };
-}
-
 /* ------------------------------------------------------------------ *
  * Llamadas a la API
  * ------------------------------------------------------------------ */
@@ -337,7 +315,8 @@ export interface FiltrosApi {
   serie?: string;
   q?: string;
   n_sap?: string;
-  check_sap?: boolean;
+  vencimiento_desde?: string;
+  vencimiento_hasta?: string;
   moneda?: string;
   respaldo?: "sin_xml" | "sin_cdr" | "completo";
   orden?: "fecha" | "numero" | "cliente" | "importe";
@@ -436,15 +415,6 @@ export async function apiDescargarTipo(
   return apiDescargarArchivo(token, archivo);
 }
 
-/** Representación impresa en PDF, generada por el backend. */
-export async function apiPdf(
-  token: string,
-  id: string,
-  nombre: string,
-): Promise<{ blob: Blob; nombre: string }> {
-  return pedirBlob(`/api/v1/comprobantes/${id}/pdf`, token, nombre);
-}
-
 export async function apiImportarXml(
   token: string,
   ruc: string,
@@ -506,20 +476,33 @@ export async function apiSubirArchivo(
   });
 }
 
-export async function apiActualizarCheckSap(
+/** Una fila del Excel de N° SAP tal como viene (el servidor la normaliza). */
+export interface FilaSapApi {
+  documento: string;
+  ruc?: string;
+  n_sap: string;
+}
+
+export interface ApiResultadoSap {
+  ruc: string;
+  recibidas: number;
+  actualizadas: number;
+  /** Documentos que no están en el portal: se omiten sin error. */
+  no_encontradas: number;
+  /** Filas ilegibles (sin documento o sin N° SAP). */
+  invalidas: number;
+}
+
+/** Asigna N° SAP en lote a los comprobantes ya registrados (admin/emisor). */
+export async function apiImportarSap(
   token: string,
-  id: string,
-  checkSap: boolean,
-  nSap?: string,
-): Promise<ApiComprobante> {
-  return pedir<ApiComprobante>(`/api/v1/comprobantes/${id}`, token, {
-    method: "PATCH",
+  ruc: string,
+  filas: FilaSapApi[],
+): Promise<ApiResultadoSap> {
+  return pedir<ApiResultadoSap>(`/api/v1/companies/${ruc}/comprobantes/import-sap`, token, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(
-      nSap === undefined
-        ? { check_sap: checkSap }
-        : { check_sap: checkSap, n_sap: nSap },
-    ),
+    body: JSON.stringify({ filas }),
   });
 }
 
@@ -666,7 +649,6 @@ export function mapComprobante(api: ApiComprobante): Comprobante {
     estadoSunat: ESTADOS_POR_CODIGO[api.estado] ?? "Pendiente",
     numeroSap: api.n_sap ?? "",
     ordenCompra: api.orden_compra ?? "",
-    checkSap: api.check_sap,
     formaPago: api.forma_pago ?? null,
     moneda: api.moneda || "PEN",
     fuente: api.fuente ?? "xml",
@@ -676,7 +658,6 @@ export function mapComprobante(api: ApiComprobante): Comprobante {
     cdrDescripcion: api.cdr_descripcion,
     tieneXml: api.tiene_xml ?? false,
     tieneCdr: api.tiene_cdr ?? false,
-    tienePdf: api.tiene_pdf ?? false,
   };
 }
 
@@ -697,7 +678,6 @@ export function conDetalle(comprobante: Comprobante, api: ApiDetalle): Comproban
   const respaldos = {
     tieneXml: api.tiene_xml ?? comprobante.tieneXml,
     tieneCdr: api.tiene_cdr ?? comprobante.tieneCdr,
-    tienePdf: api.tiene_pdf ?? comprobante.tienePdf,
   };
   if (items.length === 0) return { ...comprobante, ...respaldos };
 

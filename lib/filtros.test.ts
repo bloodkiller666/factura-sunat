@@ -4,7 +4,6 @@ import {
   FILTROS_INICIALES,
   ORDEN_INICIAL,
   alternarOrden,
-  checkVigente,
   claveDeConjunto,
   claveDeFiltros,
   consultaDePagina,
@@ -14,7 +13,6 @@ import {
   mesesEntre,
   metricasDeResumen,
 } from "./filtros";
-import { comprobante } from "./pruebas-utiles";
 
 const con = (parcial: Partial<typeof FILTROS_INICIALES>) => ({ ...FILTROS_INICIALES, ...parcial });
 
@@ -27,14 +25,7 @@ describe("hayFiltrosActivos", () => {
     expect(hayFiltrosActivos(con({ q: "abc" }))).toBe(true);
     expect(hayFiltrosActivos(con({ desde: "2026-09-01" }))).toBe(true);
     expect(hayFiltrosActivos(con({ respaldo: "SIN_XML" }))).toBe(true);
-  });
-});
-
-describe("checkVigente", () => {
-  it("el cambio optimista pendiente manda sobre lo guardado", () => {
-    const c = comprobante({ checkSap: false });
-    expect(checkVigente(c, {})).toBe(false);
-    expect(checkVigente(c, { [c.id]: true })).toBe(true);
+    expect(hayFiltrosActivos(con({ venceHasta: "2026-10-18" }))).toBe(true);
   });
 });
 
@@ -68,9 +59,10 @@ describe("filtrosParaApi", () => {
           estadoSunat: "Aprobado",
           respaldo: "SIN_CDR",
           numeroSap: " 4500 ",
-          checkSap: "SIN",
           desde: "2026-09-01",
           hasta: "2026-09-30",
+          venceDesde: "2026-10-01",
+          venceHasta: "2026-10-31",
         }),
       ),
     ).toEqual({
@@ -79,14 +71,18 @@ describe("filtrosParaApi", () => {
       estado: "aprobado",
       respaldo: "sin_cdr",
       n_sap: "4500",
-      check_sap: false,
       fecha_desde: "2026-09-01",
       fecha_hasta: "2026-09-30",
+      vencimiento_desde: "2026-10-01",
+      vencimiento_hasta: "2026-10-31",
     });
   });
 
-  it("Check SAP «marcados» se envía como verdadero", () => {
-    expect(filtrosParaApi(con({ checkSap: "CON" })).check_sap).toBe(true);
+  it("el vencimiento acepta rangos abiertos y no afecta a los indicadores", () => {
+    expect(filtrosParaApi(con({ venceHasta: "2026-10-18" }))).toEqual({
+      vencimiento_hasta: "2026-10-18",
+    });
+    expect(consultaDeResumen(con({ venceDesde: "2026-10-01" }))).toEqual({});
   });
 
   it("una búsqueda de un solo carácter no se envía (el servidor la rechazaría)", () => {
@@ -169,7 +165,7 @@ describe("metricasDeResumen", () => {
     total: 720,
     por_estado: { pendiente: 1, aprobado: 686, rechazado: 0, anulado: 33 },
     facturado_neto: { PEN: "44224155.32", USD: "2971065.88" },
-    cobertura: { exigibles: 687, con_xml: 10, con_cdr: 4, con_pdf: 3 },
+    cobertura: { exigibles: 687, con_xml: 10, con_cdr: 4 },
   };
 
   it("mapea estados, cobertura y facturado por moneda", () => {
@@ -184,7 +180,7 @@ describe("metricasDeResumen", () => {
       facturadoUsd: 2971065.88,
       etiquetaRango: "Setiembre 2026",
     });
-    expect(m.cobertura).toEqual({ total: 687, conXml: 10, conCdr: 4, conPdf: 3 });
+    expect(m.cobertura).toEqual({ total: 687, conXml: 10, conCdr: 4 });
   });
 
   it("una moneda ausente cuenta como cero", () => {

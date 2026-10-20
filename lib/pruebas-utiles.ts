@@ -21,7 +21,6 @@ export function comprobante(parcial: Partial<Comprobante> = {}): Comprobante {
     estadoSunat: "Aprobado",
     numeroSap: "",
     ordenCompra: "",
-    checkSap: false,
     formaPago: null,
     moneda: "PEN",
     fuente: "sire",
@@ -31,7 +30,6 @@ export function comprobante(parcial: Partial<Comprobante> = {}): Comprobante {
     cdrDescripcion: null,
     tieneXml: false,
     tieneCdr: false,
-    tienePdf: false,
     ...parcial,
   };
 }

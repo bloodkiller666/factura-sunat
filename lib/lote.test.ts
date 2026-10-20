@@ -30,12 +30,11 @@ function archivo(tipo: ApiArchivo["tipo"], nombre: string): ApiArchivo {
 
 const texto = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 
-/** Dependencias simuladas: el servidor tiene lo indicado y el PDF se genera siempre. */
+/** Dependencias simuladas: el servidor tiene lo indicado. */
 function deps(archivosPorComprobante: Record<string, ApiArchivo[]>, extra: Partial<DependenciasLote> = {}): DependenciasLote {
   return {
     listarArchivos: async (_t, id) => archivosPorComprobante[id] ?? [],
     descargar: async (_t, a) => ({ blob: new Blob([`contenido de ${a.nombre}`]), nombre: a.nombre }),
-    pdf: async (_t, _id, nombre) => ({ blob: new Blob(["%PDF-1.4"]), nombre }),
     ...extra,
   };
 }
@@ -56,12 +55,11 @@ describe("construirLoteRespaldo", () => {
       }),
     );
 
-    expect(resultado).toMatchObject({ comprobantes: 1, archivos: 3, faltantes: [] });
+    expect(resultado).toMatchObject({ comprobantes: 1, archivos: 2, faltantes: [] });
     expect(resultado.nombre).toBe("respaldo-comprobantes-20514831620-1.zip");
 
     const zip = await leerZip(resultado.zip);
     expect([...zip.keys()].sort()).toEqual([
-      "20514831620-01-F001-00000001/20514831620-01-F001-00000001.pdf",
       "20514831620-01-F001-00000001/20514831620-01-F001-00000001.xml",
       "20514831620-01-F001-00000001/R-20514831620-01-F001-00000001.zip",
       "LEEME.txt",
@@ -73,10 +71,9 @@ describe("construirLoteRespaldo", () => {
 
     const filas = texto(zip.get("manifiesto.csv")!).split("\r\n");
     expect(filas[0]).toBe("comprobante,archivo,tipo,bytes,sha256");
-    expect(filas).toHaveLength(4);
-    // El hash del PDF "%PDF-1.4" (verificable con cualquier herramienta SHA-256).
-    const pdf = filas.find((f) => f.includes(",PDF,"))!;
-    expect(pdf.split(",")[4]).toMatch(/^[0-9a-f]{64}$/);
+    expect(filas).toHaveLength(3);
+    // Cada archivo lleva su SHA-256 (verificable con cualquier herramienta).
+    expect(filas[1].split(",")[4]).toMatch(/^[0-9a-f]{64}$/);
     expect(texto(zip.get("LEEME.txt")!)).toContain("Todos los comprobantes del lote tienen XML y CDR");
   });
 
@@ -103,7 +100,7 @@ describe("construirLoteRespaldo", () => {
     expect(leeme).toContain("FF01-00000010: falta CDR");
   });
 
-  it("si falla el PDF o la red de un comprobante, el lote sigue con los demás", async () => {
+  it("si la red de un comprobante falla, el lote sigue con los demás", async () => {
     const a = comprobante({ numero: "F001-00000001" });
     const b = comprobante({ numero: "F001-00000002" });
     const resultado = await construirLoteRespaldo(
@@ -114,15 +111,15 @@ describe("construirLoteRespaldo", () => {
       deps(
         { [a.id]: [archivo("xml", "a.xml"), archivo("cdr", "a.zip")], [b.id]: [archivo("xml", "b.xml"), archivo("cdr", "b.zip")] },
         {
-          pdf: async (_t, id, nombre) => {
-            if (id === a.id) throw new Error("PDF caído");
-            return { blob: new Blob(["%PDF"]), nombre };
+          descargar: async (_t, arch) => {
+            if (arch.nombre === "a.zip") throw new Error("red caída");
+            return { blob: new Blob([arch.nombre]), nombre: arch.nombre };
           },
         },
       ),
     );
-    expect(resultado.faltantes).toEqual([{ numero: "F001-00000001", faltan: ["PDF"] }]);
-    expect(resultado.archivos).toBe(5);
+    expect(resultado.faltantes).toEqual([{ numero: "F001-00000001", faltan: ["CDR"] }]);
+    expect(resultado.archivos).toBe(3);
   });
 
   it("si la lista de archivos falla, el comprobante figura sin XML ni CDR", async () => {
@@ -161,6 +158,6 @@ describe("utilidades del lote", () => {
     expect(nombreLote(12, empresa)).toBe("respaldo-comprobantes-20514831620-12.zip");
     const leeme = textoLeeme(empresa, [comprobante({})], []);
     expect(leeme).toContain("RUC: 20514831620");
-    expect(leeme).toContain("copia informativa");
+    expect(leeme).toContain("manifiesto.csv");
   });
 });

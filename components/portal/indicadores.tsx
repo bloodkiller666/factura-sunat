@@ -153,13 +153,12 @@ export function Indicadores({
       </Tarjeta>
 
       {/* Respaldo */}
-      <Tarjeta titulo="Respaldo para auditoría" subtitulo="XML, CDR y PDF archivados">
+      <Tarjeta titulo="Respaldo para auditoría" subtitulo="XML y CDR archivados">
         <div className="space-y-2.5">
           {(
             [
               ["XML", cobertura.conXml],
               ["CDR", cobertura.conCdr],
-              ["PDF", cobertura.conPdf],
             ] as const
           ).map(([nombre, cantidad]) => {
             const pct = porcentaje(cantidad, cobertura.total);

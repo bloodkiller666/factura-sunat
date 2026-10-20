@@ -17,7 +17,6 @@ describe("reporte Excel", () => {
     baseImponible: 100,
     igv: 18,
     numeroSap: "4500926001",
-    checkSap: true,
     fechaVencimiento: "2026-11-04",
     formaPago: "Crédito 30 días",
   });
@@ -38,7 +37,6 @@ describe("reporte Excel", () => {
       "Total (con IGV)": 118,
       "Estado SUNAT": "Aprobado",
       "N° SAP": "4500926001",
-      "Check SAP": "Sí",
       "Forma de pago": "Crédito 30 días",
     });
   });

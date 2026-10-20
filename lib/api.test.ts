@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
-  apiActualizarCheckSap,
+  apiImportarSap,
   apiBizlinksRespaldos,
   apiDescargarArchivo,
   apiDescargarTipo,
@@ -37,7 +37,6 @@ const base: ApiComprobante = {
   sunat_ambiente: "prod",
   n_sap: null,
   orden_compra: null,
-  check_sap: false,
   cdr_codigo: null,
   cdr_descripcion: null,
 };
@@ -59,7 +58,6 @@ describe("mapComprobante", () => {
       fuente: "xml",
       tieneXml: false,
       tieneCdr: false,
-      tienePdf: false,
     });
     expect(c.cliente).toEqual({ ruc: "20987654321", razonSocial: "CLIENTE SAC" });
   });
@@ -79,7 +77,6 @@ describe("mapComprobante", () => {
       forma_pago: "Crédito 30 días",
       tiene_xml: true,
       tiene_cdr: true,
-      tiene_pdf: false,
       estado: "anulado",
     });
     expect(c).toMatchObject({
@@ -90,7 +87,6 @@ describe("mapComprobante", () => {
       formaPago: "Crédito 30 días",
       tieneXml: true,
       tieneCdr: true,
-      tienePdf: false,
       estadoSunat: "Anulado",
     });
   });
@@ -197,25 +193,27 @@ describe("llamadas a la API", () => {
     fetchMock.mockResolvedValueOnce(
       respuesta({ error: { code: "forbidden", message: "Su rol no lo permite" } }, 403),
     );
-    const error = await apiActualizarCheckSap("TOKEN", "id-1", true).catch((e) => e);
+    const error = await apiImportarSap("TOKEN", "20514831620", [
+      { documento: "F001-1", n_sap: "4500" },
+    ]).catch((e) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ code: "forbidden", status: 403, message: "Su rol no lo permite" });
     const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toContain("/api/v1/comprobantes/id-1");
+    expect(String(url)).toContain("/api/v1/companies/20514831620/comprobantes/import-sap");
     expect(init.headers.Authorization).toBe("Bearer TOKEN");
-    expect(init.method).toBe("PATCH");
-    expect(JSON.parse(init.body)).toEqual({ check_sap: true });
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ filas: [{ documento: "F001-1", n_sap: "4500" }] });
   });
 
   it("una caída de red se informa como sin_conexion", async () => {
     fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
-    const error = await apiActualizarCheckSap("T", "x", true).catch((e) => e);
+    const error = await apiImportarSap("T", "20514831620", []).catch((e) => e);
     expect(error).toMatchObject({ code: "sin_conexion", status: 0 });
   });
 
   it("un error que no es JSON (502 del proxy) usa el texto de estado", async () => {
     fetchMock.mockResolvedValueOnce(new Response("<html>Bad gateway</html>", { status: 502, statusText: "Bad Gateway" }));
-    const error = await apiActualizarCheckSap("T", "x", true).catch((e) => e);
+    const error = await apiImportarSap("T", "20514831620", []).catch((e) => e);
     expect(error).toMatchObject({ status: 502, message: "Bad Gateway" });
   });
 

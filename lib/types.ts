@@ -45,8 +45,6 @@ export interface Comprobante {
   estadoSunat: EstadoSunat;
   numeroSap: string;
   ordenCompra: string;
-  /** Marca manual del usuario: ya se verificó el comprobante en SAP. */
-  checkSap: boolean;
   /** `Contado`, `Crédito N días`…; `null` si el XML no la declara. */
   formaPago: string | null;
   /** `PEN` o `USD`: los importes no se convierten entre monedas. */
@@ -56,10 +54,9 @@ export interface Comprobante {
   nombreArchivo: string;
   cdrCodigo: string | null;
   cdrDescripcion: string | null;
-  /** Qué respaldos hay archivados en R2 para este comprobante. */
+  /** Qué respaldos (XML y CDR) hay archivados en R2 para este comprobante. */
   tieneXml: boolean;
   tieneCdr: boolean;
-  tienePdf: boolean;
 }
 
 export interface Empresa {
@@ -75,8 +72,6 @@ export interface Empresa {
 /** Filtro por cobertura de respaldo: clave para preparar una auditoría. */
 export type FiltroRespaldo = "TODOS" | "SIN_XML" | "SIN_CDR" | "COMPLETO";
 
-export type FiltroCheckSap = "TODOS" | "CON" | "SIN";
-
 export interface FiltrosState {
   /** Búsqueda por N° de documento, cliente, RUC u orden de compra. */
   q: string;
@@ -84,12 +79,14 @@ export interface FiltrosState {
   estadoSunat: EstadoSunat | "TODOS";
   respaldo: FiltroRespaldo;
   numeroSap: string;
-  checkSap: FiltroCheckSap;
   desde: string;
   hasta: string;
+  /** Rango de fecha de vencimiento (ISO `yyyy-mm-dd`, vacío = sin acotar). */
+  venceDesde: string;
+  venceHasta: string;
 }
 
-/** Archivo guardado en R2 (XML, CDR, PDF o ZIP de SIRE). */
+/** Archivo guardado en R2 (XML, CDR o ZIP de SIRE; los PDF antiguos siguen listándose). */
 export interface ArchivoGuardado {
   id: string;
   tipo: "pdf" | "xml" | "cdr" | "zip";

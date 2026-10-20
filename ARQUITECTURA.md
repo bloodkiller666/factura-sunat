@@ -10,7 +10,7 @@ electrónicos (facturas, boletas, notas de crédito y débito):
 1. Traer de SUNAT, vía **SIRE**, lo que SUNAT tiene registrado de la empresa.
 2. Completar cada comprobante con su **XML firmado** y su **CDR** (que emite otro sistema).
 3. Saber de un vistazo **qué respaldo falta** y poder entregar un **lote de auditoría**.
-4. Conciliar con SAP (Check SAP y N° SAP) y exportar a Excel.
+4. Conciliar con SAP (importando los N° SAP desde un Excel) y exportar a Excel.
 
 ## Qué es real
 
@@ -22,9 +22,8 @@ datos de ejemplo ni XML fabricados en el navegador.
 | Empresas, roles, comprobantes, ítems | API (`/companies`, `/comprobantes`) sobre Supabase con RLS |
 | Ventas por mes | SIRE de SUNAT, vía `POST /companies/{ruc}/sire/ventas/sync` |
 | XML y CDR | Archivos reales en Cloudflare R2 (URL firmada temporal) |
-| PDF | Generado por el backend con los datos registrados (**copia informativa**) |
 | Estado SUNAT | Consulta real a SUNAT (`refresh-cdr`) o el CDR importado |
-| Check SAP | Persistido (`PATCH /comprobantes/{id}`) |
+| N° SAP | Importado desde un Excel (`POST /companies/{ruc}/comprobantes/import-sap`) y persistido |
 
 Lo que **no** existe todavía: emisión de comprobantes y firma digital (se harán aparte).
 

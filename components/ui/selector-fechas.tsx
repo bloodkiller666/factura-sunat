@@ -6,6 +6,7 @@ import {
   DIAS_SEMANA,
   NOMBRES_MES,
   atajosDeRango,
+  atajosDeVencimiento,
   describirRango,
   enRango,
   hoyIso,
@@ -27,6 +28,11 @@ interface Props {
   onChange: (rango: Rango) => void;
   deshabilitado?: boolean;
   className?: string;
+  /**
+   * Qué fecha se filtra: `emision` (por defecto) o `vencimiento`, que ofrece atajos hacia
+   * adelante («Próximos 7 días», «Ya vencidos») y otro rótulo.
+   */
+  modo?: "emision" | "vencimiento";
 }
 
 const ANCHO_PANEL = 548;
@@ -40,7 +46,14 @@ const ANCHO_MOVIL = 640;
  * - En pantallas angostas el panel sube como una hoja desde abajo con botones grandes.
  * - Teclado: flechas mueven el día, RePág/AvPág cambian de mes, Enter marca, Esc cierra.
  */
-export function SelectorFechas({ desde, hasta, onChange, deshabilitado, className }: Props) {
+export function SelectorFechas({
+  desde,
+  hasta,
+  onChange,
+  deshabilitado,
+  className,
+  modo = "emision",
+}: Props) {
   const [abierto, setAbierto] = useState(false);
   const [movil, setMovil] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -55,7 +68,11 @@ export function SelectorFechas({ desde, hasta, onChange, deshabilitado, classNam
 
   const hoy = hoyIso();
   const hayRango = Boolean(desde || hasta);
-  const atajos = useMemo(() => atajosDeRango(hoy), [hoy]);
+  const atajos = useMemo(
+    () => (modo === "vencimiento" ? atajosDeVencimiento(hoy) : atajosDeRango(hoy)),
+    [hoy, modo],
+  );
+  const rotulo = modo === "vencimiento" ? "Vencimiento" : "Fechas de emisión";
 
   const cerrar = useCallback(() => setAbierto(false), []);
 
@@ -160,12 +177,13 @@ export function SelectorFechas({ desde, hasta, onChange, deshabilitado, classNam
     inicio !== null ? ordenarRango(inicio, sobre ?? inicio) : desde && hasta ? { desde, hasta } : null;
 
   const etiqueta = describirRango(desde, hasta);
+  const textoBoton = hayRango || modo === "emision" ? etiqueta : "Vencimiento: todos";
 
   const contenido = (
     <div
       ref={panel}
       role="dialog"
-      aria-label="Elegir rango de fechas"
+      aria-label={`Elegir ${rotulo.toLowerCase()}`}
       style={movil ? undefined : { top: pos?.top, left: pos?.left, width: ANCHO_PANEL }}
       className={cn(
         "fixed z-[70] border border-line bg-surface shadow-pop",
@@ -363,7 +381,7 @@ export function SelectorFechas({ desde, hasta, onChange, deshabilitado, classNam
         disabled={deshabilitado}
         aria-haspopup="dialog"
         aria-expanded={abierto}
-        aria-label={`Fechas de emisión: ${etiqueta}`}
+        aria-label={`${rotulo}: ${etiqueta}`}
         className={cn(
           "inline-flex h-9 w-full min-w-[190px] items-center gap-2 rounded-lg border bg-surface pl-3 text-left text-[13px] shadow-sm transition-colors",
           "hover:border-fg-4 focus-visible:shadow-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60",
@@ -371,12 +389,14 @@ export function SelectorFechas({ desde, hasta, onChange, deshabilitado, classNam
         )}
       >
         <CalendarDays className="h-4 w-4 shrink-0 text-fg-4" strokeWidth={1.75} aria-hidden />
-        <span className="tnum min-w-0 flex-1 truncate">{etiqueta}</span>
+        <span className="tnum min-w-0 flex-1 truncate">
+          {hayRango && modo === "vencimiento" ? `Vence: ${etiqueta}` : textoBoton}
+        </span>
       </button>
       {hayRango && !deshabilitado && (
         <button
           type="button"
-          aria-label="Quitar filtro de fechas"
+          aria-label={`Quitar filtro de ${rotulo.toLowerCase()}`}
           onClick={() => onChange({ desde: "", hasta: "" })}
           className="absolute top-1/2 right-1.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-fg-4 hover:bg-surface-3 hover:text-fg"
         >

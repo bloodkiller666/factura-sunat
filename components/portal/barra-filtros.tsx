@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { SlidersHorizontal, X } from "lucide-react";
-import { Boton } from "@/components/ui/boton";
-import { Campo, CampoBusqueda, Grupo, Seleccion } from "@/components/ui/campos";
+import { X } from "lucide-react";
+import { Campo, CampoBusqueda, Seleccion } from "@/components/ui/campos";
 import { SelectorFechas } from "@/components/ui/selector-fechas";
 import { describirRango } from "@/lib/calendario";
 import { MINIMO_BUSQUEDA, hayFiltrosActivos } from "@/lib/filtros";
@@ -41,6 +39,13 @@ function chipsActivos(filtros: FiltrosState): Chip[] {
       quitar: { desde: "", hasta: "" },
     });
   }
+  if (filtros.venceDesde || filtros.venceHasta) {
+    chips.push({
+      clave: "vence",
+      texto: `Vence: ${describirRango(filtros.venceDesde, filtros.venceHasta)}`,
+      quitar: { venceDesde: "", venceHasta: "" },
+    });
+  }
   if (filtros.tipo !== "TODOS") {
     chips.push({ clave: "tipo", texto: filtros.tipo, quitar: { tipo: "TODOS" } });
   }
@@ -65,22 +70,11 @@ function chipsActivos(filtros: FiltrosState): Chip[] {
       quitar: { numeroSap: "" },
     });
   }
-  if (filtros.checkSap !== "TODOS") {
-    chips.push({
-      clave: "checkSap",
-      texto: filtros.checkSap === "CON" ? "Con Check SAP" : "Sin Check SAP",
-      quitar: { checkSap: "TODOS" },
-    });
-  }
   return chips;
 }
 
 export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
-  const [masAbierto, setMasAbierto] = useState(false);
   const chips = chipsActivos(filtros);
-  const extrasActivos = [filtros.numeroSap.trim(), filtros.checkSap !== "TODOS"].filter(
-    Boolean,
-  ).length;
   const busquedaCorta = filtros.q.trim().length > 0 && filtros.q.trim().length < MINIMO_BUSQUEDA;
 
   return (
@@ -99,9 +93,16 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
           desde={filtros.desde}
           hasta={filtros.hasta}
           onChange={(rango) => onCambiar(rango)}
-          className="w-full sm:w-[220px]"
+          className="w-full sm:w-[190px]"
         />
-        <div className="w-[160px]">
+        <SelectorFechas
+          modo="vencimiento"
+          desde={filtros.venceDesde}
+          hasta={filtros.venceHasta}
+          onChange={(rango) => onCambiar({ venceDesde: rango.desde, venceHasta: rango.hasta })}
+          className="w-full sm:w-[190px]"
+        />
+        <div className="w-[148px]">
           <Seleccion
             aria-label="Tipo de documento"
             value={filtros.tipo}
@@ -114,7 +115,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="Nota de Débito">Notas de débito</option>
           </Seleccion>
         </div>
-        <div className="w-[168px]">
+        <div className="w-[156px]">
           <Seleccion
             aria-label="Estado SUNAT"
             value={filtros.estadoSunat}
@@ -127,46 +128,20 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="Anulado">Anulado</option>
           </Seleccion>
         </div>
-        <Boton
-          icono={SlidersHorizontal}
-          onClick={() => setMasAbierto((previo) => !previo)}
-          aria-expanded={masAbierto}
-        >
-          Más filtros
-          {extrasActivos > 0 && (
-            <span className="ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[11px] font-semibold text-white">
-              {extrasActivos}
-            </span>
-          )}
-        </Boton>
+        <div className="w-[132px]">
+          <Campo
+            value={filtros.numeroSap}
+            onChange={(e) => onCambiar({ numeroSap: e.target.value })}
+            placeholder="N° de SAP"
+            aria-label="Filtrar por N° de SAP"
+          />
+        </div>
       </div>
 
       {busquedaCorta && (
         <p id="ayuda-busqueda" className="text-[12px] text-fg-3">
           Escribe al menos {MINIMO_BUSQUEDA} caracteres para buscar.
         </p>
-      )}
-
-      {masAbierto && (
-        <div className="grid gap-3 rounded-xl border border-line bg-surface p-3 shadow-sm sm:grid-cols-2">
-          <Grupo etiqueta="N° de SAP">
-            <Campo
-              value={filtros.numeroSap}
-              onChange={(e) => onCambiar({ numeroSap: e.target.value })}
-              placeholder="Ej. 4500926001"
-            />
-          </Grupo>
-          <Grupo etiqueta="Check SAP">
-            <Seleccion
-              value={filtros.checkSap}
-              onChange={(e) => onCambiar({ checkSap: e.target.value as FiltrosState["checkSap"] })}
-            >
-              <option value="TODOS">Todos</option>
-              <option value="CON">Marcados</option>
-              <option value="SIN">Sin marcar</option>
-            </Seleccion>
-          </Grupo>
-        </div>
       )}
 
       {hayFiltrosActivos(filtros) && (

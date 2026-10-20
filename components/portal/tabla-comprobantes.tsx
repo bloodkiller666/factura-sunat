@@ -22,12 +22,12 @@ import { EncabezadoOrden } from "@/components/ui/encabezado-orden";
 import { ChipRespaldo, EstadoPill } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
 import { Esqueleto, EstadoVacio } from "@/components/ui/varios";
-import { checkVigente, sapVigente, type CampoOrden, type Orden } from "@/lib/filtros";
+import type { CampoOrden, Orden } from "@/lib/filtros";
 import { formatearEntero, formatearFecha, formatearMoneda } from "@/lib/format";
 import type { Comprobante } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export type TipoDescarga = "pdf" | "xml" | "cdr";
+export type TipoDescarga = "xml" | "cdr";
 
 interface Props {
   /** Solo la página actual: el servidor ya filtró, ordenó y paginó. */
@@ -43,9 +43,6 @@ interface Props {
   actualizando: boolean;
   hayFiltros: boolean;
   seleccionados: Set<string>;
-  checksPendientes: Record<string, boolean>;
-sapPendientes: Record<string, string>;
-  descargando: Set<string>;
   consultando: Set<string>;
   puedeOperar: boolean;
   onOrden: (campo: CampoOrden) => void;
@@ -57,7 +54,6 @@ sapPendientes: Record<string, string>;
   onAbrir: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, tipo: TipoDescarga) => void;
   onConsultarCdr: (comprobante: Comprobante) => void;
-  onCheckSap: (id: string) => void;
   onExportarExcel: () => void;
   onLote: () => void;
   onLimpiarFiltros: () => void;
@@ -104,9 +100,6 @@ function MenuFila({
         Ver detalle
       </ItemMenu>
       <SeparadorMenu />
-      <ItemMenu icono={FileText} onClick={() => onDescargar(comprobante, "pdf")}>
-        Descargar PDF
-      </ItemMenu>
       <ItemMenu
         icono={FileCode2}
         deshabilitado={!comprobante.tieneXml}
@@ -145,7 +138,6 @@ function Respaldos({ c }: { c: Comprobante }) {
     <span className="inline-flex items-center gap-1">
       <ChipRespaldo nombre="XML" presente={c.tieneXml} />
       <ChipRespaldo nombre="CDR" presente={c.tieneCdr} />
-      <ChipRespaldo nombre="PDF" presente={c.tienePdf} />
     </span>
   );
 }
@@ -161,8 +153,6 @@ export function TablaComprobantes({
   actualizando,
   hayFiltros,
   seleccionados,
-  checksPendientes,
-  descargando,
   consultando,
   puedeOperar,
   onOrden,
@@ -174,8 +164,6 @@ export function TablaComprobantes({
   onAbrir,
   onDescargar,
   onConsultarCdr,
-  onCheckSap,
-  sapPendientes,
   onExportarExcel,
   onLote,
   onLimpiarFiltros,
@@ -255,7 +243,7 @@ export function TablaComprobantes({
               <th scope="col" className={TH}>
                 Respaldo
               </th>
-              <th scope="col" className={cn(TH, "hidden xl:table-cell")}>
+              <th scope="col" className={cn(TH, "hidden lg:table-cell")}>
                 N° de SAP
               </th>
               <th scope="col" className="w-[84px] px-3 py-2.5">
@@ -277,7 +265,6 @@ export function TablaComprobantes({
             {!cargando &&
               visibles.map((c) => {
                 const marcado = seleccionados.has(c.id);
-                const checkSap = checkVigente(c, checksPendientes);
                 const negativo = c.tipo === "Nota de Crédito";
                 return (
                   <tr
@@ -336,29 +323,11 @@ export function TablaComprobantes({
                     <td className="px-3 py-2.5">
                       <Respaldos c={c} />
                     </td>
-                    <td className="hidden px-3 py-2.5 xl:table-cell">
-                      <label className="inline-flex cursor-pointer items-center gap-2">
-                        <Casilla
-                          checked={checkSap}
-                          onChange={() => onCheckSap(c.id)}
-                          etiqueta={`Marcar Check SAP de ${c.numero}`}
-                          disabled={!puedeOperar}
-                        />
-                        <span className="font-mono text-[12px] text-fg-3">
-                          {sapVigente(c, sapPendientes) || (checkSap ? "Verificado" : "—")}
-                        </span>
-                      </label>
+                    <td className="hidden px-3 py-2.5 lg:table-cell">
+                      <span className="font-mono text-[12px] text-fg-3">{c.numeroSap || "—"}</span>
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center justify-end gap-0.5">
-                        <Boton
-                          variante="fantasma"
-                          tamano="sm"
-                          icono={descargando.has(`${c.id}:pdf`) ? undefined : FileText}
-                          cargando={descargando.has(`${c.id}:pdf`)}
-                          etiqueta={`Descargar PDF de ${c.numero}`}
-                          onClick={() => onDescargar(c, "pdf")}
-                        />
                         <MenuFila
                           comprobante={c}
                           puedeOperar={puedeOperar}

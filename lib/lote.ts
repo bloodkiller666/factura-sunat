@@ -1,17 +1,12 @@
 /**
  * Lote de respaldo: un ZIP con los archivos REALES de cada comprobante (el XML y el
- * CDR guardados en R2 y el PDF) más un manifiesto con el SHA-256 de cada archivo.
+ * CDR guardados en R2) más un manifiesto con el SHA-256 de cada archivo.
  *
  * Nunca fabrica XML: si un comprobante no tiene su XML o su CDR archivado, el lote lo
  * dice en el LEEME en lugar de inventarlo. Así el ZIP sirve como paquete de auditoría.
  */
 
-import {
-  apiArchivos,
-  apiDescargarArchivo,
-  apiPdf,
-  type ApiArchivo,
-} from "./api";
+import { apiArchivos, apiDescargarArchivo, type ApiArchivo } from "./api";
 import { formatearFecha } from "./format";
 import type { Comprobante, Empresa } from "./types";
 import { crearZip, type EntradaZip } from "./zip";
@@ -28,7 +23,7 @@ export interface ProgresoLote {
 
 export interface FaltanteLote {
   numero: string;
-  faltan: Array<"XML" | "CDR" | "PDF">;
+  faltan: Array<"XML" | "CDR">;
 }
 
 export interface ResultadoLote {
@@ -46,13 +41,11 @@ export interface DependenciasLote {
     token: string,
     archivo: { id: string; nombre: string },
   ) => Promise<{ blob: Blob; nombre: string }>;
-  pdf: (token: string, comprobanteId: string, nombre: string) => Promise<{ blob: Blob; nombre: string }>;
 }
 
 const DEPENDENCIAS_REALES: DependenciasLote = {
   listarArchivos: apiArchivos,
   descargar: apiDescargarArchivo,
-  pdf: apiPdf,
 };
 
 export function nombreBase(comprobante: Comprobante): string {
@@ -90,9 +83,8 @@ export function textoLeeme(
     `Comprobantes en el lote: ${comprobantes.length}`,
     "",
     "Contenido: una carpeta por comprobante con su XML y su CDR (tal como están archivados",
-    "en el almacenamiento) y el PDF (copia informativa generada por el portal, que no sale",
-    "del XML firmado). manifiesto.csv trae el SHA-256 de cada archivo para verificar que",
-    "no se alteró.",
+    "en el almacenamiento). manifiesto.csv trae el SHA-256 de cada archivo para verificar",
+    "que no se alteró.",
     "",
   ];
   if (faltantes.length === 0) {
@@ -162,18 +154,16 @@ export async function construirLoteRespaldo(
           faltan.push(etiqueta);
           continue;
         }
-        const { blob, nombre } = await deps.descargar(token, archivo);
-        await agregar(etiqueta, nombre, blob);
+        // Un archivo que no baja no invalida al otro: solo ese figura como faltante.
+        try {
+          const { blob, nombre } = await deps.descargar(token, archivo);
+          await agregar(etiqueta, nombre, blob);
+        } catch {
+          faltan.push(etiqueta);
+        }
       }
     } catch {
       faltan.push("XML", "CDR");
-    }
-
-    try {
-      const { blob, nombre } = await deps.pdf(token, comprobante.id, `${base}.pdf`);
-      await agregar("PDF", nombre, blob);
-    } catch {
-      faltan.push("PDF");
     }
 
     if (faltan.length > 0) faltantes.push({ numero: comprobante.numero, faltan: [...new Set(faltan)] });

@@ -7,14 +7,11 @@ import {
   Download,
   FileCode2,
   FileSearch,
-  FileText,
   Info,
-  Loader2,
   ShieldCheck,
   Upload,
 } from "lucide-react";
 import { Boton, type IconoLucide } from "@/components/ui/boton";
-import { Casilla } from "@/components/ui/campos";
 import { Dialogo } from "@/components/ui/dialogo";
 import { EstadoPill, Etiqueta } from "@/components/ui/etiqueta";
 import { BotonCopiar, Esqueleto } from "@/components/ui/varios";
@@ -27,26 +24,21 @@ import {
 import type { ArchivoGuardado, Comprobante, Empresa } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type Pestana = "resumen" | "items" | "archivos" | "pdf";
+type Pestana = "resumen" | "items" | "archivos";
 
 interface Props {
   comprobante: Comprobante | null;
   empresa: Empresa | null;
   cargandoDetalle: boolean;
   puedeOperar: boolean;
-  checkSap: boolean;
-  numeroSap: string;
   descargando: Set<string>;
   consultando: boolean;
   onCerrar: () => void;
-  onDescargar: (c: Comprobante, tipo: "pdf" | "xml" | "cdr") => void;
+  onDescargar: (c: Comprobante, tipo: "xml" | "cdr") => void;
   onConsultarCdr: (c: Comprobante) => void;
-  onCheckSap: (id: string) => void;
-  onExtraerSap: (id: string) => void;
   onImportarXml: (archivo: File) => void;
   onAbrirImportarCdr: () => void;
   cargarArchivos: (c: Comprobante) => Promise<ArchivoGuardado[]>;
-  cargarPdf: (c: Comprobante) => Promise<Blob>;
 }
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
@@ -58,24 +50,7 @@ function Dato({ etiqueta, children }: { etiqueta: string; children: ReactNode })
   );
 }
 
-function Resumen({
-  c,
-  empresa,
-  checkSap,
-  numeroSap,
-  puedeOperar,
-  onCheckSap,
-  onExtraerSap,
-}: {
-  c: Comprobante;
-  empresa: Empresa | null;
-  checkSap: boolean;
-  /** Valor vigente del N° de SAP (con el cambio optimista pendiente aplicado). */
-  numeroSap: string;
-  puedeOperar: boolean;
-  onCheckSap: (id: string) => void;
-  onExtraerSap: (id: string) => void;
-}) {
+function Resumen({ c, empresa }: { c: Comprobante; empresa: Empresa | null }) {
   return (
     <div className="space-y-6 p-5">
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
@@ -117,30 +92,14 @@ function Resumen({
       )}
 
       <div className="rounded-xl border border-line p-4">
-        <p className="text-[12px] font-medium text-fg-3">Conciliación con SAP</p>
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-fg">
-            <Casilla
-              checked={checkSap}
-              onChange={() => onCheckSap(c.id)}
-              etiqueta="Check SAP"
-              disabled={!puedeOperar}
-            />
-            Verificado en SAP
-          </label>
-          <span className="font-mono text-[12.5px] text-fg-3">
-            {numeroSap ? `N° de SAP: ${numeroSap}` : "Sin N° de SAP"}
-          </span>
-        </div>
-        {puedeOperar && (
-          <div className="mt-3">
-            <Boton tamano="sm" variante="fantasma" onClick={() => onExtraerSap(c.id)}>
-              Extraer N° de SAP
-            </Boton>
-          </div>
-        )}
-        {!puedeOperar && (
-          <p className="mt-2 text-[12px] text-fg-4">Tu rol es de solo lectura en esta empresa.</p>
+        <p className="text-[12px] font-medium text-fg-3">N° de SAP</p>
+        <p className="mt-1.5 font-mono text-[13px] text-fg">
+          {c.numeroSap || <span className="font-sans text-fg-3">Sin N° de SAP</span>}
+        </p>
+        {!c.numeroSap && (
+          <p className="mt-1.5 text-[12px] text-fg-4">
+            Se registra con «Importar N° SAP» desde un Excel de Contabilidad.
+          </p>
         )}
       </div>
 
@@ -386,8 +345,7 @@ function Archivos({
       <p className="text-[12.5px] text-fg-3">
         Lo que el portal tiene guardado de este comprobante. Ante una auditoría, la evidencia es
         el <strong className="font-medium text-fg-2">XML firmado</strong> junto con su{" "}
-        <strong className="font-medium text-fg-2">CDR</strong>; el PDF es solo una copia de
-        consulta.
+        <strong className="font-medium text-fg-2">CDR</strong>.
       </p>
       <ul className="space-y-3">
         <FilaArchivo
@@ -477,79 +435,13 @@ function Archivos({
             )
           }
         />
-        <FilaArchivo
-          icono={FileText}
-          titulo="PDF · copia informativa"
-          archivo={de("pdf")}
-          vacio={<>Se genera al descargarlo y queda archivado como copia de consulta.</>}
-          acciones={
-            <Boton
-              tamano="sm"
-              icono={Download}
-              cargando={descargando.has(`${c.id}:pdf`)}
-              onClick={() => onDescargar(c, "pdf")}
-            >
-              Descargar PDF
-            </Boton>
-          }
-        />
       </ul>
     </div>
   );
 }
 
-function VistaPdf({
-  c,
-  cargarPdf,
-}: {
-  c: Comprobante;
-  cargarPdf: Props["cargarPdf"];
-}) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let vigente = true;
-    let creada: string | null = null;
-    cargarPdf(c)
-      .then((blob) => {
-        if (!vigente) return;
-        creada = URL.createObjectURL(blob);
-        setUrl(creada);
-      })
-      .catch(() => {
-        if (vigente) setError(true);
-      });
-    return () => {
-      vigente = false;
-      if (creada) URL.revokeObjectURL(creada);
-    };
-  }, [c.id, cargarPdf]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <div className="flex h-full min-h-[480px] flex-col p-5">
-      <p className="mb-3 flex items-start gap-2 text-[12.5px] text-fg-3">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-        Representación impresa generada por el portal con los datos registrados. No sale del XML
-        firmado.
-      </p>
-      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-line bg-surface-3">
-        {error ? (
-          <p className="p-6 text-[13px] text-bad">No se pudo generar el PDF.</p>
-        ) : url ? (
-          <iframe src={url} title={`PDF de ${c.numero}`} className="h-full min-h-[520px] w-full" />
-        ) : (
-          <div className="flex h-full min-h-[320px] items-center justify-center text-fg-3">
-            <Loader2 className="h-5 w-5 animate-[giro_0.8s_linear_infinite]" aria-hidden />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function DetalleComprobante(props: Props) {
-  const { comprobante: c, empresa, cargandoDetalle, puedeOperar, checkSap, numeroSap, onCerrar } = props;
+  const { comprobante: c, empresa, cargandoDetalle, puedeOperar, onCerrar } = props;
   const [pestana, setPestana] = useState<Pestana>("resumen");
 
   // Cada comprobante empieza en «Resumen».
@@ -563,7 +455,6 @@ export function DetalleComprobante(props: Props) {
     { id: "resumen", etiqueta: "Resumen" },
     { id: "items", etiqueta: c && c.items.length > 0 ? `Ítems (${c.items.length})` : "Ítems" },
     { id: "archivos", etiqueta: "Archivos" },
-    { id: "pdf", etiqueta: "Vista PDF" },
   ];
 
   return (
@@ -602,14 +493,16 @@ export function DetalleComprobante(props: Props) {
                 Consultar CDR
               </Boton>
             )}
-            <Boton
-              variante="primario"
-              icono={FileText}
-              cargando={props.descargando.has(`${c.id}:pdf`)}
-              onClick={() => props.onDescargar(c, "pdf")}
-            >
-              Descargar PDF
-            </Boton>
+            {c.tieneXml && (
+              <Boton
+                variante="primario"
+                icono={Download}
+                cargando={props.descargando.has(`${c.id}:xml`)}
+                onClick={() => props.onDescargar(c, "xml")}
+              >
+                Descargar XML
+              </Boton>
+            )}
           </>
         )
       }
@@ -637,15 +530,7 @@ export function DetalleComprobante(props: Props) {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto" role="tabpanel">
             {pestana === "resumen" && (
-              <Resumen
-                c={c}
-                empresa={empresa}
-                checkSap={checkSap}
-                numeroSap={numeroSap}
-                puedeOperar={puedeOperar}
-                onCheckSap={props.onCheckSap}
-                onExtraerSap={props.onExtraerSap}
-              />
+              <Resumen c={c} empresa={empresa} />
             )}
             {pestana === "items" && (
               <Items
@@ -657,7 +542,7 @@ export function DetalleComprobante(props: Props) {
             )}
             {pestana === "archivos" && (
               <Archivos
-                key={`${c.id}:${c.tieneXml}:${c.tieneCdr}:${c.tienePdf}`}
+                key={`${c.id}:${c.tieneXml}:${c.tieneCdr}`}
                 c={c}
                 puedeOperar={puedeOperar}
                 descargando={props.descargando}
@@ -669,7 +554,6 @@ export function DetalleComprobante(props: Props) {
                 onAbrirImportarCdr={props.onAbrirImportarCdr}
               />
             )}
-            {pestana === "pdf" && <VistaPdf key={c.id} c={c} cargarPdf={props.cargarPdf} />}
           </div>
         </div>
       )}

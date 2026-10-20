@@ -147,6 +147,29 @@ export function atajosDeRango(hoy: string): Atajo[] {
   ];
 }
 
+/** Atajos para el filtro de vencimiento: miran hacia adelante (y a lo ya vencido). */
+export function atajosDeVencimiento(hoy: string): Atajo[] {
+  const mesActual = primerDiaDelMes(hoy);
+  const mesSiguiente = sumarMeses(mesActual, 1);
+  return [
+    { id: "vencidos", etiqueta: "Ya vencidos", rango: { desde: "", hasta: sumarDias(hoy, -1) } },
+    { id: "hoy", etiqueta: "Vencen hoy", rango: { desde: hoy, hasta: hoy } },
+    { id: "7d", etiqueta: "Próximos 7 días", rango: { desde: hoy, hasta: sumarDias(hoy, 6) } },
+    { id: "30d", etiqueta: "Próximos 30 días", rango: { desde: hoy, hasta: sumarDias(hoy, 29) } },
+    {
+      id: "mes",
+      etiqueta: "Este mes",
+      rango: { desde: mesActual, hasta: ultimoDiaDelMes(hoy) },
+    },
+    {
+      id: "mes-siguiente",
+      etiqueta: "Mes siguiente",
+      rango: { desde: mesSiguiente, hasta: ultimoDiaDelMes(mesSiguiente) },
+    },
+    { id: "todo", etiqueta: "Todas las fechas", rango: null },
+  ];
+}
+
 /** ¿El rango cubre exactamente un mes calendario? Devuelve su `yyyy-mm`. */
 export function mesCompleto(desde: string, hasta: string): string | null {
   if (!desde || !hasta) return null;

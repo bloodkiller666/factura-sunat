@@ -58,7 +58,6 @@ const SINONIMOS: Record<string, string[]> = {
     "orden de pedido",
     "pedido",
   ],
-  "Check SAP": ["check sap", "sap check", "chequeado sap", "marcado sap", "verificado sap"],
   "Forma de pago": ["condicion de pago", "medio de pago", "forma de pago"],
 };
 

@@ -27,7 +27,6 @@ export const CABECERAS_REPORTE = [
   "Estado SUNAT",
   "N° SAP",
   "Orden de compra",
-  "Check SAP",
   "Forma de pago",
 ];
 
@@ -47,7 +46,6 @@ export function filaReporte(comprobante: Comprobante): (string | number)[] {
     comprobante.estadoSunat,
     comprobante.numeroSap,
     comprobante.ordenCompra,
-    comprobante.checkSap ? "Sí" : "No",
     comprobante.formaPago ?? "",
   ];
 }

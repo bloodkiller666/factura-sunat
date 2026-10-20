@@ -8,6 +8,7 @@ import {
   Download,
   FileArchive,
   FileSearch,
+  Hash,
   Loader2,
   Menu as IconoMenu,
   RefreshCw,
@@ -18,6 +19,7 @@ import { BarraFiltros } from "@/components/portal/barra-filtros";
 import { DetalleComprobante } from "@/components/portal/detalle-comprobante";
 import { DialogoImportar, type PestanaImportar } from "@/components/portal/dialogo-importar";
 import { DialogoRespaldos } from "@/components/portal/dialogo-respaldos";
+import { DialogoSap } from "@/components/portal/dialogo-sap";
 import { DialogoSire } from "@/components/portal/dialogo-sire";
 import { Indicadores } from "@/components/portal/indicadores";
 import { Marca } from "@/components/portal/marca";
@@ -28,7 +30,6 @@ import { Boton } from "@/components/ui/boton";
 import { Etiqueta } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
 import { formatearEntero } from "@/lib/format";
-import { checkVigente, sapVigente } from "@/lib/filtros";
 
 interface Props {
   token: string;
@@ -42,6 +43,7 @@ export function Portal({ token, email, onSalir }: Props) {
   const [menuMovil, setMenuMovil] = useState(false);
   const [sireAbierto, setSireAbierto] = useState(false);
   const [respaldosAbierto, setRespaldosAbierto] = useState(false);
+  const [sapAbierto, setSapAbierto] = useState(false);
   const [importar, setImportar] = useState<{ abierto: boolean; pestana: PestanaImportar }>({
     abierto: false,
     pestana: "comprobantes",
@@ -58,8 +60,6 @@ export function Portal({ token, email, onSalir }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vista, rucActivo]);
 
-  const detalleCheck = p.detalle ? checkVigente(p.detalle, p.checksPendientes) : false;
-const detalleSap = p.detalle ? sapVigente(p.detalle, p.sapPendientes) : "";
   // Lo que exportan «Reporte Excel» y «Lote»: la selección o, sin ella, todo lo filtrado.
   const cuentaExportable =
     p.seleccion.length > 0
@@ -170,10 +170,15 @@ const detalleSap = p.detalle ? sapVigente(p.detalle, p.sapPendientes) : "";
                     </ItemMenu>
                     <SeparadorMenu />
                     <p className="px-2.5 py-1.5 text-[11.5px] leading-4 text-fg-4">
-                      Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML,
-                      CDR y PDF reales con su huella SHA-256.
+                      Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML y
+                      CDR reales con su huella SHA-256.
                     </p>
                   </Menu>
+                  {p.puedeOperar && (
+                    <Boton icono={Hash} onClick={() => setSapAbierto(true)}>
+                      Importar N° SAP
+                    </Boton>
+                  )}
                   {p.puedeOperar && (
                     <Boton icono={Upload} onClick={() => abrirImportar()}>
                       Importar
@@ -227,9 +232,6 @@ const detalleSap = p.detalle ? sapVigente(p.detalle, p.sapPendientes) : "";
                 actualizando={p.actualizando}
                 hayFiltros={p.hayFiltros}
                 seleccionados={p.seleccionados}
-                checksPendientes={p.checksPendientes}
-                sapPendientes={p.sapPendientes}
-                descargando={p.descargando}
                 consultando={p.consultando}
                 puedeOperar={p.puedeOperar}
                 onOrden={p.ordenarPor}
@@ -241,7 +243,6 @@ const detalleSap = p.detalle ? sapVigente(p.detalle, p.sapPendientes) : "";
                 onAbrir={(c) => void p.abrirDetalle(c)}
                 onDescargar={(c, tipo) => void p.descargar(c, tipo)}
                 onConsultarCdr={(c) => void p.consultarCdr(c)}
-                onCheckSap={(id) => void p.alternarCheckSap(id)}
                 onExportarExcel={() => void p.exportarExcel()}
                 onLote={() => void p.generarLote()}
                 onLimpiarFiltros={p.limpiarFiltros}
@@ -278,22 +279,17 @@ const detalleSap = p.detalle ? sapVigente(p.detalle, p.sapPendientes) : "";
         empresa={p.empresa}
         cargandoDetalle={p.cargandoDetalle}
         puedeOperar={p.puedeOperar}
-        checkSap={detalleCheck}
-        numeroSap={detalleSap}
         descargando={p.descargando}
         consultando={p.detalle ? p.consultando.has(p.detalle.id) : false}
         onCerrar={p.cerrarDetalle}
         onDescargar={(c, tipo) => void p.descargar(c, tipo)}
         onConsultarCdr={(c) => void p.consultarCdr(c)}
-        onCheckSap={(id) => void p.alternarCheckSap(id)}
-        onExtraerSap={(id) => void p.extraerSap(id)}
         onImportarXml={(archivo) => void p.importarXmlDeComprobante(archivo)}
         onAbrirImportarCdr={() => {
           p.cerrarDetalle();
           abrirImportar("cdr");
         }}
         cargarArchivos={p.cargarArchivos}
-        cargarPdf={p.cargarPdf}
       />
 
       <DialogoRespaldos
@@ -303,6 +299,14 @@ const detalleSap = p.detalle ? sapVigente(p.detalle, p.sapPendientes) : "";
         filtros={p.filtros}
         onCerrar={() => setRespaldosAbierto(false)}
         onRecuperado={p.recargar}
+      />
+
+      <DialogoSap
+        abierto={sapAbierto}
+        token={token}
+        ruc={rucActivo}
+        onCerrar={() => setSapAbierto(false)}
+        onImportado={p.recargar}
       />
 
       <DialogoSire

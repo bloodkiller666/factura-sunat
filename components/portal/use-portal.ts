@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ApiError,
-  apiActualizarCheckSap,
   apiArchivos,
   apiComprobantes,
   apiConsultarCdr,
@@ -13,7 +11,6 @@ import {
   apiEmpresas,
   apiEvidencias,
   apiImportarXml,
-  apiPdf,
   apiResumen,
   apiSincronizarPendientes,
   conDetalle,
@@ -29,18 +26,15 @@ import {
   FILTROS_INICIALES,
   ORDEN_INICIAL,
   alternarOrden,
-  checkVigente,
   claveDeConjunto,
   claveDeFiltros,
   consultaDePagina,
   consultaDeResumen,
   hayFiltrosActivos,
   metricasDeResumen,
-  sapVigente,
   type CampoOrden,
   type Orden,
 } from "@/lib/filtros";
-import { extraerNumeroSap } from "@/lib/sap";
 import { formatearEntero } from "@/lib/format";
 import { MAX_COMPROBANTES_LOTE, construirLoteRespaldo } from "@/lib/lote";
 import { descargarBlob, descargarExcel, TIPO_ZIP } from "@/lib/exportar";
@@ -112,8 +106,6 @@ export function usePortal(token: string | null) {
   const [cargada, setCargada] = useState<PaginaCargada | null>(null);
   const [resumen, setResumen] = useState<ResumenCargado | null>(null);
   const [errorResumen, setErrorResumen] = useState<string | null>(null);
-  const [checksPendientes, setChecksPendientes] = useState<Record<string, boolean>>({});
-  const [sapPendientes, setSapPendientes] = useState<Record<string, string>>({});
   const [seleccionMapa, setSeleccionMapa] = useState<Map<string, Comprobante>>(() => new Map());
 
   const [detalleId, setDetalleId] = useState<string | null>(null);
@@ -391,7 +383,6 @@ export function usePortal(token: string | null) {
     cacheTotales.current.clear();
     cacheResumen.current.clear();
     setRucActivo(ruc);
-    setChecksPendientes({});
     setSeleccionMapa(new Map());
     setDetalleId(null);
     setEvidencias(null);
@@ -427,63 +418,6 @@ export function usePortal(token: string | null) {
   const seleccionados = useMemo(() => new Set(seleccionMapa.keys()), [seleccionMapa]);
   const seleccion = useMemo(() => [...seleccionMapa.values()], [seleccionMapa]);
 
-  const alternarCheckSap = useCallback(
-    async (id: string) => {
-      const original = items.find((c) => c.id === id) ?? seleccionMapa.get(id) ?? detalle ?? undefined;
-      if (!token || !original || original.id !== id) return;
-      const anterior = checkVigente(original, checksPendientes);
-      setChecksPendientes((previos) => ({ ...previos, [id]: !anterior }));
-      try {
-        await apiActualizarCheckSap(token, id, !anterior);
-        // Lo guardado cambió: las páginas en caché ya no lo reflejan.
-        cachePaginas.current.clear();
-      } catch (error) {
-        setChecksPendientes((previos) => ({ ...previos, [id]: anterior }));
-        aviso.error(
-          error instanceof ApiError && error.status === 403
-            ? "Sin permiso para cambiar el Check SAP"
-            : "No se guardó el Check SAP",
-          error instanceof ApiError && error.status === 403
-            ? "Tu rol en esta empresa es de solo lectura."
-            : mensajeDe(error, "Inténtalo de nuevo."),
-        );
-      }
-    },
-    [token, items, seleccionMapa, detalle, checksPendientes],
-  );
-
-  /** EXTRACCIÓN SIMULADA del N° de SAP: calcula un número, marca verificado y lo guarda.
-   *  La consulta real a SAP está pendiente; ver `lib/sap.ts`. */
-  const extraerSap = useCallback(
-    async (id: string) => {
-      const original = items.find((c) => c.id === id) ?? seleccionMapa.get(id) ?? detalle ?? undefined;
-      if (!token || !original || original.id !== id) return;
-      const numero = extraerNumeroSap(original.numero);
-      const checkAnterior = checkVigente(original, checksPendientes);
-      const sapAnterior = sapVigente(original, sapPendientes);
-      setChecksPendientes((previos) => ({ ...previos, [id]: true }));
-      setSapPendientes((previos) => ({ ...previos, [id]: numero }));
-      try {
-        await apiActualizarCheckSap(token, id, true, numero);
-        // Lo guardado cambió: las páginas en caché ya no lo reflejan.
-        cachePaginas.current.clear();
-        aviso.ok(`N° de SAP extraído: ${numero}`, "Marcado como verificado en SAP (simulado).");
-      } catch (error) {
-        setChecksPendientes((previos) => ({ ...previos, [id]: checkAnterior }));
-        setSapPendientes((previos) => ({ ...previos, [id]: sapAnterior }));
-        aviso.error(
-          error instanceof ApiError && error.status === 403
-            ? "Sin permiso para guardar el N° de SAP"
-            : "No se guardó el N° de SAP",
-          error instanceof ApiError && error.status === 403
-            ? "Tu rol en esta empresa es de solo lectura."
-            : mensajeDe(error, "Inténtalo de nuevo."),
-        );
-      }
-    },
-    [token, items, seleccionMapa, detalle, checksPendientes, sapPendientes],
-  );
-
   const abrirDetalle = useCallback((comprobante: Comprobante) => {
     setDetalleBase(comprobante);
     setDetalleId(comprobante.id);
@@ -509,24 +443,19 @@ export function usePortal(token: string | null) {
   );
 
   const descargar = useCallback(
-    async (c: Comprobante, tipo: "pdf" | "xml" | "cdr") => {
+    async (c: Comprobante, tipo: "xml" | "cdr") => {
       if (!token) return;
       await conClave("descargando", `${c.id}:${tipo}`, async () => {
         try {
-          const { blob, nombre } =
-            tipo === "pdf"
-              ? await apiPdf(token, c.id, `${c.nombreArchivo || c.numero}.pdf`)
-              : await apiDescargarTipo(token, c.id, tipo);
+          const { blob, nombre } = await apiDescargarTipo(token, c.id, tipo);
           descargarBlob(blob, nombre);
           aviso.ok(`${tipo.toUpperCase()} descargado`, nombre);
-          // El PDF se archiva la primera vez: refresca los indicadores de respaldo.
-          if (tipo === "pdf" && !c.tienePdf && puedeOperar) recargar();
         } catch (error) {
           aviso.error(`No se pudo descargar el ${tipo.toUpperCase()}`, mensajeDe(error, "Reintenta."));
         }
       });
     },
-    [token, conClave, puedeOperar, recargar],
+    [token, conClave],
   );
 
   const consultarCdr = useCallback(
@@ -598,14 +527,6 @@ export function usePortal(token: string | null) {
     [token],
   );
 
-  const cargarPdf = useCallback(
-    async (c: Comprobante): Promise<Blob> => {
-      if (!token) throw new Error("Sin sesión");
-      return (await apiPdf(token, c.id, `${c.numero}.pdf`)).blob;
-    },
-    [token],
-  );
-
   /**
    * Trae del servidor, página a página, todo lo que cumple los filtros vigentes (con un
    * tope). Sirve para exportar «todo lo filtrado» sin haberlo cargado en pantalla.
@@ -649,14 +570,7 @@ export function usePortal(token: string | null) {
         aviso.error("No hay comprobantes para exportar", "Ajusta los filtros o selecciona filas.");
         return;
       }
-      const nombre = descargarExcel(
-        conjunto.map((c) => ({
-      ...c,
-      checkSap: checkVigente(c, checksPendientes),
-      numeroSap: sapVigente(c, sapPendientes),
-    })),
-        empresa,
-      );
+      const nombre = descargarExcel(conjunto, empresa);
       aviso.ok(
         "Reporte Excel descargado",
         truncado
@@ -668,7 +582,7 @@ export function usePortal(token: string | null) {
     } finally {
       setExportando(false);
     }
-  }, [empresa, exportando, seleccion, traerFiltrados, checksPendientes, sapPendientes]);
+  }, [empresa, exportando, seleccion, traerFiltrados]);
 
   const generarLote = useCallback(async () => {
     if (!token || !empresa || generandoLote) return;
@@ -696,7 +610,7 @@ export function usePortal(token: string | null) {
         );
         return;
       }
-      aviso.info(`Armando el lote de ${conjunto.length} comprobantes…`, "Descargando XML, CDR y PDF.");
+      aviso.info(`Armando el lote de ${conjunto.length} comprobantes…`, "Descargando XML y CDR.");
       const resultado = await construirLoteRespaldo(token, empresa, conjunto);
       descargarBlob(new Blob([resultado.zip], { type: TIPO_ZIP }), resultado.nombre);
       const incompletos = resultado.faltantes.length;
@@ -768,7 +682,6 @@ export function usePortal(token: string | null) {
     metricas,
     actualizandoResumen,
     errorResumen,
-    checksPendientes,
     seleccionados,
     seleccion,
     alternarSeleccion,
@@ -785,13 +698,9 @@ export function usePortal(token: string | null) {
     exportando,
     descargar,
     consultarCdr,
-    alternarCheckSap,
-    extraerSap,
-    sapPendientes,
     sincronizarPendientes,
     importarXmlDeComprobante,
     cargarArchivos,
-    cargarPdf,
     exportarExcel,
     generarLote,
     recargar,

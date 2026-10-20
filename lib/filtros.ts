@@ -7,7 +7,7 @@
 
 import type { ApiResumen, FiltrosApi } from "./api";
 import { describirRango } from "./calendario";
-import type { Comprobante, FiltrosState, TipoDocumento } from "./types";
+import type { FiltrosState, TipoDocumento } from "./types";
 
 export const FILTROS_INICIALES: FiltrosState = {
   q: "",
@@ -15,9 +15,10 @@ export const FILTROS_INICIALES: FiltrosState = {
   estadoSunat: "TODOS",
   respaldo: "TODOS",
   numeroSap: "",
-  checkSap: "TODOS",
   desde: "",
   hasta: "",
+  venceDesde: "",
+  venceHasta: "",
 };
 
 /** ¿Hay algún filtro distinto del valor por defecto? */
@@ -25,22 +26,6 @@ export function hayFiltrosActivos(filtros: FiltrosState): boolean {
   return (Object.keys(FILTROS_INICIALES) as Array<keyof FiltrosState>).some(
     (clave) => filtros[clave] !== FILTROS_INICIALES[clave],
   );
-}
-
-/** Valor vigente del Check SAP: el cambio optimista pendiente manda sobre el guardado. */
-export function checkVigente(
-  comprobante: Comprobante,
-  pendientes: Record<string, boolean>,
-): boolean {
-  return pendientes[comprobante.id] ?? comprobante.checkSap;
-}
-
-/** Valor vigente del N° de SAP: el cambio optimista pendiente manda sobre el guardado. */
-export function sapVigente(
-  comprobante: Comprobante,
-  pendientes: Record<string, string>,
-): string {
-  return pendientes[comprobante.id] ?? comprobante.numeroSap;
 }
 
 /* ------------------------------ Orden ------------------------------ */
@@ -96,9 +81,10 @@ export function filtrosParaApi(filtros: FiltrosState): FiltrosApi {
     ...(filtros.estadoSunat !== "TODOS" ? { estado: filtros.estadoSunat.toLowerCase() } : {}),
     ...(filtros.respaldo !== "TODOS" ? { respaldo: RESPALDO_API[filtros.respaldo] } : {}),
     ...(sap ? { n_sap: sap } : {}),
-    ...(filtros.checkSap !== "TODOS" ? { check_sap: filtros.checkSap === "CON" } : {}),
     ...(filtros.desde ? { fecha_desde: filtros.desde } : {}),
     ...(filtros.hasta ? { fecha_hasta: filtros.hasta } : {}),
+    ...(filtros.venceDesde ? { vencimiento_desde: filtros.venceDesde } : {}),
+    ...(filtros.venceHasta ? { vencimiento_hasta: filtros.venceHasta } : {}),
   };
 }
 
@@ -149,7 +135,6 @@ export interface Cobertura {
   total: number;
   conXml: number;
   conCdr: number;
-  conPdf: number;
 }
 
 export interface Metricas {
@@ -189,7 +174,6 @@ export function metricasDeResumen(
       total: api.cobertura.exigibles,
       conXml: api.cobertura.con_xml,
       conCdr: api.cobertura.con_cdr,
-      conPdf: api.cobertura.con_pdf,
     },
     etiquetaRango: describirRango(rango.desde, rango.hasta),
   };
