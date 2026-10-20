@@ -107,7 +107,7 @@ export function Indicadores({
           className="mt-auto pt-3 text-[12px] text-fg-3"
           title="Las notas de crédito restan; no cuentan anulados ni rechazados"
         >
-          {formatearEntero(vigentes)} comprobantes vigentes · neto de notas de crédito
+          {formatearEntero(vigentes)} comprobantes vigentes
         </p>
       </Tarjeta>
 

@@ -225,6 +225,8 @@ export interface ApiBizlinksItem {
   items_cargados: number;
   mensaje: string | null;
   error_code: string | null;
+  cliente_ruc?: string | null;
+  cliente?: string | null;
 }
 
 export interface ApiBizlinksSync {
