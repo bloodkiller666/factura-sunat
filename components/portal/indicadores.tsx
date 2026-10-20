@@ -94,7 +94,7 @@ export function Indicadores({
       aria-busy={actualizando || undefined}
     >
       {/* Facturado */}
-      <Tarjeta titulo="Facturado neto" subtitulo={metricas.etiquetaRango}>
+      <Tarjeta titulo="Facturado total" subtitulo={metricas.etiquetaRango}>
         <p className="tnum text-[26px] leading-8 font-semibold tracking-tight text-fg">
           {formatearMoneda(metricas.facturadoPen)}
         </p>
