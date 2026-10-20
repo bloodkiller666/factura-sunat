@@ -111,6 +111,13 @@ export async function sincronizarMeses(
     try {
       resultado = await sincronizarMes(token, ruc, mes, opciones.llamar);
     } catch (error) {
+      if (error instanceof ApiError && error.code === "periodo_ya_cargado") {
+        // Ya está en la base: no es un fallo ni detiene el resto de los meses.
+        resultado = { ...resultadoInicial(mes), estado: "omitido", mensaje: error.message };
+        resultados.push(resultado);
+        opciones.alCambiar(resultado);
+        continue;
+      }
       resultado = {
         ...resultadoInicial(mes),
         estado: "error",

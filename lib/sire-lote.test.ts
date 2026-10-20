@@ -58,6 +58,20 @@ describe("sincronizarMes", () => {
 });
 
 describe("sincronizarMeses", () => {
+  it("un periodo ya cargado se marca como omitido y no detiene los demás", async () => {
+    const llamar = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError("El periodo 202608 ya está cargado", "periodo_ya_cargado", 409))
+      .mockResolvedValue(respuesta());
+    const r = await sincronizarMeses("T", "205", ["2026-08", "2026-09"], {
+      llamar,
+      cancelado: () => false,
+      alCambiar: () => {},
+    });
+    expect(r.map((x) => x.estado)).toEqual(["omitido", "ok"]);
+    expect(r[0].mensaje).toMatch(/ya está cargado/);
+  });
+
   const meses = ["2026-07", "2026-08", "2026-09"];
 
   it("avanza mes a mes y notifica cada cambio", async () => {

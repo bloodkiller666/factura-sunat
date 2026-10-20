@@ -50,7 +50,8 @@ const ICONO: Record<EstadoMes, { icono: typeof CheckCircle2; clase: string }> = 
 function TextoResultado({ r }: { r: ResultadoMes }) {
   if (r.estado === "en_curso") return <span className="text-accent">Consultando SUNAT…</span>;
   if (r.estado === "pendiente") return <span className="text-fg-4">En espera</span>;
-  if (r.estado === "omitido") return <span className="text-fg-4">Omitido</span>;
+  if (r.estado === "omitido")
+    return <span className="text-fg-4">{r.mensaje ?? "Omitido"}</span>;
   if (r.estado === "sin_datos") return <span className="text-fg-3">Sin comprobantes en SIRE</span>;
   if (r.estado === "error") return <span className="text-bad">{r.mensaje}</span>;
   return (
