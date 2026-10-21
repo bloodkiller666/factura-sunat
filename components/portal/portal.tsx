@@ -7,6 +7,7 @@ import {
   CloudDownload,
   Download,
   FileArchive,
+  HardDriveDownload,
   FileSearch,
   Hash,
   Loader2,
@@ -168,10 +169,18 @@ export function Portal({ token, email, onSalir }: Props) {
                     >
                       Lote de respaldo (ZIP)
                     </ItemMenu>
+                    <ItemMenu
+                      icono={HardDriveDownload}
+                      deshabilitado={p.seleccion.length === 0 || p.guardandoPc}
+                      onClick={() => void p.guardarEnPc(p.seleccion)}
+                      ayuda={p.seleccion.length > 0 ? formatearEntero(p.seleccion.length) : undefined}
+                    >
+                      Guardar en mi PC (carpetas)
+                    </ItemMenu>
                     <SeparadorMenu />
                     <p className="px-2.5 py-1.5 text-[11.5px] leading-4 text-fg-4">
                       Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML y
-                      CDR reales con su huella SHA-256.
+                      CDR reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas) los deja en Descargas/AAAA/MM/SERIE-NÚMERO/RUC.
                     </p>
                   </Menu>
                   {p.puedeOperar && (
@@ -289,6 +298,9 @@ export function Portal({ token, email, onSalir }: Props) {
           p.cerrarDetalle();
           abrirImportar("cdr");
         }}
+        guardandoPc={p.guardandoPc}
+        onGuardarEnPc={(c) => void p.guardarEnPc([c])}
+        onAbrirCarpeta={(c) => void p.abrirCarpeta(c)}
         cargarArchivos={p.cargarArchivos}
       />
 

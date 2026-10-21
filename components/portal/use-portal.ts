@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ApiError,
+  apiAbrirCarpeta,
   apiArchivos,
   apiComprobantes,
   apiConsultarCdr,
@@ -22,6 +24,13 @@ import {
   type ApiResumen,
 } from "@/lib/api";
 import { aviso } from "@/lib/avisos";
+import {
+  guardarArchivos,
+  obtenerRaiz,
+  partesCarpeta,
+  rutaRelativa,
+  soportaCarpetaLocal,
+} from "@/lib/carpeta-local";
 import {
   FILTROS_INICIALES,
   ORDEN_INICIAL,
@@ -115,6 +124,7 @@ export function usePortal(token: string | null) {
   const [consultando, setConsultando] = useState<Set<string>>(() => new Set());
   const [sincronizando, setSincronizando] = useState(false);
   const [generandoLote, setGenerandoLote] = useState(false);
+  const [guardandoPc, setGuardandoPc] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [evidencias, setEvidencias] = useState<ArchivoGuardado[] | null>(null);
   const [errorEvidencias, setErrorEvidencias] = useState<string | null>(null);
@@ -628,6 +638,91 @@ export function usePortal(token: string | null) {
     }
   }, [token, empresa, generandoLote, seleccion, total, traerFiltrados, recargar]);
 
+  /**
+   * Guarda el XML y el CDR reales de los comprobantes en la PC, en la carpeta que el usuario
+   * eligió (su Descargas): `AAAA/MM/SERIE-NÚMERO/RUC`. Lo que no esté archivado se informa.
+   */
+  const guardarEnPc = useCallback(
+    async (comprobantes: Comprobante[]) => {
+      if (!token || guardandoPc || comprobantes.length === 0) return;
+      if (!soportaCarpetaLocal()) {
+        aviso.error("Tu navegador no permite guardar en carpetas", "Usa Chrome o Edge en el equipo.");
+        return;
+      }
+      setGuardandoPc(true);
+      try {
+        const raiz = await obtenerRaiz();
+        if (!raiz) return;
+        let guardados = 0;
+        const incompletos: string[] = [];
+        for (const c of comprobantes) {
+          const existentes = await apiArchivos(token, c.id);
+          const aGuardar: Array<{ nombre: string; blob: Blob }> = [];
+          for (const tipo of ["xml", "cdr"] as const) {
+            const archivo = existentes.find((a) => a.tipo === tipo);
+            if (!archivo) continue;
+            try {
+              const { blob, nombre } = await apiDescargarArchivo(token, archivo);
+              aGuardar.push({ nombre, blob });
+            } catch {
+              // Se informa abajo como incompleto; no frena al resto.
+            }
+          }
+          if (aGuardar.length > 0) {
+            await guardarArchivos(raiz, partesCarpeta(c), aGuardar);
+            guardados += 1;
+          }
+          if (aGuardar.length < (c.codigoTipo === "03" ? 1 : 2)) incompletos.push(c.numero);
+        }
+        const destino =
+          comprobantes.length === 1
+            ? rutaRelativa(raiz.name, partesCarpeta(comprobantes[0]))
+            : `${raiz.name}\\AAAA\\MM\\SERIE-NÚMERO\\RUC`;
+        if (guardados === 0) {
+          aviso.error("No había nada que guardar", "Estos comprobantes no tienen XML ni CDR archivados.");
+        } else {
+          aviso.ok(
+            `${formatearEntero(guardados)} comprobante${guardados === 1 ? "" : "s"} guardado${guardados === 1 ? "" : "s"} en tu PC`,
+            incompletos.length === 0
+              ? destino
+              : `${destino} · con respaldo incompleto: ${incompletos.slice(0, 3).join(", ")}${incompletos.length > 3 ? "…" : ""}`,
+          );
+        }
+      } catch (error) {
+        aviso.error("No se pudo guardar en tu PC", mensajeDe(error, "Reintenta."));
+      } finally {
+        setGuardandoPc(false);
+      }
+    },
+    [token, guardandoPc],
+  );
+
+  /** Abre la carpeta del comprobante en el Explorador (backend local); si no, copia la ruta. */
+  const abrirCarpeta = useCallback(
+    async (c: Comprobante) => {
+      if (!token) return;
+      try {
+        const { ruta } = await apiAbrirCarpeta(token, c.id);
+        aviso.ok("Carpeta abierta", ruta);
+      } catch (error) {
+        const relativa = rutaRelativa("Descargas", partesCarpeta(c));
+        const sinBackendLocal = error instanceof ApiError && error.status === 409;
+        if (sinBackendLocal) {
+          try {
+            await navigator.clipboard.writeText(relativa);
+          } catch {
+            // Sin permiso de portapapeles: la ruta igual aparece en el aviso.
+          }
+        }
+        aviso.error(
+          sinBackendLocal ? "No se puede abrir desde la web" : "No se pudo abrir la carpeta",
+          sinBackendLocal ? `Ruta copiada: ${relativa}` : mensajeDe(error, "Reintenta."),
+        );
+      }
+    },
+    [token],
+  );
+
   const cargarEvidencias = useCallback(async () => {
     if (!token || !rucActivo) return;
     setErrorEvidencias(null);
@@ -695,6 +790,9 @@ export function usePortal(token: string | null) {
     consultando,
     sincronizando,
     generandoLote,
+    guardandoPc,
+    guardarEnPc,
+    abrirCarpeta,
     exportando,
     descargar,
     consultarCdr,

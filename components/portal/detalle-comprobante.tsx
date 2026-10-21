@@ -7,6 +7,8 @@ import {
   Download,
   FileCode2,
   FileSearch,
+  FolderOpen,
+  HardDriveDownload,
   Info,
   ShieldCheck,
   Upload,
@@ -38,6 +40,9 @@ interface Props {
   onConsultarCdr: (c: Comprobante) => void;
   onImportarXml: (archivo: File) => void;
   onAbrirImportarCdr: () => void;
+  guardandoPc: boolean;
+  onGuardarEnPc: (c: Comprobante) => void;
+  onAbrirCarpeta: (c: Comprobante) => void;
   cargarArchivos: (c: Comprobante) => Promise<ArchivoGuardado[]>;
 }
 
@@ -492,6 +497,25 @@ export function DetalleComprobante(props: Props) {
               >
                 Consultar CDR
               </Boton>
+            )}
+            {(c.tieneXml || c.tieneCdr) && (
+              <>
+                <Boton
+                  icono={FolderOpen}
+                  onClick={() => props.onAbrirCarpeta(c)}
+                  title="Abre Descargas/AAAA/MM/SERIE-NÚMERO/RUC (requiere el backend en tu PC)"
+                >
+                  Abrir carpeta
+                </Boton>
+                <Boton
+                  icono={HardDriveDownload}
+                  cargando={props.guardandoPc}
+                  onClick={() => props.onGuardarEnPc(c)}
+                  title="Guarda el XML y el CDR en Descargas/AAAA/MM/SERIE-NÚMERO/RUC"
+                >
+                  Guardar en mi PC
+                </Boton>
+              </>
             )}
             {c.tieneXml && (
               <Boton
