@@ -180,7 +180,7 @@ export function Portal({ token, email, onSalir }: Props) {
                     <SeparadorMenu />
                     <p className="px-2.5 py-1.5 text-[11.5px] leading-4 text-fg-4">
                       Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML y
-                      CDR reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas) los deja en Descargas/AAAA/MM/SERIE-NÚMERO/RUC.
+                      CDR reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas) los deja en Descargas/AAAA/MM/RUC/SERIE-NÚMERO.
                     </p>
                   </Menu>
                   {p.puedeOperar && (

@@ -1,6 +1,6 @@
 /**
  * Guardado del XML y el CDR en una carpeta de la PC del usuario, con la estructura que pide
- * el área de Contabilidad: `Descargas / AAAA / MM / SERIE-NÚMERO / RUC`.
+ * el área de Contabilidad: `Descargas / AAAA / MM / RUC / SERIE-NÚMERO`.
  *
  * Usa la File System Access API (Chrome y Edge): el usuario elige UNA vez su carpeta
  * Descargas y el navegador recuerda el permiso. Un navegador no puede abrir el Explorador
@@ -16,14 +16,15 @@ export function segmentoSeguro(texto: string, vacio: string): string {
   return texto.replace(NO_PERMITIDO, "-").replace(/^[ .]+|[ .]+$/g, "") || vacio;
 }
 
-/** Año, mes, serie-número y RUC de la contraparte (cliente en ventas, proveedor en compras). */
+/** Año, mes, RUC de la contraparte (cliente en ventas, proveedor en compras) y serie-número:
+ * un mismo RUC agrupa varios documentos. */
 export function partesCarpeta(c: Pick<Comprobante, "fechaEmision" | "numero" | "cliente">): string[] {
   const [anio, mes] = c.fechaEmision.split("-");
   return [
     segmentoSeguro(anio ?? "", "sin-fecha"),
     segmentoSeguro(mes ?? "", "sin-fecha"),
-    segmentoSeguro(c.numero, "sin-numero"),
     segmentoSeguro(c.cliente.ruc, "sin-ruc"),
+    segmentoSeguro(c.numero, "sin-numero"),
   ];
 }
 
@@ -118,7 +119,7 @@ export async function obtenerRaiz(opciones: { cambiar?: boolean } = {}): Promise
   }
 }
 
-/** Escribe los archivos en `raiz/AAAA/MM/SERIE-NÚMERO/RUC/`, creando lo que falte. */
+/** Escribe los archivos en `raiz/AAAA/MM/RUC/SERIE-NÚMERO/`, creando lo que falte. */
 export async function guardarArchivos(
   raiz: FileSystemDirectoryHandle,
   partes: string[],

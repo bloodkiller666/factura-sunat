@@ -640,7 +640,7 @@ export function usePortal(token: string | null) {
 
   /**
    * Guarda el XML y el CDR reales de los comprobantes en la PC, en la carpeta que el usuario
-   * eligió (su Descargas): `AAAA/MM/SERIE-NÚMERO/RUC`. Lo que no esté archivado se informa.
+   * eligió (su Descargas): `AAAA/MM/RUC/SERIE-NÚMERO`. Lo que no esté archivado se informa.
    */
   const guardarEnPc = useCallback(
     async (comprobantes: Comprobante[]) => {
@@ -677,7 +677,7 @@ export function usePortal(token: string | null) {
         const destino =
           comprobantes.length === 1
             ? rutaRelativa(raiz.name, partesCarpeta(comprobantes[0]))
-            : `${raiz.name}\\AAAA\\MM\\SERIE-NÚMERO\\RUC`;
+            : `${raiz.name}\\AAAA\\MM\\RUC\\SERIE-NÚMERO`;
         if (guardados === 0) {
           aviso.error("No había nada que guardar", "Estos comprobantes no tienen XML ni CDR archivados.");
         } else {

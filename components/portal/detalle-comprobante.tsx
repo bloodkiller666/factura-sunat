@@ -503,7 +503,7 @@ export function DetalleComprobante(props: Props) {
                 <Boton
                   icono={FolderOpen}
                   onClick={() => props.onAbrirCarpeta(c)}
-                  title="Abre Descargas/AAAA/MM/SERIE-NÚMERO/RUC (requiere el backend en tu PC)"
+                  title="Abre Descargas/AAAA/MM/RUC/SERIE-NÚMERO (requiere el backend en tu PC)"
                 >
                   Abrir carpeta
                 </Boton>
@@ -511,7 +511,7 @@ export function DetalleComprobante(props: Props) {
                   icono={HardDriveDownload}
                   cargando={props.guardandoPc}
                   onClick={() => props.onGuardarEnPc(c)}
-                  title="Guarda el XML y el CDR en Descargas/AAAA/MM/SERIE-NÚMERO/RUC"
+                  title="Guarda el XML y el CDR en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
                 >
                   Guardar en mi PC
                 </Boton>
