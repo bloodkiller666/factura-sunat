@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/boton";
 import { Grupo, Seleccion } from "@/components/ui/campos";
 import { Dialogo } from "@/components/ui/dialogo";
 import { Progreso } from "@/components/ui/varios";
+import type { LibroSire } from "@/lib/api";
 import { mesesEntre } from "@/lib/filtros";
 import { etiquetaPeriodo, formatearEntero } from "@/lib/format";
 import {
@@ -23,6 +24,8 @@ interface Props {
   abierto: boolean;
   token: string | null;
   ruc: string | null;
+  /** Qué registro de SIRE se trae: ventas (RVIE) o compras a proveedores (RCE). */
+  libro: LibroSire;
   onCerrar: () => void;
   /** Se llama al terminar (o detener) con la cantidad de comprobantes nuevos. */
   onTerminado: (nuevos: number) => void;
@@ -64,7 +67,8 @@ function TextoResultado({ r }: { r: ResultadoMes }) {
   );
 }
 
-export function DialogoSire({ abierto, token, ruc, onCerrar, onTerminado }: Props) {
+export function DialogoSire({ abierto, token, ruc, libro, onCerrar, onTerminado }: Props) {
+  const compras = libro === "compras";
   const hoy = mesActual();
   const meses = useMemo(() => mesesDisponibles(hoy), [hoy]);
   const anterior = mesAnterior(hoy);
@@ -90,6 +94,7 @@ export function DialogoSire({ abierto, token, ruc, onCerrar, onTerminado }: Prop
     setCorriendo(true);
     setResultados(seleccion.map(resultadoInicial));
     const finales = await sincronizarMeses(token, ruc, seleccion, {
+      libro,
       cancelado: () => cancelado.current,
       alCambiar: (resultado) =>
         setResultados((previos) =>
@@ -110,8 +115,12 @@ export function DialogoSire({ abierto, token, ruc, onCerrar, onTerminado }: Prop
     <Dialogo
       abierto={abierto}
       onCerrar={cerrar}
-      titulo="Sincronizar ventas desde SIRE"
-      descripcion="Trae de SUNAT los comprobantes que tiene registrados de tu empresa."
+      titulo={compras ? "Sincronizar compras desde SIRE" : "Sincronizar ventas desde SIRE"}
+      descripcion={
+        compras
+          ? "Trae de SUNAT los comprobantes que tus proveedores te emitieron."
+          : "Trae de SUNAT los comprobantes que tiene registrados de tu empresa."
+      }
       ancho="lg"
       pie={
         resultados === null ? (
@@ -199,7 +208,8 @@ export function DialogoSire({ abierto, token, ruc, onCerrar, onTerminado }: Prop
               </li>
               <li>
                 <strong className="font-medium text-fg">Alcance:</strong> SIRE entrega la cabecera
-                del comprobante, sin XML ni ítems. Complétalos importando los XML.
+                del comprobante, sin XML ni ítems. Complétalos importando los XML
+                {compras ? " que te envíen tus proveedores." : "."}
               </li>
               {seleccion.length > 6 && (
                 <li className="text-warn">

@@ -7,7 +7,7 @@
  * problema sea de acceso o de conexión: seguir solo repetiría el fallo.
  */
 
-import { ApiError, apiSireSync, type ApiSireSync } from "./api";
+import { ApiError, apiSireSync, type ApiSireSync, type LibroSire } from "./api";
 import { mesesEntre } from "./filtros";
 import { periodoSire } from "./format";
 
@@ -32,6 +32,7 @@ export type LlamadaSire = (
   ruc: string,
   periodo: string,
   ticket?: string,
+  libro?: LibroSire,
 ) => Promise<ApiSireSync>;
 
 /** Errores tras los cuales no tiene sentido seguir con el resto de los meses. */
@@ -59,12 +60,13 @@ export async function sincronizarMes(
   ruc: string,
   mes: string,
   llamar: LlamadaSire = apiSireSync,
+  libro: LibroSire = "ventas",
 ): Promise<ResultadoMes> {
   const periodo = periodoSire(mes);
   let ticket: string | undefined;
 
   for (let intento = 0; intento <= MAX_REINTENTOS_TICKET; intento += 1) {
-    const respuesta = await llamar(token, ruc, periodo, ticket);
+    const respuesta = await llamar(token, ruc, periodo, ticket, libro);
     if (respuesta.estado === "en_proceso" && respuesta.ticket) {
       ticket = respuesta.ticket;
       continue;
@@ -94,6 +96,7 @@ export async function sincronizarMeses(
     alCambiar: (resultado: ResultadoMes) => void;
     cancelado: () => boolean;
     llamar?: LlamadaSire;
+    libro?: LibroSire;
   },
 ): Promise<ResultadoMes[]> {
   const resultados: ResultadoMes[] = [];
@@ -109,7 +112,7 @@ export async function sincronizarMeses(
     opciones.alCambiar({ ...resultadoInicial(mes), estado: "en_curso" });
     let resultado: ResultadoMes;
     try {
-      resultado = await sincronizarMes(token, ruc, mes, opciones.llamar);
+      resultado = await sincronizarMes(token, ruc, mes, opciones.llamar, opciones.libro);
     } catch (error) {
       if (error instanceof ApiError && error.code === "periodo_ya_cargado") {
         // Ya está en la base: no es un fallo ni detiene el resto de los meses.

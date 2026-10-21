@@ -362,8 +362,21 @@ export function usePortal(token: string | null) {
     setPagina(0);
   }, []);
 
+  // «Limpiar» no cambia de sección: se sigue viendo lo mismo (ventas o compras).
   const limpiarFiltros = useCallback(() => {
-    setFiltros(FILTROS_INICIALES);
+    setFiltros((previos) => ({ ...FILTROS_INICIALES, origen: previos.origen }));
+    setPagina(0);
+  }, []);
+
+  /** Cambia entre ventas (`emitido`) y compras (`recibido`): cada una con sus filtros limpios. */
+  const cambiarOrigen = useCallback((origen: "emitido" | "recibido") => {
+    setFiltros((previos) =>
+      previos.origen === origen ? previos : { ...FILTROS_INICIALES, origen },
+    );
+    setQEfectiva(FILTROS_INICIALES.q);
+    setOrden(ORDEN_INICIAL);
+    setSeleccionMapa(new Map());
+    setDetalleId(null);
     setPagina(0);
   }, []);
 
@@ -397,7 +410,7 @@ export function usePortal(token: string | null) {
     setDetalleId(null);
     setEvidencias(null);
     setErrorEvidencias(null);
-    setFiltros(FILTROS_INICIALES);
+    setFiltros((previos) => ({ ...FILTROS_INICIALES, origen: previos.origen }));
     setQEfectiva(FILTROS_INICIALES.q);
     setOrden(ORDEN_INICIAL);
     setPagina(0);
@@ -760,6 +773,7 @@ export function usePortal(token: string | null) {
     filtros,
     cambiarFiltros,
     limpiarFiltros,
+    cambiarOrigen,
     hayFiltros: hayFiltrosActivos(filtros),
     filtrarPorEstado,
     filtrarPorRespaldo,

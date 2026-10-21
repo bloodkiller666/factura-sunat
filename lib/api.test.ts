@@ -243,6 +243,14 @@ describe("llamadas a la API", () => {
     });
   });
 
+  it("apiSireSync pide las compras al endpoint del RCE (y las ventas por defecto)", async () => {
+    fetchMock.mockImplementation(async () => respuesta({ estado: "completado" }));
+    await apiSireSync("T", "205", "202609");
+    await apiSireSync("T", "205", "202609", undefined, "compras");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/companies/205/sire/ventas/sync");
+    expect(String(fetchMock.mock.calls[1][0])).toContain("/companies/205/sire/compras/sync");
+  });
+
   it("apiBizlinksRespaldos llama al endpoint de respaldos con límite y fechas", async () => {
     fetchMock.mockResolvedValueOnce(
       respuesta({

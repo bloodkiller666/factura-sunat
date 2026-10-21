@@ -78,6 +78,8 @@ export interface FiltrosState {
   tipo: TipoDocumento | "TODOS";
   estadoSunat: EstadoSunat | "TODOS";
   respaldo: FiltroRespaldo;
+  /** Registro que se está viendo: ventas (`emitido`) o compras a proveedores (`recibido`). */
+  origen: "emitido" | "recibido";
   /** `PEN` (soles) o `USD` (dólares); los importes no se convierten entre monedas. */
   moneda: "TODOS" | "PEN" | "USD";
   numeroSap: string;

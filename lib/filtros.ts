@@ -14,6 +14,7 @@ export const FILTROS_INICIALES: FiltrosState = {
   tipo: "TODOS",
   estadoSunat: "TODOS",
   respaldo: "TODOS",
+  origen: "emitido",
   moneda: "TODOS",
   numeroSap: "",
   desde: "",
@@ -22,10 +23,13 @@ export const FILTROS_INICIALES: FiltrosState = {
   venceHasta: "",
 };
 
-/** ¿Hay algún filtro distinto del valor por defecto? */
+/**
+ * ¿Hay algún filtro distinto del valor por defecto? El origen (ventas/compras) no cuenta: es
+ * la sección que se está viendo, no un filtro que se pueda «limpiar».
+ */
 export function hayFiltrosActivos(filtros: FiltrosState): boolean {
   return (Object.keys(FILTROS_INICIALES) as Array<keyof FiltrosState>).some(
-    (clave) => filtros[clave] !== FILTROS_INICIALES[clave],
+    (clave) => clave !== "origen" && filtros[clave] !== FILTROS_INICIALES[clave],
   );
 }
 
@@ -77,6 +81,7 @@ export function filtrosParaApi(filtros: FiltrosState): FiltrosApi {
   const q = filtros.q.trim();
   const sap = filtros.numeroSap.trim();
   return {
+    origen: filtros.origen,
     ...(q.length >= MINIMO_BUSQUEDA ? { q } : {}),
     ...(filtros.tipo !== "TODOS" ? { tipo_documento: CODIGO_DE_TIPO[filtros.tipo] } : {}),
     ...(filtros.estadoSunat !== "TODOS" ? { estado: filtros.estadoSunat.toLowerCase() } : {}),
@@ -112,6 +117,7 @@ export function consultaDePagina(
  */
 export function consultaDeResumen(filtros: FiltrosState): FiltrosApi {
   return {
+    origen: filtros.origen,
     ...(filtros.desde ? { fecha_desde: filtros.desde } : {}),
     ...(filtros.hasta ? { fecha_hasta: filtros.hasta } : {}),
   };

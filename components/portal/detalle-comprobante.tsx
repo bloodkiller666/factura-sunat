@@ -59,7 +59,7 @@ function Resumen({ c, empresa }: { c: Comprobante; empresa: Empresa | null }) {
   return (
     <div className="space-y-6 p-5">
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
-        <Dato etiqueta="Cliente">
+        <Dato etiqueta={c.origen === "recibido" ? "Proveedor" : "Cliente"}>
           <span className="block truncate font-medium" title={c.cliente.razonSocial}>
             {c.cliente.razonSocial}
           </span>

@@ -46,8 +46,16 @@ describe("alternarOrden", () => {
 });
 
 describe("filtrosParaApi", () => {
-  it("sin filtros no envía nada", () => {
-    expect(filtrosParaApi(FILTROS_INICIALES)).toEqual({});
+  it("sin filtros solo envía la sección (ventas), para no mezclarla con las compras", () => {
+    expect(filtrosParaApi(FILTROS_INICIALES)).toEqual({ origen: "emitido" });
+  });
+
+  it("las compras piden origen recibido y no cuentan como un filtro activo", () => {
+    const compras = con({ origen: "recibido" });
+    expect(filtrosParaApi(compras)).toEqual({ origen: "recibido" });
+    expect(consultaDeResumen(compras)).toEqual({ origen: "recibido" });
+    expect(hayFiltrosActivos(compras)).toBe(false);
+    expect(claveDeFiltros(compras)).not.toBe(claveDeFiltros(FILTROS_INICIALES));
   });
 
   it("traduce cada filtro al parámetro del servidor", () => {
@@ -67,6 +75,7 @@ describe("filtrosParaApi", () => {
         }),
       ),
     ).toEqual({
+      origen: "emitido",
       q: "alfa",
       tipo_documento: "07",
       estado: "aprobado",
@@ -82,14 +91,15 @@ describe("filtrosParaApi", () => {
 
   it("el vencimiento acepta rangos abiertos y no afecta a los indicadores", () => {
     expect(filtrosParaApi(con({ venceHasta: "2026-10-18" }))).toEqual({
+      origen: "emitido",
       vencimiento_hasta: "2026-10-18",
     });
-    expect(consultaDeResumen(con({ venceDesde: "2026-10-01" }))).toEqual({});
+    expect(consultaDeResumen(con({ venceDesde: "2026-10-01" }))).toEqual({ origen: "emitido" });
   });
 
   it("una búsqueda de un solo carácter no se envía (el servidor la rechazaría)", () => {
-    expect(filtrosParaApi(con({ q: "a" }))).toEqual({});
-    expect(filtrosParaApi(con({ q: "  a " }))).toEqual({});
+    expect(filtrosParaApi(con({ q: "a" }))).toEqual({ origen: "emitido" });
+    expect(filtrosParaApi(con({ q: "  a " }))).toEqual({ origen: "emitido" });
     expect(filtrosParaApi(con({ q: "ab" })).q).toBe("ab");
   });
 
@@ -140,8 +150,8 @@ describe("consultaDeResumen", () => {
           hasta: "2026-09-30",
         }),
       ),
-    ).toEqual({ fecha_desde: "2026-09-01", fecha_hasta: "2026-09-30" });
-    expect(consultaDeResumen(FILTROS_INICIALES)).toEqual({});
+    ).toEqual({ origen: "emitido", fecha_desde: "2026-09-01", fecha_hasta: "2026-09-30" });
+    expect(consultaDeResumen(FILTROS_INICIALES)).toEqual({ origen: "emitido" });
   });
 });
 

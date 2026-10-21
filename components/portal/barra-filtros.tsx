@@ -91,7 +91,11 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
           <CampoBusqueda
             value={filtros.q}
             onChange={(e) => onCambiar({ q: e.target.value })}
-            placeholder="Buscar por N°, cliente o RUC"
+            placeholder={
+              filtros.origen === "recibido"
+                ? "Buscar por N°, proveedor o RUC"
+                : "Buscar por N°, cliente o RUC"
+            }
             aria-label="Buscar comprobantes"
             aria-describedby={busquedaCorta ? "ayuda-busqueda" : undefined}
           />

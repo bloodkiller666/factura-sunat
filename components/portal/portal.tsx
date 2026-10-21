@@ -55,6 +55,7 @@ export function Portal({ token, email, onSalir }: Props) {
 
   // Las evidencias se cargan al entrar a su vista (y al cambiar de empresa).
   const rucActivo = p.empresa?.ruc ?? null;
+  const compras = p.filtros.origen === "recibido";
   useEffect(() => {
     if (vista === "evidencias" && rucActivo) void p.cargarEvidencias();
     // `cargarEvidencias` cambia con el token; basta con vista y empresa.
@@ -113,7 +114,7 @@ export function Portal({ token, email, onSalir }: Props) {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                   <h1 className="text-[22px] leading-7 font-semibold tracking-tight text-fg">
-                    Comprobantes
+                    {compras ? "Compras a proveedores" : "Ventas"}
                   </h1>
                   <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg-3">
                     <span className="truncate">{p.empresa?.razonSocial ?? "Cargando empresa…"}</span>
@@ -131,7 +132,23 @@ export function Portal({ token, email, onSalir }: Props) {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {p.puedeOperar && (
+                  <div role="group" aria-label="Sección" className="flex gap-1">
+                    <Boton
+                      variante={compras ? "secundario" : "primario"}
+                      aria-pressed={!compras}
+                      onClick={() => p.cambiarOrigen("emitido")}
+                    >
+                      Ventas
+                    </Boton>
+                    <Boton
+                      variante={compras ? "primario" : "secundario"}
+                      aria-pressed={compras}
+                      onClick={() => p.cambiarOrigen("recibido")}
+                    >
+                      Compras
+                    </Boton>
+                  </div>
+                  {p.puedeOperar && !compras && (
                     <Boton
                       icono={FileSearch}
                       cargando={p.sincronizando}
@@ -140,7 +157,7 @@ export function Portal({ token, email, onSalir }: Props) {
                       Consultar pendientes
                     </Boton>
                   )}
-                  {p.puedeOperar && (
+                  {p.puedeOperar && !compras && (
                     <Boton icono={CloudDownload} onClick={() => setRespaldosAbierto(true)}>
                       Traer XML y CDR
                     </Boton>
@@ -240,6 +257,7 @@ export function Portal({ token, email, onSalir }: Props) {
                 cargando={p.cargando}
                 actualizando={p.actualizando}
                 hayFiltros={p.hayFiltros}
+                contraparte={compras ? "Proveedor" : "Cliente"}
                 seleccionados={p.seleccionados}
                 consultando={p.consultando}
                 puedeOperar={p.puedeOperar}
@@ -325,6 +343,7 @@ export function Portal({ token, email, onSalir }: Props) {
         abierto={sireAbierto}
         token={token}
         ruc={rucActivo}
+        libro={compras ? "compras" : "ventas"}
         onCerrar={() => setSireAbierto(false)}
         onTerminado={(nuevos) => {
           if (nuevos > 0) p.recargar();

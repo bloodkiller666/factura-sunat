@@ -42,6 +42,8 @@ interface Props {
   /** Hay datos en pantalla y se está pidiendo otra página, orden o filtro. */
   actualizando: boolean;
   hayFiltros: boolean;
+  /** Quién es la contraparte: el cliente en ventas, el proveedor en compras. */
+  contraparte: "Cliente" | "Proveedor";
   seleccionados: Set<string>;
   consultando: Set<string>;
   puedeOperar: boolean;
@@ -144,6 +146,7 @@ function Respaldos({ c }: { c: Comprobante }) {
 
 export function TablaComprobantes({
   comprobantes,
+  contraparte,
   total,
   pagina,
   tamano,
@@ -227,7 +230,7 @@ export function TablaComprobantes({
                 />
               </th>
               <EncabezadoOrden etiqueta="Documento" campo="numero" orden={orden} onOrden={onOrden} />
-              <EncabezadoOrden etiqueta="Cliente" campo="cliente" orden={orden} onOrden={onOrden} />
+              <EncabezadoOrden etiqueta={contraparte} campo="cliente" orden={orden} onOrden={onOrden} />
               <EncabezadoOrden etiqueta="Emisión" campo="fecha" orden={orden} onOrden={onOrden} />
               <EncabezadoOrden
                 etiqueta="Importe total"

@@ -540,14 +540,20 @@ export async function apiConsultarCdr(token: string, id: string): Promise<ApiCon
   });
 }
 
-/** Sincroniza las ventas de un periodo (`AAAAMM`) desde SIRE (admin/emisor). */
+export type LibroSire = "ventas" | "compras";
+
+/**
+ * Sincroniza un periodo (`AAAAMM`) desde SIRE (admin/emisor): las ventas (RVIE) o las compras a
+ * proveedores (RCE).
+ */
 export async function apiSireSync(
   token: string,
   ruc: string,
   periodo: string,
   ticket?: string,
+  libro: LibroSire = "ventas",
 ): Promise<ApiSireSync> {
-  return pedir<ApiSireSync>(`/api/v1/companies/${ruc}/sire/ventas/sync`, token, {
+  return pedir<ApiSireSync>(`/api/v1/companies/${ruc}/sire/${libro}/sync`, token, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(ticket ? { periodo, ticket } : { periodo }),
