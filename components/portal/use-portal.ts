@@ -701,11 +701,12 @@ export function usePortal(token: string | null) {
   const abrirCarpeta = useCallback(
     async (c: Comprobante) => {
       if (!token) return;
+      const partes = partesCarpeta(c);
       try {
-        const { ruta } = await apiAbrirCarpeta(token, c.id);
+        const { ruta } = await apiAbrirCarpeta(token, partes);
         aviso.ok("Carpeta abierta", ruta);
       } catch (error) {
-        const relativa = rutaRelativa("Descargas", partesCarpeta(c));
+        const relativa = rutaRelativa("Descargas", partes);
         const sinBackendLocal = error instanceof ApiError && error.status === 409;
         if (sinBackendLocal) {
           try {

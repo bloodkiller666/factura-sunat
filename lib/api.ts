@@ -401,9 +401,11 @@ export async function apiDescargarArchivo(
  * Pide al backend abrir en el Explorador la carpeta local del comprobante. Solo funciona si el
  * backend corre en la misma PC (`LOCAL_ABRIR_CARPETA=true`); si no, responde 409.
  */
-export async function apiAbrirCarpeta(token: string, id: string): Promise<{ ruta: string }> {
-  return pedir<{ ruta: string }>(`/api/v1/comprobantes/${id}/abrir-carpeta`, token, {
+export async function apiAbrirCarpeta(token: string, partes: string[]): Promise<{ ruta: string }> {
+  return pedir<{ ruta: string }>("/api/v1/carpeta-local/abrir", token, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ partes }),
   });
 }
 
