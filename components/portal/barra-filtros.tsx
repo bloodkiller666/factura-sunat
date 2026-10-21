@@ -63,6 +63,13 @@ function chipsActivos(filtros: FiltrosState): Chip[] {
       quitar: { respaldo: "TODOS" },
     });
   }
+  if (filtros.moneda !== "TODOS") {
+    chips.push({
+      clave: "moneda",
+      texto: filtros.moneda === "PEN" ? "Soles" : "Dólares",
+      quitar: { moneda: "TODOS" },
+    });
+  }
   if (filtros.numeroSap.trim()) {
     chips.push({
       clave: "numeroSap",
@@ -126,6 +133,17 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="Pendiente">Pendiente</option>
             <option value="Rechazado">Rechazado</option>
             <option value="Anulado">Anulado</option>
+          </Seleccion>
+        </div>
+        <div className="w-[132px]">
+          <Seleccion
+            aria-label="Moneda"
+            value={filtros.moneda}
+            onChange={(e) => onCambiar({ moneda: e.target.value as FiltrosState["moneda"] })}
+          >
+            <option value="TODOS">Todas las monedas</option>
+            <option value="PEN">Soles (S/)</option>
+            <option value="USD">Dólares (US$)</option>
           </Seleccion>
         </div>
         <div className="w-[132px]">
