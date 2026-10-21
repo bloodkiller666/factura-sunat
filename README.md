@@ -92,3 +92,5 @@ OOXML mínimo que Excel necesita.
 
 Vercel (el repo está conectado: cada push a `main` despliega). Ver el README del backend
 para el despliegue de la API.
+
+<!-- redeploy: 2026-10-21 -->
