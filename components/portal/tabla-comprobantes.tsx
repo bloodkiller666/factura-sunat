@@ -232,6 +232,9 @@ export function TablaComprobantes({
               <EncabezadoOrden etiqueta="Documento" campo="numero" orden={orden} onOrden={onOrden} />
               <EncabezadoOrden etiqueta={contraparte} campo="cliente" orden={orden} onOrden={onOrden} />
               <EncabezadoOrden etiqueta="Emisión" campo="fecha" orden={orden} onOrden={onOrden} />
+              <th scope="col" className={TH}>
+                Vencimiento
+              </th>
               <EncabezadoOrden
                 etiqueta="Importe total"
                 nota="con IGV"
@@ -260,7 +263,7 @@ export function TablaComprobantes({
             {cargando &&
               Array.from({ length: 8 }, (_, i) => (
                 <tr key={`e${i}`}>
-                  <td colSpan={9} className="px-4 py-3.5">
+                  <td colSpan={10} className="px-4 py-3.5">
                     <Esqueleto className="h-5 w-full" />
                   </td>
                 </tr>
@@ -307,9 +310,14 @@ export function TablaComprobantes({
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       <p className="tnum text-[13px] text-fg">{formatearFecha(c.fechaEmision)}</p>
-                      <p className="tnum text-[12px] text-fg-3">
-                        {c.fechaVencimiento ? `Vence ${formatearFecha(c.fechaVencimiento)}` : c.formaPago ?? ""}
-                      </p>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {c.fechaVencimiento ? (
+                        <p className="tnum text-[13px] text-fg">{formatearFecha(c.fechaVencimiento)}</p>
+                      ) : (
+                        <p className="text-[13px] text-fg-4">—</p>
+                      )}
+                      {c.formaPago && <p className="text-[12px] text-fg-3">{c.formaPago}</p>}
                     </td>
                     <td className="px-3 py-2.5 text-right whitespace-nowrap">
                       <p
@@ -398,8 +406,9 @@ export function TablaComprobantes({
                 <span className="flex flex-wrap items-center gap-2">
                   <EstadoPill estado={c.estadoSunat} />
                   <Respaldos c={c} />
-                  <span className="tnum ml-auto text-[12px] text-fg-3">
-                    {formatearFecha(c.fechaEmision)}
+                  <span className="tnum ml-auto text-right text-[12px] text-fg-3">
+                    Emisión {formatearFecha(c.fechaEmision)}
+                    {c.fechaVencimiento && <> · Vence {formatearFecha(c.fechaVencimiento)}</>}
                   </span>
                 </span>
               </button>
