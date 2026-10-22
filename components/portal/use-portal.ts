@@ -466,7 +466,7 @@ export function usePortal(token: string | null) {
   );
 
   const descargar = useCallback(
-    async (c: Comprobante, tipo: "xml" | "cdr") => {
+    async (c: Comprobante, tipo: "xml" | "cdr" | "pdf") => {
       if (!token) return;
       await conClave("descargando", `${c.id}:${tipo}`, async () => {
         try {
@@ -671,7 +671,9 @@ export function usePortal(token: string | null) {
         for (const c of comprobantes) {
           const existentes = await apiArchivos(token, c.id);
           const aGuardar: Array<{ nombre: string; blob: Blob }> = [];
-          for (const tipo of ["xml", "cdr"] as const) {
+          // El PDF solo se guarda en compras: el portal no maneja PDF de las ventas.
+          const tipos = c.origen === "recibido" ? (["xml", "cdr", "pdf"] as const) : (["xml", "cdr"] as const);
+          for (const tipo of tipos) {
             const archivo = existentes.find((a) => a.tipo === tipo);
             if (!archivo) continue;
             try {

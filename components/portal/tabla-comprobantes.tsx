@@ -27,7 +27,7 @@ import { formatearEntero, formatearFecha, formatearMoneda } from "@/lib/format";
 import type { Comprobante } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export type TipoDescarga = "xml" | "cdr";
+export type TipoDescarga = "xml" | "cdr" | "pdf";
 
 interface Props {
   /** Solo la página actual: el servidor ya filtró, ordenó y paginó. */
@@ -118,6 +118,16 @@ function MenuFila({
       >
         Descargar CDR
       </ItemMenu>
+      {comprobante.origen === "recibido" && (
+        <ItemMenu
+          icono={FileText}
+          deshabilitado={!comprobante.tienePdf}
+          ayuda={comprobante.tienePdf ? undefined : "No archivado"}
+          onClick={() => onDescargar(comprobante, "pdf")}
+        >
+          Descargar PDF
+        </ItemMenu>
+      )}
       {puedeOperar && comprobante.origen === "emitido" && (
         <>
           <SeparadorMenu />
@@ -140,6 +150,7 @@ function Respaldos({ c }: { c: Comprobante }) {
     <span className="inline-flex items-center gap-1">
       <ChipRespaldo nombre="XML" presente={c.tieneXml} />
       <ChipRespaldo nombre="CDR" presente={c.tieneCdr} />
+      {c.origen === "recibido" && <ChipRespaldo nombre="PDF" presente={c.tienePdf} />}
     </span>
   );
 }

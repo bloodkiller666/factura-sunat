@@ -9,6 +9,7 @@ import {
   ApiError,
   apiImportarCdr,
   apiImportarPaquete,
+  apiImportarProveedores,
   apiImportarXml,
 } from "@/lib/api";
 import {
@@ -29,6 +30,8 @@ interface Props {
   onPestana: (pestana: PestanaImportar) => void;
   token: string | null;
   ruc: string | null;
+  /** Sección activa: en compras se importa lo de los proveedores (XML + PDF + CDR por carpeta). */
+  origen: "emitido" | "recibido";
   puedeOperar: boolean;
   onCerrar: () => void;
   /** Cantidad de elementos que cambiaron en el servidor (para refrescar la lista). */
@@ -56,10 +59,25 @@ const MOTIVOS_CDR: Record<string, string> = {
   cdr_parse_error: "El CDR está dañado o no se pudo leer",
 };
 
+// Archivos que el importador de proveedores deja de lado a propósito: se avisa, no es un error.
+const MOTIVOS_INFORMATIVOS = new Set([
+  "sin_xml",
+  "guia",
+  "cdr_sin_comprobante",
+  "cdr_repetido",
+  "xml_no_reconocido",
+  "tipo_no_soportado",
+]);
+
 const MOTIVOS_XML: Record<string, string> = {
   conflict: "Ya estaba registrado",
   invalid_document: "No es un comprobante UBL válido",
-  sin_xml: "PDF sin XML con el mismo nombre",
+  sin_xml: "PDF sin XML en su carpeta (o que no se puede unir a un comprobante)",
+  guia: "Guía de remisión: no se registra como compra",
+  cdr_sin_comprobante: "CDR sin comprobante en su carpeta",
+  cdr_repetido: "Ya había otro CDR en la carpeta",
+  xml_no_reconocido: "XML que no es un comprobante ni un CDR",
+  tipo_no_soportado: "Solo se importan XML y PDF",
 };
 
 function ZonaArchivos({
@@ -224,16 +242,22 @@ const PESTANAS: Array<{ id: PestanaImportar; etiqueta: string }> = [
   { id: "excel", etiqueta: "Excel (análisis)" },
 ];
 
+// En compras el CDR viaja dentro de la carpeta de cada proveedor, no en un ZIP aparte.
+const PESTANAS_COMPRAS = PESTANAS.filter((p) => p.id !== "cdr");
+
 export function DialogoImportar({
   abierto,
   pestana,
   onPestana,
   token,
   ruc,
+  origen,
   puedeOperar,
   onCerrar,
   onImportado,
 }: Props) {
+  const compras = origen === "recibido";
+  const pestanas = compras ? PESTANAS_COMPRAS : PESTANAS;
   const [ocupado, setOcupado] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [excel, setExcel] = useState<ReporteImportacion | null>(null);
@@ -255,19 +279,29 @@ export function DialogoImportar({
     for (const archivo of archivos) {
       try {
         if (archivo.name.toLowerCase().endsWith(".zip")) {
-          const reporte = await apiImportarPaquete(token, ruc, archivo);
+          const reporte = compras
+            ? await apiImportarProveedores(token, ruc, archivo)
+            : await apiImportarPaquete(token, ruc, archivo);
           nuevos += reporte.importados;
           for (const item of reporte.items) {
             filas.push({
               archivo: item.archivo,
-              tono: item.ok ? "ok" : item.code === "conflict" ? "aviso" : "error",
+              tono: item.ok
+                ? item.code === "conflict"
+                  ? "aviso"
+                  : "ok"
+                : item.code && MOTIVOS_INFORMATIVOS.has(item.code)
+                  ? "aviso"
+                  : item.code === "conflict"
+                    ? "aviso"
+                    : "error",
               texto: item.ok
-                ? `Importado${item.pdf ? " con PDF" : ""}`
+                ? `Importado${item.pdf ? " con PDF" : ""}${item.cdr ? " y CDR" : ""}`
                 : (item.code && MOTIVOS_XML[item.code]) || item.mensaje || "Con error",
             });
           }
         } else {
-          await apiImportarXml(token, ruc, archivo);
+          await apiImportarXml(token, ruc, archivo, origen);
           nuevos += 1;
           filas.push({ archivo: archivo.name, tono: "ok", texto: "Importado" });
         }
@@ -362,12 +396,16 @@ export function DialogoImportar({
       abierto={abierto}
       onCerrar={cerrar}
       titulo="Importar archivos"
-      descripcion="Trae al portal los XML y CDR que emite tu sistema de facturación."
+      descripcion={
+        compras
+          ? "Trae al portal los XML, PDF y CDR que te enviaron tus proveedores."
+          : "Trae al portal los XML y CDR que emite tu sistema de facturación."
+      }
       ancho="lg"
       pie={<Boton onClick={cerrar}>Cerrar</Boton>}
     >
       <div role="tablist" className="flex gap-1 border-b border-line px-4">
-        {PESTANAS.map((p) => (
+        {pestanas.map((p) => (
           <button
             key={p.id}
             role="tab"
@@ -397,8 +435,12 @@ export function DialogoImportar({
             <ZonaArchivos
               accept=".xml,.zip"
               multiple
-              titulo="Arrastra aquí tus XML o un ZIP"
-              ayuda="Hasta 200 archivos por ZIP; si traen el PDF con el mismo nombre, también se guarda. Un comprobante que ya está por SIRE se completa con su XML e ítems."
+              titulo={compras ? "Arrastra aquí el ZIP de proveedores o sus XML" : "Arrastra aquí tus XML o un ZIP"}
+              ayuda={
+                compras
+                  ? "El ZIP trae una carpeta por compra (RUC/SERIE-NÚMERO) con su XML, PDF y CDR: el extractor del correo los arma listos. Si SIRE ya trae la compra, el XML la completa; lo ya cargado no se duplica y solo recibe el PDF o el CDR que le falte."
+                  : "Hasta 200 archivos por ZIP; si traen el PDF con el mismo nombre, también se guarda. Un comprobante que ya está por SIRE se completa con su XML e ítems."
+              }
               ocupado={ocupado || !puedeOperar}
               onArchivos={(a) => void importarComprobantes(a)}
             />

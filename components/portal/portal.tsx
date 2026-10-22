@@ -368,6 +368,7 @@ export function Portal({ token, email, onSalir }: Props) {
         onPestana={(pestana) => setImportar((previo) => ({ ...previo, pestana }))}
         token={token}
         ruc={rucActivo}
+        origen={p.filtros.origen}
         puedeOperar={p.puedeOperar}
         onCerrar={() => setImportar((previo) => ({ ...previo, abierto: false }))}
         onImportado={() => p.recargar()}

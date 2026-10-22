@@ -7,6 +7,7 @@ import {
   Download,
   FileCode2,
   FileSearch,
+  FileText,
   FolderOpen,
   HardDriveDownload,
   Info,
@@ -36,7 +37,7 @@ interface Props {
   descargando: Set<string>;
   consultando: boolean;
   onCerrar: () => void;
-  onDescargar: (c: Comprobante, tipo: "xml" | "cdr") => void;
+  onDescargar: (c: Comprobante, tipo: "xml" | "cdr" | "pdf") => void;
   onConsultarCdr: (c: Comprobante) => void;
   onImportarXml: (archivo: File) => void;
   onAbrirImportarCdr: () => void;
@@ -400,6 +401,31 @@ function Archivos({
             )
           }
         />
+        {c.origen === "recibido" && (
+          <FilaArchivo
+            icono={FileText}
+            titulo="PDF del proveedor"
+            archivo={de("pdf")}
+            vacio={
+              <>
+                El proveedor lo envía por correo junto con el XML. Se trae con Importar → ZIP de
+                proveedores.
+              </>
+            }
+            acciones={
+              de("pdf") && (
+                <Boton
+                  tamano="sm"
+                  icono={Download}
+                  cargando={descargando.has(`${c.id}:pdf`)}
+                  onClick={() => onDescargar(c, "pdf")}
+                >
+                  Descargar PDF
+                </Boton>
+              )
+            }
+          />
+        )}
         <FilaArchivo
           icono={ShieldCheck}
           titulo="CDR (constancia de recepción)"
@@ -503,7 +529,7 @@ export function DetalleComprobante(props: Props) {
                 Consultar CDR
               </Boton>
             )}
-            {(c.tieneXml || c.tieneCdr) && (
+            {(c.tieneXml || c.tieneCdr || c.tienePdf) && (
               <>
                 <Boton
                   icono={FolderOpen}
@@ -516,11 +542,24 @@ export function DetalleComprobante(props: Props) {
                   icono={HardDriveDownload}
                   cargando={props.guardandoPc}
                   onClick={() => props.onGuardarEnPc(c)}
-                  title="Guarda el XML y el CDR en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
+                  title={
+                    c.origen === "recibido"
+                      ? "Guarda el XML, el CDR y el PDF en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
+                      : "Guarda el XML y el CDR en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
+                  }
                 >
                   Guardar en mi PC
                 </Boton>
               </>
+            )}
+            {c.origen === "recibido" && c.tienePdf && (
+              <Boton
+                icono={FileText}
+                cargando={props.descargando.has(`${c.id}:pdf`)}
+                onClick={() => props.onDescargar(c, "pdf")}
+              >
+                Descargar PDF
+              </Boton>
             )}
             {c.tieneXml && (
               <Boton

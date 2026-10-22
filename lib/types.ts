@@ -60,6 +60,8 @@ export interface Comprobante {
   /** Qué respaldos (XML y CDR) hay archivados en R2 para este comprobante. */
   tieneXml: boolean;
   tieneCdr: boolean;
+  /** PDF del proveedor: solo se muestra en compras (en ventas el portal no maneja PDF). */
+  tienePdf: boolean;
 }
 
 export interface Empresa {

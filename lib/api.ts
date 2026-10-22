@@ -61,6 +61,7 @@ export interface ApiComprobante {
   fuente?: "xml" | "sire";
   tiene_xml?: boolean;
   tiene_cdr?: boolean;
+  tiene_pdf?: boolean;
   moneda: string;
   monto_total: string | null;
   estado: string;
@@ -135,6 +136,8 @@ export interface ApiResultadoImportacion {
   total: number;
   importados: number;
   con_pdf: number;
+  /** Solo el importador de proveedores une el CDR al comprobante. */
+  con_cdr?: number;
   duplicados: number;
   con_error: number;
   items: Array<{
@@ -143,6 +146,7 @@ export interface ApiResultadoImportacion {
     comprobante_id?: string;
     numero?: string;
     pdf?: boolean;
+    cdr?: boolean;
     code?: string;
     mensaje?: string;
   }>;
@@ -424,7 +428,9 @@ export async function apiDescargarTipo(
     throw new ApiError(
       tipo === "xml"
         ? "Este comprobante no tiene el XML archivado. Impórtalo desde el sistema que lo emite."
-        : "Este comprobante no tiene el CDR archivado.",
+        : tipo === "pdf"
+          ? "Este comprobante no tiene el PDF archivado."
+          : "Este comprobante no tiene el CDR archivado.",
       "archivo_no_encontrado",
       404,
     );
@@ -458,6 +464,24 @@ export async function apiImportarPaquete(
   cuerpo.append("origen", origen);
   return pedir<ApiResultadoImportacion>(
     `/api/v1/companies/${ruc}/comprobantes/import-paquete`,
+    token,
+    { method: "POST", body: cuerpo },
+  );
+}
+
+/**
+ * Compras: un ZIP con una carpeta por compra (`RUC/SERIE-NÚMERO/` con su XML, PDF y CDR). Registra
+ * lo que SIRE no refleja y completa lo que sí; lo ya cargado no se duplica.
+ */
+export async function apiImportarProveedores(
+  token: string,
+  ruc: string,
+  archivo: File,
+): Promise<ApiResultadoImportacion> {
+  const cuerpo = new FormData();
+  cuerpo.append("paquete", archivo);
+  return pedir<ApiResultadoImportacion>(
+    `/api/v1/companies/${ruc}/comprobantes/import-proveedores`,
     token,
     { method: "POST", body: cuerpo },
   );
@@ -703,6 +727,7 @@ export function mapComprobante(api: ApiComprobante): Comprobante {
     cdrDescripcion: api.cdr_descripcion,
     tieneXml: api.tiene_xml ?? false,
     tieneCdr: api.tiene_cdr ?? false,
+    tienePdf: api.tiene_pdf ?? false,
   };
 }
 
@@ -723,6 +748,7 @@ export function conDetalle(comprobante: Comprobante, api: ApiDetalle): Comproban
   const respaldos = {
     tieneXml: api.tiene_xml ?? comprobante.tieneXml,
     tieneCdr: api.tiene_cdr ?? comprobante.tieneCdr,
+    tienePdf: api.tiene_pdf ?? comprobante.tienePdf,
   };
   if (items.length === 0) return { ...comprobante, ...respaldos };
 
