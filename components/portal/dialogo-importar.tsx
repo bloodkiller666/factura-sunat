@@ -5,11 +5,11 @@ import { AlertCircle, CheckCircle2, FileSpreadsheet, FileUp, Info, MinusCircle }
 import { Boton } from "@/components/ui/boton";
 import { Dialogo } from "@/components/ui/dialogo";
 import { Etiqueta } from "@/components/ui/etiqueta";
+import { ImportarProveedores } from "@/components/portal/importar-proveedores";
 import {
   ApiError,
   apiImportarCdr,
   apiImportarPaquete,
-  apiImportarProveedores,
   apiImportarXml,
 } from "@/lib/api";
 import {
@@ -259,6 +259,8 @@ export function DialogoImportar({
   const compras = origen === "recibido";
   const pestanas = compras ? PESTANAS_COMPRAS : PESTANAS;
   const [ocupado, setOcupado] = useState(false);
+  // En compras la importación en vivo lleva su propio estado: solo se avisa si está en curso.
+  const [ocupadoCompras, setOcupadoCompras] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [excel, setExcel] = useState<ReporteImportacion | null>(null);
   const [errorExcel, setErrorExcel] = useState<string | null>(null);
@@ -279,9 +281,7 @@ export function DialogoImportar({
     for (const archivo of archivos) {
       try {
         if (archivo.name.toLowerCase().endsWith(".zip")) {
-          const reporte = compras
-            ? await apiImportarProveedores(token, ruc, archivo)
-            : await apiImportarPaquete(token, ruc, archivo);
+          const reporte = await apiImportarPaquete(token, ruc, archivo);
           nuevos += reporte.importados;
           for (const item of reporte.items) {
             filas.push({
@@ -384,7 +384,7 @@ export function DialogoImportar({
   }
 
   const cerrar = () => {
-    if (ocupado) return;
+    if (ocupado || ocupadoCompras) return;
     setResultado(null);
     setExcel(null);
     setErrorExcel(null);
@@ -412,7 +412,7 @@ export function DialogoImportar({
             type="button"
             aria-selected={pestana === p.id}
             onClick={() => cambiarPestana(p.id)}
-            disabled={ocupado}
+            disabled={ocupado || ocupadoCompras}
             className={cn(
               "-mb-px border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors",
               pestana === p.id ? "border-accent text-fg" : "border-transparent text-fg-3 hover:text-fg",
@@ -430,17 +430,23 @@ export function DialogoImportar({
           </p>
         )}
 
-        {pestana === "comprobantes" && (
+        {pestana === "comprobantes" && compras && (
+          <ImportarProveedores
+            token={token}
+            ruc={ruc}
+            puedeOperar={puedeOperar}
+            onImportado={onImportado}
+            onOcupado={setOcupadoCompras}
+          />
+        )}
+
+        {pestana === "comprobantes" && !compras && (
           <>
             <ZonaArchivos
               accept=".xml,.zip"
               multiple
-              titulo={compras ? "Arrastra aquí el ZIP de proveedores o sus XML" : "Arrastra aquí tus XML o un ZIP"}
-              ayuda={
-                compras
-                  ? "El ZIP trae una carpeta por compra (RUC/SERIE-NÚMERO) con su XML, PDF y CDR: el extractor del correo los arma listos. Si SIRE ya trae la compra, el XML la completa; lo ya cargado no se duplica y solo recibe el PDF o el CDR que le falte."
-                  : "Hasta 200 archivos por ZIP; si traen el PDF con el mismo nombre, también se guarda. Un comprobante que ya está por SIRE se completa con su XML e ítems."
-              }
+              titulo="Arrastra aquí tus XML o un ZIP"
+              ayuda="Hasta 200 archivos por ZIP; si traen el PDF con el mismo nombre, también se guarda. Un comprobante que ya está por SIRE se completa con su XML e ítems."
               ocupado={ocupado || !puedeOperar}
               onArchivos={(a) => void importarComprobantes(a)}
             />

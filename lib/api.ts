@@ -138,6 +138,10 @@ export interface ApiResultadoImportacion {
   con_pdf: number;
   /** Solo el importador de proveedores une el CDR al comprobante. */
   con_cdr?: number;
+  /** Compras que no estaban en SIRE ni en la tabla y se registraron con su XML. */
+  nuevas?: number;
+  /** Compras que SIRE ya traía y se completaron con su XML. */
+  completadas?: number;
   duplicados: number;
   con_error: number;
   items: Array<{
@@ -147,6 +151,9 @@ export interface ApiResultadoImportacion {
     numero?: string;
     pdf?: boolean;
     cdr?: boolean;
+    /** Importador de proveedores: qué archivo es (xml, pdf, cdr) y qué pasó con él. */
+    tipo?: string;
+    situacion?: string;
     code?: string;
     mensaje?: string;
   }>;
@@ -482,6 +489,24 @@ export async function apiImportarProveedores(
   cuerpo.append("paquete", archivo);
   return pedir<ApiResultadoImportacion>(
     `/api/v1/companies/${ruc}/comprobantes/import-proveedores`,
+    token,
+    { method: "POST", body: cuerpo },
+  );
+}
+
+/**
+ * Importa UNA compra de proveedor (su XML, PDF y CDR) como archivos sueltos. El portal manda una
+ * compra por llamada para mostrar el avance en vivo; cada llamada se confirma sola.
+ */
+export async function apiImportarGrupoProveedores(
+  token: string,
+  ruc: string,
+  archivos: File[],
+): Promise<ApiResultadoImportacion> {
+  const cuerpo = new FormData();
+  for (const archivo of archivos) cuerpo.append("archivos", archivo, archivo.name);
+  return pedir<ApiResultadoImportacion>(
+    `/api/v1/companies/${ruc}/comprobantes/import-proveedores/archivos`,
     token,
     { method: "POST", body: cuerpo },
   );
