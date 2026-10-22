@@ -2,7 +2,15 @@
 
 import { useEffect, useRef } from "react";
 
-import { Check, ChevronsUpDown, LogOut, Receipt, ShieldCheck, ShoppingCart } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  LogOut,
+  Receipt,
+  ScrollText,
+  ShieldCheck,
+  ShoppingCart,
+} from "lucide-react";
 import { Marca } from "@/components/portal/marca";
 import { Menu, ItemMenu, TituloMenu } from "@/components/ui/menu";
 import { BotonTema } from "@/components/ui/tema";
@@ -11,8 +19,8 @@ import type { Empresa } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { IconoLucide } from "@/components/ui/boton";
 
-/** Cada sección de la barra lateral es un destino propio: ventas, compras o evidencias. */
-export type Seccion = "ventas" | "compras" | "evidencias";
+/** Cada sección de la barra lateral es un destino propio: ventas, compras, evidencias o logs. */
+export type Seccion = "ventas" | "compras" | "evidencias" | "logs";
 
 const ROLES: Record<Empresa["rol"], string> = {
   admin: "Administrador",
@@ -185,6 +193,12 @@ export function ContenidoLateral({
           etiqueta="Evidencias SIRE"
           activo={seccion === "evidencias"}
           onClick={elegir(() => onSeccion("evidencias"))}
+        />
+        <Item
+          icono={ScrollText}
+          etiqueta="Logs"
+          activo={seccion === "logs"}
+          onClick={elegir(() => onSeccion("logs"))}
         />
       </nav>
 

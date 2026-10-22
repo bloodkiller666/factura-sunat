@@ -632,6 +632,54 @@ export async function apiBizlinksRespaldos(
   );
 }
 
+export interface ApiLogAutomatizacion {
+  id: string;
+  created_at: string | null;
+  modo: "real" | "simulacion";
+  tareas: string[];
+  resultado: "ok" | "con_novedades" | "con_errores";
+  duracion_segundos: number | null;
+  novedades: Record<string, number>;
+  errores: string[];
+  advertencias: string[];
+  /** Resumen por tarea: `sire`, `correo` e `importacion`. */
+  detalle: Record<string, Record<string, unknown>>;
+}
+
+export interface ApiEstadoAutomatizacion {
+  ultima_corrida_at: string | null;
+  ultimo_resultado: ApiLogAutomatizacion["resultado"] | null;
+  ultima_sire_ok: string | null;
+  ultimo_reintento_sueltos: string | null;
+  /** Compras (carpetas del correo) que aún faltan por importar. */
+  carpetas_pendientes: string[];
+  /** Carpetas con PDF sueltos por revisar. */
+  sueltos_pendientes: string[];
+}
+
+export interface ApiLogsPage {
+  items: ApiLogAutomatizacion[];
+  total: number;
+  estado: ApiEstadoAutomatizacion | null;
+}
+
+/** Corridas de la automatización diaria (las más recientes primero) y su estado. */
+export async function apiLogsAutomatizacion(
+  token: string,
+  ruc: string,
+  opciones: { resultado?: ApiLogAutomatizacion["resultado"]; limit?: number; offset?: number } = {},
+): Promise<ApiLogsPage> {
+  const params = new URLSearchParams();
+  if (opciones.resultado) params.set("resultado", opciones.resultado);
+  if (opciones.limit !== undefined) params.set("limit", String(opciones.limit));
+  if (opciones.offset !== undefined) params.set("offset", String(opciones.offset));
+  const texto = params.toString();
+  return pedir<ApiLogsPage>(
+    `/api/v1/companies/${ruc}/automatizacion/logs${texto ? `?${texto}` : ""}`,
+    token,
+  );
+}
+
 /** ZIP originales de SIRE archivados como evidencia de auditoría. */
 export async function apiEvidencias(token: string, ruc: string): Promise<ArchivoGuardado[]> {
   const cuerpo = await pedir<{ items: ApiArchivo[] }>(

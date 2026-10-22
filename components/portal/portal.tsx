@@ -27,6 +27,7 @@ import { Marca } from "@/components/portal/marca";
 import { TablaComprobantes } from "@/components/portal/tabla-comprobantes";
 import { usePortal } from "@/components/portal/use-portal";
 import { VistaEvidencias } from "@/components/portal/vista-evidencias";
+import { VistaLogs } from "@/components/portal/vista-logs";
 import { Boton } from "@/components/ui/boton";
 import { Etiqueta } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
@@ -40,7 +41,7 @@ interface Props {
 
 export function Portal({ token, email, onSalir }: Props) {
   const p = usePortal(token);
-  const [vista, setVista] = useState<"comprobantes" | "evidencias">("comprobantes");
+  const [vista, setVista] = useState<"comprobantes" | "evidencias" | "logs">("comprobantes");
   const [menuMovil, setMenuMovil] = useState(false);
   const [sireAbierto, setSireAbierto] = useState(false);
   const [respaldosAbierto, setRespaldosAbierto] = useState(false);
@@ -70,9 +71,11 @@ export function Portal({ token, email, onSalir }: Props) {
         ? undefined
         : formatearEntero(p.total);
 
-  const seccion: Seccion = vista === "evidencias" ? "evidencias" : compras ? "compras" : "ventas";
+  const seccion: Seccion =
+    vista === "evidencias" ? "evidencias" : vista === "logs" ? "logs" : compras ? "compras" : "ventas";
   const irASeccion = (destino: Seccion) => {
     if (destino === "evidencias") return setVista("evidencias");
+    if (destino === "logs") return setVista("logs");
     setVista("comprobantes");
     p.cambiarOrigen(destino === "compras" ? "recibido" : "emitido");
   };
@@ -287,6 +290,16 @@ export function Portal({ token, email, onSalir }: Props) {
                 generandoLote={p.generandoLote}
               />
 
+            </>
+          ) : vista === "logs" ? (
+            <>
+              <div>
+                <h1 className="text-[22px] leading-7 font-semibold tracking-tight text-fg">Logs</h1>
+                <p className="mt-1 text-[13px] text-fg-3">
+                  Corridas de la automatización: SIRE, correo de proveedores e importación.
+                </p>
+              </div>
+              <VistaLogs key={rucActivo} token={token} ruc={rucActivo} />
             </>
           ) : (
             <>
