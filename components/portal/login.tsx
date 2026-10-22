@@ -64,7 +64,7 @@ export function Login({ entrar }: Props) {
         <div className="relative flex items-center gap-3">
           <Isotipo className="h-9 w-9" />
           <div className="leading-tight">
-            <p className="text-[15px] font-semibold tracking-tight">Portal TDM Holding</p>
+            <p className="text-[15px] font-semibold tracking-tight">Portal Holding TDM</p>
             <p className="text-[12px] text-side-fg-2">Facturación electrónica</p>
           </div>
         </div>
@@ -98,7 +98,7 @@ export function Login({ entrar }: Props) {
         <div className="w-full max-w-[380px]">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <Isotipo className="h-9 w-9" />
-            <p className="text-[15px] font-semibold tracking-tight">Portal TDM Holding</p>
+            <p className="text-[15px] font-semibold tracking-tight">Portal Holding TDM</p>
           </div>
 
           <h2 className="text-[22px] leading-7 font-semibold tracking-tight text-fg">

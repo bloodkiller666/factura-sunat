@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Portal TDM Holding · Facturación",
+  title: "Portal Holding TDM · Facturación",
   description:
     "Gestión de comprobantes electrónicos SUNAT de TDM ASFALTOS S.A.C.: consulta, respaldo y trazabilidad.",
 };

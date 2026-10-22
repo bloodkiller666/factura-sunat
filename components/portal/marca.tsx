@@ -22,7 +22,7 @@ export function Marca({ compacta = false }: { compacta?: boolean }) {
       <Isotipo />
       {!compacta && (
         <div className="leading-tight">
-          <p className="text-[14px] font-semibold tracking-tight text-side-fg">Portal TDM Holding</p>
+          <p className="text-[14px] font-semibold tracking-tight text-side-fg">Portal Holding TDM</p>
           <p className="text-[11px] text-side-fg-2">Facturación electrónica</p>
         </div>
       )}
