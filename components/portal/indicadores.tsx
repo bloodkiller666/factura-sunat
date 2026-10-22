@@ -15,11 +15,13 @@ interface Props {
   cargando: boolean;
   onFiltrarEstado: (estado: EstadoSunat) => void;
   onFiltrarRespaldo: (filtro: FiltroRespaldo) => void;
+  /** Las compras no traen XML ni CDR (vienen de SIRE): ahí no se muestra la cobertura. */
+  conRespaldo?: boolean;
 }
 
 /** En móvil las tarjetas forman un carrusel; desde `lg` pasan a una cuadrícula de tres. */
 const CONTENEDOR =
-  "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0 lg:pb-0";
+  "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:overflow-visible lg:px-0 lg:pb-0";
 
 const SEGMENTOS: Array<{ estado: EstadoSunat; color: string; clave: keyof Metricas }> = [
   { estado: "Aprobado", color: "bg-ok", clave: "aprobados" },
@@ -71,10 +73,11 @@ export function Indicadores({
   cargando,
   onFiltrarEstado,
   onFiltrarRespaldo,
+  conRespaldo = true,
 }: Props) {
   if (cargando || metricas === null) {
     return (
-      <div className={CONTENEDOR}>
+      <div className={cn(CONTENEDOR, "lg:grid-cols-3")}>
         <CargandoTarjeta />
         <CargandoTarjeta />
         <CargandoTarjeta />
@@ -90,7 +93,11 @@ export function Indicadores({
 
   return (
     <div
-      className={cn(CONTENEDOR, actualizando && "opacity-70 transition-opacity")}
+      className={cn(
+        CONTENEDOR,
+        conRespaldo ? "lg:grid-cols-3" : "lg:grid-cols-2",
+        actualizando && "opacity-70 transition-opacity",
+      )}
       aria-busy={actualizando || undefined}
     >
       {/* Facturado */}
@@ -153,6 +160,7 @@ export function Indicadores({
       </Tarjeta>
 
       {/* Respaldo */}
+      {conRespaldo && (
       <Tarjeta titulo="Respaldo para auditoría" subtitulo="XML y CDR archivados">
         <div className="space-y-2.5">
           {(
@@ -197,6 +205,7 @@ export function Indicadores({
           </button>
         </div>
       </Tarjeta>
+      )}
     </div>
   );
 }

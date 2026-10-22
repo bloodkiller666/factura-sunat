@@ -86,8 +86,8 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-[220px] flex-1 basis-[260px]">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-12">
+        <div className="sm:col-span-2 xl:col-span-4">
           <CampoBusqueda
             value={filtros.q}
             onChange={(e) => onCambiar({ q: e.target.value })}
@@ -104,16 +104,16 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
           desde={filtros.desde}
           hasta={filtros.hasta}
           onChange={(rango) => onCambiar(rango)}
-          className="w-full sm:w-[190px]"
+          className="w-full xl:col-span-2"
         />
         <SelectorFechas
           modo="vencimiento"
           desde={filtros.venceDesde}
           hasta={filtros.venceHasta}
           onChange={(rango) => onCambiar({ venceDesde: rango.desde, venceHasta: rango.hasta })}
-          className="w-full sm:w-[190px]"
+          className="w-full xl:col-span-2"
         />
-        <div className="w-[148px]">
+        <div className="xl:col-span-2">
           <Seleccion
             aria-label="Tipo de documento"
             value={filtros.tipo}
@@ -126,7 +126,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="Nota de Débito">Notas de débito</option>
           </Seleccion>
         </div>
-        <div className="w-[156px]">
+        <div className="xl:col-span-2">
           <Seleccion
             aria-label="Estado SUNAT"
             value={filtros.estadoSunat}
@@ -139,7 +139,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="Anulado">Anulado</option>
           </Seleccion>
         </div>
-        <div className="w-[132px]">
+        <div className="xl:col-span-2">
           <Seleccion
             aria-label="Moneda"
             value={filtros.moneda}
@@ -150,7 +150,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="USD">Dólares (US$)</option>
           </Seleccion>
         </div>
-        <div className="w-[132px]">
+        <div className="xl:col-span-2">
           <Campo
             value={filtros.numeroSap}
             onChange={(e) => onCambiar({ numeroSap: e.target.value })}

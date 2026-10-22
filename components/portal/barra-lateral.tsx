@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { Check, ChevronsUpDown, FileText, LogOut, RefreshCw, ShieldCheck, Upload } from "lucide-react";
+import { Check, ChevronsUpDown, LogOut, Receipt, ShieldCheck, ShoppingCart } from "lucide-react";
 import { Marca } from "@/components/portal/marca";
 import { Menu, ItemMenu, TituloMenu } from "@/components/ui/menu";
 import { BotonTema } from "@/components/ui/tema";
@@ -11,7 +11,8 @@ import type { Empresa } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { IconoLucide } from "@/components/ui/boton";
 
-export type Vista = "comprobantes" | "evidencias";
+/** Cada sección de la barra lateral es un destino propio: ventas, compras o evidencias. */
+export type Seccion = "ventas" | "compras" | "evidencias";
 
 const ROLES: Record<Empresa["rol"], string> = {
   admin: "Administrador",
@@ -24,11 +25,8 @@ interface Props {
   empresaActiva: Empresa | null;
   cargandoEmpresas: boolean;
   onCambiarEmpresa: (ruc: string) => void;
-  vista: Vista;
-  onVista: (vista: Vista) => void;
-  puedeOperar: boolean;
-  onSire: () => void;
-  onImportar: () => void;
+  seccion: Seccion;
+  onSeccion: (seccion: Seccion) => void;
   email: string | null;
   onSalir: () => void;
   /** Se ejecuta tras elegir algo (cierra el panel en móvil). */
@@ -58,14 +56,24 @@ function Item({
       aria-current={activo ? "page" : undefined}
       title={nota}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors",
+        "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors",
         activo
-          ? "bg-side-2 text-side-fg shadow-[inset_2px_0_0_#F5B301]"
-          : "text-side-fg-2 hover:bg-side-2/70 hover:text-side-fg",
+          ? "bg-side-2 text-side-fg"
+          : "text-side-fg-2 hover:bg-side-2/60 hover:text-side-fg",
         "disabled:pointer-events-none disabled:opacity-40",
       )}
     >
-      <Icono className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} aria-hidden />
+      {activo && (
+        <span
+          aria-hidden
+          className="absolute top-2.5 bottom-2.5 left-0 w-[3px] rounded-r-full bg-[#F5B301]"
+        />
+      )}
+      <Icono
+        className={cn("h-[18px] w-[18px] shrink-0", activo && "text-[#F5B301]")}
+        strokeWidth={1.75}
+        aria-hidden
+      />
       {etiqueta}
     </button>
   );
@@ -77,11 +85,8 @@ export function ContenidoLateral({
   empresaActiva,
   cargandoEmpresas,
   onCambiarEmpresa,
-  vista,
-  onVista,
-  puedeOperar,
-  onSire,
-  onImportar,
+  seccion,
+  onSeccion,
   email,
   onSalir,
   alElegir,
@@ -155,39 +160,31 @@ export function ContenidoLateral({
         )}
       </div>
 
-      <nav aria-label="Principal" className="mt-5 flex-1 space-y-0.5 overflow-y-auto px-3">
-        <p className="px-3 pb-1.5 text-[11px] font-medium tracking-wider text-side-fg-2 uppercase">
-          Gestión
+      <nav aria-label="Principal" className="mt-6 flex-1 space-y-0.5 overflow-y-auto px-3">
+        <p className="px-3 pb-2 text-[10.5px] font-semibold tracking-[0.08em] text-side-fg-2/80 uppercase">
+          Comprobantes
         </p>
         <Item
-          icono={FileText}
-          etiqueta="Comprobantes"
-          activo={vista === "comprobantes"}
-          onClick={elegir(() => onVista("comprobantes"))}
+          icono={Receipt}
+          etiqueta="Ventas"
+          activo={seccion === "ventas"}
+          onClick={elegir(() => onSeccion("ventas"))}
         />
+        <Item
+          icono={ShoppingCart}
+          etiqueta="Compras"
+          activo={seccion === "compras"}
+          onClick={elegir(() => onSeccion("compras"))}
+        />
+
+        <p className="px-3 pt-6 pb-2 text-[10.5px] font-semibold tracking-[0.08em] text-side-fg-2/80 uppercase">
+          Auditoría
+        </p>
         <Item
           icono={ShieldCheck}
           etiqueta="Evidencias SIRE"
-          activo={vista === "evidencias"}
-          onClick={elegir(() => onVista("evidencias"))}
-        />
-
-        <p className="px-3 pt-5 pb-1.5 text-[11px] font-medium tracking-wider text-side-fg-2 uppercase">
-          Acciones
-        </p>
-        <Item
-          icono={RefreshCw}
-          etiqueta="Sincronizar SIRE"
-          onClick={elegir(onSire)}
-          deshabilitado={!puedeOperar}
-          nota={puedeOperar ? undefined : "Requiere rol de administrador o emisor"}
-        />
-        <Item
-          icono={Upload}
-          etiqueta="Importar archivos"
-          onClick={elegir(onImportar)}
-          deshabilitado={!puedeOperar}
-          nota={puedeOperar ? undefined : "Requiere rol de administrador o emisor"}
+          activo={seccion === "evidencias"}
+          onClick={elegir(() => onSeccion("evidencias"))}
         />
       </nav>
 

@@ -15,7 +15,7 @@ import {
   RefreshCw,
   Upload,
 } from "lucide-react";
-import { ContenidoLateral, PanelLateralMovil, type Vista } from "@/components/portal/barra-lateral";
+import { ContenidoLateral, PanelLateralMovil, type Seccion } from "@/components/portal/barra-lateral";
 import { BarraFiltros } from "@/components/portal/barra-filtros";
 import { DetalleComprobante } from "@/components/portal/detalle-comprobante";
 import { DialogoImportar, type PestanaImportar } from "@/components/portal/dialogo-importar";
@@ -40,7 +40,7 @@ interface Props {
 
 export function Portal({ token, email, onSalir }: Props) {
   const p = usePortal(token);
-  const [vista, setVista] = useState<Vista>("comprobantes");
+  const [vista, setVista] = useState<"comprobantes" | "evidencias">("comprobantes");
   const [menuMovil, setMenuMovil] = useState(false);
   const [sireAbierto, setSireAbierto] = useState(false);
   const [respaldosAbierto, setRespaldosAbierto] = useState(false);
@@ -70,17 +70,21 @@ export function Portal({ token, email, onSalir }: Props) {
         ? undefined
         : formatearEntero(p.total);
 
+  const seccion: Seccion = vista === "evidencias" ? "evidencias" : compras ? "compras" : "ventas";
+  const irASeccion = (destino: Seccion) => {
+    if (destino === "evidencias") return setVista("evidencias");
+    setVista("comprobantes");
+    p.cambiarOrigen(destino === "compras" ? "recibido" : "emitido");
+  };
+
   const lateral = (alElegir?: () => void) => (
     <ContenidoLateral
       empresas={p.empresas}
       empresaActiva={p.empresa}
       cargandoEmpresas={p.cargandoEmpresas}
       onCambiarEmpresa={p.cambiarEmpresa}
-      vista={vista}
-      onVista={setVista}
-      puedeOperar={p.puedeOperar}
-      onSire={() => setSireAbierto(true)}
-      onImportar={() => abrirImportar()}
+      seccion={seccion}
+      onSeccion={irASeccion}
       email={email}
       onSalir={onSalir}
       alElegir={alElegir}
@@ -108,59 +112,74 @@ export function Portal({ token, email, onSalir }: Props) {
           <Marca />
         </header>
 
-        <main className="mx-auto w-full max-w-[1480px] space-y-5 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="mx-auto w-full max-w-[1480px] space-y-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-9">
           {vista === "comprobantes" ? (
             <>
-              <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-line pb-5">
                 <div className="min-w-0">
-                  <h1 className="text-[22px] leading-7 font-semibold tracking-tight text-fg">
-                    {compras ? "Compras a proveedores" : "Ventas"}
-                  </h1>
-                  <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg-3">
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] font-medium text-fg-3">
                     <span className="truncate">{p.empresa?.razonSocial ?? "Cargando empresa…"}</span>
                     {p.empresa && !p.puedeOperar && <Etiqueta>Solo lectura</Etiqueta>}
                     {p.actualizando && (
                       <span
                         role="status"
-                        className="inline-flex items-center gap-1.5 text-[12px] text-fg-4"
+                        className="inline-flex items-center gap-1.5 text-[12px] font-normal text-fg-4"
                       >
                         <Loader2 className="h-3.5 w-3.5 animate-[giro_0.8s_linear_infinite]" aria-hidden />
                         Actualizando…
                       </span>
                     )}
                   </p>
+                  <h1 className="mt-1 text-[28px] leading-9 font-semibold tracking-tight text-fg">
+                    {compras ? "Compras" : "Ventas"}
+                  </h1>
+                  <p className="mt-0.5 text-[13px] text-fg-3">
+                    {compras
+                      ? "Comprobantes que los proveedores emitieron a la empresa (SIRE)."
+                      : "Comprobantes que la empresa emitió a sus clientes."}
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <div role="group" aria-label="Sección" className="flex gap-1">
-                    <Boton
-                      variante={compras ? "secundario" : "primario"}
-                      aria-pressed={!compras}
-                      onClick={() => p.cambiarOrigen("emitido")}
-                    >
-                      Ventas
-                    </Boton>
-                    <Boton
-                      variante={compras ? "primario" : "secundario"}
-                      aria-pressed={compras}
-                      onClick={() => p.cambiarOrigen("recibido")}
-                    >
-                      Compras
-                    </Boton>
-                  </div>
                   {p.puedeOperar && !compras && (
-                    <Boton
-                      icono={FileSearch}
-                      cargando={p.sincronizando}
-                      onClick={() => void p.sincronizarPendientes()}
+                    <Menu
+                      ancho={264}
+                      disparador={(props) => (
+                        <Boton icono={CloudDownload} cargando={p.sincronizando} {...props}>
+                          Respaldos
+                          <ChevronDown className="h-3.5 w-3.5 text-fg-4" aria-hidden />
+                        </Boton>
+                      )}
                     >
-                      Consultar pendientes
-                    </Boton>
+                      <ItemMenu icono={CloudDownload} onClick={() => setRespaldosAbierto(true)}>
+                        Traer XML y CDR (Bizlinks)
+                      </ItemMenu>
+                      <ItemMenu
+                        icono={FileSearch}
+                        deshabilitado={p.sincronizando}
+                        onClick={() => void p.sincronizarPendientes()}
+                      >
+                        Consultar pendientes en SUNAT
+                      </ItemMenu>
+                    </Menu>
                   )}
-                  {p.puedeOperar && !compras && (
-                    <Boton icono={CloudDownload} onClick={() => setRespaldosAbierto(true)}>
-                      Traer XML y CDR
-                    </Boton>
+                  {p.puedeOperar && (
+                    <Menu
+                      ancho={252}
+                      disparador={(props) => (
+                        <Boton icono={Upload} {...props}>
+                          Importar
+                          <ChevronDown className="h-3.5 w-3.5 text-fg-4" aria-hidden />
+                        </Boton>
+                      )}
+                    >
+                      <ItemMenu icono={Upload} onClick={() => abrirImportar()}>
+                        Archivos XML, ZIP o CDR
+                      </ItemMenu>
+                      <ItemMenu icono={Hash} onClick={() => setSapAbierto(true)}>
+                        N° SAP desde Excel
+                      </ItemMenu>
+                    </Menu>
                   )}
                   <Menu
                     ancho={252}
@@ -197,19 +216,10 @@ export function Portal({ token, email, onSalir }: Props) {
                     <SeparadorMenu />
                     <p className="px-2.5 py-1.5 text-[11.5px] leading-4 text-fg-4">
                       Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML y
-                      CDR reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas) los deja en Descargas/AAAA/MM/RUC/SERIE-NÚMERO.
+                      CDR reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas)
+                      los deja en Descargas/AAAA/MM/RUC/SERIE-NÚMERO.
                     </p>
                   </Menu>
-                  {p.puedeOperar && (
-                    <Boton icono={Hash} onClick={() => setSapAbierto(true)}>
-                      Importar N° SAP
-                    </Boton>
-                  )}
-                  {p.puedeOperar && (
-                    <Boton icono={Upload} onClick={() => abrirImportar()}>
-                      Importar
-                    </Boton>
-                  )}
                   {p.puedeOperar && (
                     <Boton variante="primario" icono={RefreshCw} onClick={() => setSireAbierto(true)}>
                       Sincronizar SIRE
@@ -239,6 +249,7 @@ export function Portal({ token, email, onSalir }: Props) {
                 cargando={false}
                 onFiltrarEstado={p.filtrarPorEstado}
                 onFiltrarRespaldo={p.filtrarPorRespaldo}
+                conRespaldo={!compras}
               />
 
               <BarraFiltros
