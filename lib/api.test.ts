@@ -67,6 +67,22 @@ describe("mapComprobante", () => {
     expect(c.cliente).toEqual({ ruc: "20514831620", razonSocial: "TDM" });
   });
 
+  it("un cliente sin RUC muestra su documento y de qué tipo es", () => {
+    const exterior = mapComprobante({
+      ...base,
+      ruc_receptor: null,
+      receptor_doc: "300972021",
+      receptor_tipo_doc: "0",
+    });
+    expect(exterior.cliente).toMatchObject({ ruc: "300972021", docEtiqueta: "Doc. exterior" });
+    const dni = mapComprobante({ ...base, ruc_receptor: null, receptor_doc: "75201858", receptor_tipo_doc: "1" });
+    expect(dni.cliente.docEtiqueta).toBe("DNI");
+    // Filas anteriores a guardar el tipo: se muestra el documento, sin adivinar qué es.
+    const viejo = mapComprobante({ ...base, ruc_receptor: null, receptor_doc: "170008029" });
+    expect(viejo.cliente).toMatchObject({ ruc: "170008029", docEtiqueta: "Sin RUC" });
+    expect(mapComprobante({ ...base, ruc_receptor: null }).cliente.ruc).toBe("");
+  });
+
   it("respeta los respaldos, la fuente y los datos de pago que informa el backend", () => {
     const c = mapComprobante({
       ...base,

@@ -63,7 +63,12 @@ function Resumen({ c, empresa }: { c: Comprobante; empresa: Empresa | null }) {
           <span className="block truncate font-medium" title={c.cliente.razonSocial}>
             {c.cliente.razonSocial}
           </span>
-          <span className="font-mono text-[12px] text-fg-3">{c.cliente.ruc || "Sin documento"}</span>
+          <span className="font-mono text-[12px] text-fg-3">
+            {c.cliente.ruc || "Sin documento"}
+            {c.cliente.docEtiqueta && (
+              <span className="ml-1.5 font-sans text-fg-4">· {c.cliente.docEtiqueta}</span>
+            )}
+          </span>
         </Dato>
         <Dato etiqueta="Fecha de emisión">
           <span className="tnum">{formatearFecha(c.fechaEmision)}</span>

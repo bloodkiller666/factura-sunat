@@ -8,6 +8,7 @@
 
 import type {
   ArchivoGuardado,
+  Cliente,
   Comprobante,
   Empresa,
   EstadoSunat,
@@ -45,6 +46,8 @@ export interface ApiComprobante {
   origen: "emitido" | "recibido";
   ruc_emisor: string;
   ruc_receptor: string | null;
+  receptor_doc?: string | null;
+  receptor_tipo_doc?: string | null;
   razon_social_emisor: string | null;
   razon_social_receptor: string | null;
   tipo_documento: string;
@@ -640,6 +643,28 @@ export function mapItem(api: ApiItem): ItemComprobante {
   };
 }
 
+/** Catálogo 06 de SUNAT: cómo se identifica un receptor que no tiene RUC. */
+const DOCUMENTOS_SIN_RUC: Record<string, string> = {
+  "0": "Doc. exterior",
+  "1": "DNI",
+  "4": "Carnet de extranjería",
+  "7": "Pasaporte",
+  A: "Cédula diplomática",
+};
+
+/**
+ * El receptor de una venta. SIRE solo trata como RUC al tipo 6: un cliente del exterior o un
+ * DNI llegan con su documento pero sin RUC; se muestra ese documento en lugar de «Sin documento».
+ */
+function clienteDeVenta(api: ApiComprobante): Cliente {
+  const razonSocial = api.razon_social_receptor ?? "—";
+  if (api.ruc_receptor) return { ruc: api.ruc_receptor, razonSocial };
+  const documento = api.receptor_doc?.trim() ?? "";
+  if (!documento) return { ruc: "", razonSocial };
+  const tipo = api.receptor_tipo_doc ?? "";
+  return { ruc: documento, razonSocial, docEtiqueta: DOCUMENTOS_SIN_RUC[tipo] ?? "Sin RUC" };
+}
+
 /**
  * Convierte un comprobante de la API al modelo del portal. Base e IGV se derivan
  * del total (IGV 18 %) hasta que llega el detalle con los ítems reales.
@@ -649,7 +674,7 @@ export function mapComprobante(api: ApiComprobante): Comprobante {
   // En una compra, la contraparte visible es el proveedor (emisor del XML).
   const cliente = esCompra
     ? { ruc: api.ruc_emisor, razonSocial: api.razon_social_emisor ?? "—" }
-    : { ruc: api.ruc_receptor ?? "", razonSocial: api.razon_social_receptor ?? "—" };
+    : clienteDeVenta(api);
 
   const total = aNumero(api.monto_total);
   const base = redondear(total / (1 + TASA_IGV));

@@ -300,6 +300,9 @@ export function TablaComprobantes({
                       </p>
                       <p className="font-mono text-[11.5px] text-fg-3">
                         {c.cliente.ruc || "Sin documento"}
+                        {c.cliente.docEtiqueta && (
+                          <span className="ml-1.5 font-sans text-fg-4">· {c.cliente.docEtiqueta}</span>
+                        )}
                       </p>
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">

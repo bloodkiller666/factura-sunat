@@ -14,8 +14,11 @@ export type Fuente = "xml" | "sire";
 export type RolEmpresa = "admin" | "emisor" | "lector";
 
 export interface Cliente {
+  /** RUC; si el cliente no tiene, su documento (DNI o identificación del exterior). */
   ruc: string;
   razonSocial: string;
+  /** Qué es `ruc` cuando no es un RUC: `DNI`, `Doc. exterior`… (`undefined` si es un RUC). */
+  docEtiqueta?: string;
 }
 
 export interface ItemComprobante {
