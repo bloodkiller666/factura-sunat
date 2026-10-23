@@ -62,7 +62,7 @@ export function SelectorFechas({
   const [anioMeses, setAnioMeses] = useState(() => partes(hoyIso()).anio);
   const [inicio, setInicio] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
-  const [foco, setFoco] = useState<string>(hoyIso());
+  const [foco, setFoco] = useState<string>(() => hoyIso());
   const ancla = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
 

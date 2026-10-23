@@ -825,3 +825,6 @@ export function usePortal(token: string | null) {
     descargarEvidencia,
   };
 }
+
+/** Todo lo que expone `usePortal`: lo reciben las vistas y los diálogos en que se divide el portal. */
+export type EstadoPortal = ReturnType<typeof usePortal>;

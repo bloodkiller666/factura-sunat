@@ -35,6 +35,8 @@ const formatoNumero = new Intl.NumberFormat("es-PE", {
 });
 
 const formatoEntero = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 0 });
+// Se crea una sola vez: construir un `Intl.DateTimeFormat` en cada llamada es lo más caro de la lista.
+const formatoFechaHora = new Intl.DateTimeFormat("es-PE", { dateStyle: "short", timeStyle: "short" });
 
 const formatoCompacto = new Intl.NumberFormat("es-PE", {
   notation: "compact",
@@ -86,9 +88,7 @@ export function formatearFechaHora(iso: string | null | undefined): string {
   if (!iso) return "—";
   const fecha = new Date(iso);
   if (Number.isNaN(fecha.getTime())) return "—";
-  return new Intl.DateTimeFormat("es-PE", { dateStyle: "short", timeStyle: "short" }).format(
-    fecha,
-  );
+  return formatoFechaHora.format(fecha);
 }
 
 /** Tamaño legible: `8,4 KB`, `1,2 MB`. */

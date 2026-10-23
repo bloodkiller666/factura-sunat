@@ -290,8 +290,16 @@ export function TablaComprobantes({
                       if ((evento.target as HTMLElement).closest("button, input, a, label")) return;
                       onAbrir(c);
                     }}
+                    // Teclado: Enter abre el detalle (solo si el foco está en la fila, no en sus controles).
+                    tabIndex={0}
+                    onKeyDown={(evento) => {
+                      if (evento.key !== "Enter" || evento.target !== evento.currentTarget) return;
+                      // Sin esto, el Enter pasa al botón que recibe el foco en el detalle y lo cierra.
+                      evento.preventDefault();
+                      onAbrir(c);
+                    }}
                     className={cn(
-                      "group cursor-pointer transition-colors hover:bg-surface-2",
+                      "group cursor-pointer transition-colors outline-none hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:shadow-[inset_2px_0_0_var(--accent)]",
                       marcado && "bg-accent-soft/60 hover:bg-accent-soft",
                     )}
                   >

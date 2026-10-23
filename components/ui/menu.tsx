@@ -146,7 +146,7 @@ export function ItemMenu({
 }
 
 export function SeparadorMenu() {
-  return <div role="separator" className="my-1 h-px bg-line" />;
+  return <hr className="my-1 h-px border-0 bg-line" />;
 }
 
 export function TituloMenu({ children }: { children: ReactNode }) {
