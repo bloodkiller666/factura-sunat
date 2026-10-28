@@ -5,18 +5,19 @@
 
 import type { Comprobante } from "./types";
 
-export type EstadoCorreo = "SUBIDO" | "NO ENCONTRADO";
+export type EstadoCorreo = "Correo enviado" | "Correo no enviado";
 
 /**
- * `SUBIDO` si la compra tiene el asunto de su correo guardado; `NO ENCONTRADO` si no lo tiene:
- * nunca vino por el buzón, o su correo aún no se vincula. Un asunto en blanco no cuenta.
+ * «Correo enviado» si la compra tiene el asunto de su correo guardado (el proveedor la mandó al
+ * buzón y quedó vinculada); «Correo no enviado» si no lo tiene: nunca vino por el buzón o su
+ * correo aún no se vincula. Un asunto en blanco no cuenta.
  */
 export function estadoCorreo(c: Pick<Comprobante, "correo">): EstadoCorreo {
-  return c.correo && c.correo.asunto.trim() !== "" ? "SUBIDO" : "NO ENCONTRADO";
+  return c.correo && c.correo.asunto.trim() !== "" ? "Correo enviado" : "Correo no enviado";
 }
 
 /** Texto de ayuda (tooltip) de cada estado. */
 export const AYUDA_ESTADO_CORREO: Record<EstadoCorreo, string> = {
-  SUBIDO: "El asunto del correo está cargado en el portal",
-  "NO ENCONTRADO": "No hay un correo vinculado a esta compra",
+  "Correo enviado": "El proveedor envió el correo y su asunto está cargado en el portal",
+  "Correo no enviado": "No hay un correo vinculado a esta compra",
 };

@@ -85,7 +85,16 @@ export interface Empresa {
 }
 
 /** Filtro por cobertura de respaldo: clave para preparar una auditoría. */
-export type FiltroRespaldo = "TODOS" | "SIN_XML" | "SIN_CDR" | "COMPLETO";
+export type FiltroRespaldo =
+  | "TODOS"
+  | "SIN_XML"
+  | "SIN_CDR"
+  | "COMPLETO"
+  // Compras (XML + PDF): qué combinación tiene la compra.
+  | "SOLO_XML"
+  | "SOLO_PDF"
+  | "XML_PDF"
+  | "NINGUNO";
 
 export interface FiltrosState {
   /** Búsqueda por N° de documento, cliente, RUC u orden de compra. */

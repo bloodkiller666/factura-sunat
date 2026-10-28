@@ -18,6 +18,10 @@ const ETIQUETA_RESPALDO: Record<FiltrosState["respaldo"], string> = {
   SIN_XML: "Sin XML",
   SIN_CDR: "Sin CDR",
   COMPLETO: "Con XML y CDR",
+  SOLO_XML: "Solo XML",
+  SOLO_PDF: "Solo PDF",
+  XML_PDF: "XML y PDF",
+  NINGUNO: "Sin XML ni PDF",
 };
 
 interface Chip {
@@ -139,6 +143,21 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="Anulado">Anulado</option>
           </Seleccion>
         </div>
+        {filtros.origen === "recibido" && (
+          <div className="xl:col-span-2">
+            <Seleccion
+              aria-label="Respaldo"
+              value={filtros.respaldo}
+              onChange={(e) => onCambiar({ respaldo: e.target.value as FiltrosState["respaldo"] })}
+            >
+              <option value="TODOS">Respaldo: todos</option>
+              <option value="XML_PDF">XML y PDF</option>
+              <option value="SOLO_XML">Solo XML</option>
+              <option value="SOLO_PDF">Solo PDF</option>
+              <option value="NINGUNO">Sin XML ni PDF</option>
+            </Seleccion>
+          </div>
+        )}
         <div className="xl:col-span-2">
           <Seleccion
             aria-label="Moneda"

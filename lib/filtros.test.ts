@@ -89,6 +89,15 @@ describe("filtrosParaApi", () => {
     });
   });
 
+  it("el respaldo de compras (XML/PDF) viaja con el nombre que entiende el servidor", () => {
+    const api = (respaldo: "SOLO_XML" | "SOLO_PDF" | "XML_PDF" | "NINGUNO") =>
+      filtrosParaApi(con({ origen: "recibido", respaldo })).respaldo;
+    expect(api("SOLO_XML")).toBe("solo_xml");
+    expect(api("SOLO_PDF")).toBe("solo_pdf");
+    expect(api("XML_PDF")).toBe("xml_pdf");
+    expect(api("NINGUNO")).toBe("ninguno");
+  });
+
   it("el vencimiento acepta rangos abiertos y no afecta a los indicadores", () => {
     expect(filtrosParaApi(con({ venceHasta: "2026-10-18" }))).toEqual({
       origen: "emitido",

@@ -337,7 +337,14 @@ export interface FiltrosApi {
   vencimiento_desde?: string;
   vencimiento_hasta?: string;
   moneda?: string;
-  respaldo?: "sin_xml" | "sin_cdr" | "completo";
+  respaldo?:
+    | "sin_xml"
+    | "sin_cdr"
+    | "completo"
+    | "solo_xml"
+    | "solo_pdf"
+    | "xml_pdf"
+    | "ninguno";
   orden?: "fecha" | "numero" | "cliente" | "importe";
   direccion?: "asc" | "desc";
   limit?: number;

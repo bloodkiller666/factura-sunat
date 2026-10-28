@@ -64,6 +64,10 @@ const RESPALDO_API = {
   SIN_XML: "sin_xml",
   SIN_CDR: "sin_cdr",
   COMPLETO: "completo",
+  SOLO_XML: "solo_xml",
+  SOLO_PDF: "solo_pdf",
+  XML_PDF: "xml_pdf",
+  NINGUNO: "ninguno",
 } as const;
 
 /** El servidor exige al menos 2 caracteres para buscar (evita escaneos por una letra). */

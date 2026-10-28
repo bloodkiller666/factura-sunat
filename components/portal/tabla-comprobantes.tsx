@@ -12,6 +12,7 @@ import {
   FileSearch,
   FileText,
   MoreHorizontal,
+  ScanEye,
   SearchX,
   ShieldCheck,
   X,
@@ -55,6 +56,7 @@ interface Props {
   onAlternarVisibles: (comprobantes: Comprobante[], marcar: boolean) => void;
   onLimpiarSeleccion: () => void;
   onAbrir: (comprobante: Comprobante) => void;
+  onPrevisualizar: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, tipo: TipoDescarga) => void;
   onConsultarCdr: (comprobante: Comprobante) => void;
   onExportarExcel: () => void;
@@ -76,6 +78,7 @@ function MenuFila({
   puedeOperar,
   consultando,
   onAbrir,
+  onPrevisualizar,
   onDescargar,
   onConsultarCdr,
 }: {
@@ -83,6 +86,7 @@ function MenuFila({
   puedeOperar: boolean;
   consultando: boolean;
   onAbrir: Props["onAbrir"];
+  onPrevisualizar: Props["onPrevisualizar"];
   onDescargar: Props["onDescargar"];
   onConsultarCdr: Props["onConsultarCdr"];
 }) {
@@ -101,6 +105,14 @@ function MenuFila({
     >
       <ItemMenu icono={Eye} onClick={() => onAbrir(comprobante)}>
         Ver detalle
+      </ItemMenu>
+      <ItemMenu
+        icono={ScanEye}
+        deshabilitado={!comprobante.tieneXml && !comprobante.tienePdf}
+        ayuda={comprobante.tieneXml || comprobante.tienePdf ? undefined : "Sin PDF ni XML"}
+        onClick={() => onPrevisualizar(comprobante)}
+      >
+        Previsualización
       </ItemMenu>
       <SeparadorMenu />
       <ItemMenu
@@ -195,6 +207,7 @@ export function TablaComprobantes({
   onAlternarVisibles,
   onLimpiarSeleccion,
   onAbrir,
+  onPrevisualizar,
   onDescargar,
   onConsultarCdr,
   onExportarExcel,
@@ -407,6 +420,7 @@ export function TablaComprobantes({
                           puedeOperar={puedeOperar}
                           consultando={consultando.has(c.id)}
                           onAbrir={onAbrir}
+                          onPrevisualizar={onPrevisualizar}
                           onDescargar={onDescargar}
                           onConsultarCdr={onConsultarCdr}
                         />

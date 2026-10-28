@@ -37,12 +37,12 @@ export function Etiqueta({
   );
 }
 
-/** «Estado correo» de una compra: SUBIDO (verde) o NO ENCONTRADO (rojo). */
+/** «Estado correo» de una compra: Correo enviado (verde) o Correo no enviado (rojo). */
 export function EstadoCorreoPill({ estado }: { estado: EstadoCorreo }) {
-  const subido = estado === "SUBIDO";
-  const Icono = subido ? CheckCircle2 : CircleX;
+  const enviado = estado === "Correo enviado";
+  const Icono = enviado ? CheckCircle2 : CircleX;
   return (
-    <Etiqueta tono={subido ? "ok" : "error"} className="uppercase">
+    <Etiqueta tono={enviado ? "ok" : "error"} className="uppercase">
       <span title={AYUDA_ESTADO_CORREO[estado]} className="inline-flex items-center gap-1">
         <Icono className="h-3 w-3" aria-hidden />
         {estado}

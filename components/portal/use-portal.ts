@@ -482,6 +482,10 @@ export function usePortal(token: string | null) {
 
   const cerrarDetalle = useCallback(() => setDetalleId(null), []);
 
+  const [previsualizando, setPrevisualizando] = useState<Comprobante | null>(null);
+  const previsualizar = useCallback((c: Comprobante) => setPrevisualizando(c), []);
+  const cerrarPrevisualizacion = useCallback(() => setPrevisualizando(null), []);
+
   const conClave = useCallback(
     async (conjunto: "descargando" | "consultando", clave: string, tarea: () => Promise<void>) => {
       const set = conjunto === "descargando" ? setDescargando : setConsultando;
@@ -916,6 +920,9 @@ export function usePortal(token: string | null) {
     cargandoDetalle,
     abrirDetalle,
     cerrarDetalle,
+    previsualizando,
+    previsualizar,
+    cerrarPrevisualizacion,
     descargando,
     consultando,
     sincronizando,

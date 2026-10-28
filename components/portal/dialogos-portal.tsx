@@ -2,6 +2,7 @@
 
 import { DetalleComprobante } from "@/components/portal/detalle-comprobante";
 import { DialogoImportar, type PestanaImportar } from "@/components/portal/dialogo-importar";
+import { DialogoPrevisualizar } from "@/components/portal/dialogo-previsualizar";
 import { DialogoRespaldos } from "@/components/portal/dialogo-respaldos";
 import { DialogoSap } from "@/components/portal/dialogo-sap";
 import { DialogoSire } from "@/components/portal/dialogo-sire";
@@ -68,6 +69,12 @@ export function DialogosPortal({
         onGuardarEnPc={(c) => void p.guardarEnPc([c])}
         onAbrirCarpeta={(c) => void p.abrirCarpeta(c)}
         cargarArchivos={p.cargarArchivos}
+      />
+
+      <DialogoPrevisualizar
+        comprobante={p.previsualizando}
+        token={token}
+        onCerrar={p.cerrarPrevisualizacion}
       />
 
       <DialogoRespaldos
