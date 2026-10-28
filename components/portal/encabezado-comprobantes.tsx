@@ -6,16 +6,19 @@ import {
   Download,
   FileArchive,
   FileSearch,
+  FolderDown,
   HardDriveDownload,
   Hash,
   Loader2,
   RefreshCw,
   Upload,
+  X,
 } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
 import { Etiqueta } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
 import { formatearEntero } from "@/lib/format";
+import type { ProgresoDescargaMasiva } from "@/lib/lote";
 import type { Empresa } from "@/lib/types";
 
 interface Props {
@@ -26,6 +29,10 @@ interface Props {
   sincronizando: boolean;
   exportando: boolean;
   guardandoPc: boolean;
+  /** `null` = nada en curso; `"preparando"` = trayendo la lista; si no, el avance por partes. */
+  descargaMasiva: ProgresoDescargaMasiva | "preparando" | null;
+  onDescargarTodo: () => void;
+  onCancelarDescargaTodo: () => void;
   /** Filas marcadas en la tabla (el reporte y el lote usan la selección o, sin ella, el filtro). */
   seleccionados: number;
   total: number | null;
@@ -48,6 +55,9 @@ export function EncabezadoComprobantes({
   sincronizando,
   exportando,
   guardandoPc,
+  descargaMasiva,
+  onDescargarTodo,
+  onCancelarDescargaTodo,
   seleccionados,
   total,
   onRespaldos,
@@ -104,7 +114,7 @@ export function EncabezadoComprobantes({
             )}
           >
             <ItemMenu icono={CloudDownload} onClick={onRespaldos}>
-              Traer XML y CDR (Bizlinks)
+              Traer XML (Bizlinks)
             </ItemMenu>
             <ItemMenu icono={FileSearch} deshabilitado={sincronizando} onClick={onConsultarPendientes}>
               Consultar pendientes en SUNAT
@@ -122,12 +132,32 @@ export function EncabezadoComprobantes({
             )}
           >
             <ItemMenu icono={Upload} onClick={onImportar}>
-              Archivos XML, ZIP o CDR
+              Archivos XML, PDF o ZIP
             </ItemMenu>
             <ItemMenu icono={Hash} onClick={onSap}>
               N° SAP desde Excel
             </ItemMenu>
           </Menu>
+        )}
+        {descargaMasiva === null ? (
+          <Boton
+            icono={FolderDown}
+            onClick={onDescargarTodo}
+            title="Baja todos los XML (y PDF de las compras) en ZIP por partes, con sus carpetas AAAA/MM/RUC/SERIE-NÚMERO"
+          >
+            Descargar todo{cuentaExportable ? ` (${cuentaExportable})` : ""}
+          </Boton>
+        ) : (
+          <>
+            <Boton icono={FolderDown} cargando disabled>
+              {descargaMasiva === "preparando"
+                ? "Preparando…"
+                : `Parte ${descargaMasiva.parte} de ${descargaMasiva.partes} · ${formatearEntero(descargaMasiva.hecho)}/${formatearEntero(descargaMasiva.total)}`}
+            </Boton>
+            <Boton icono={X} onClick={onCancelarDescargaTodo}>
+              Cancelar
+            </Boton>
+          </>
         )}
         <Menu
           ancho={252}
@@ -159,9 +189,10 @@ export function EncabezadoComprobantes({
           </ItemMenu>
           <SeparadorMenu />
           <p className="px-2.5 py-1.5 text-[11.5px] leading-4 text-fg-4">
-            Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML y CDR
-            reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas) los deja en
-            Descargas/AAAA/MM/RUC/SERIE-NÚMERO.
+            Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML (y
+            PDF de las compras) reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas) los deja en
+            Descargas/AAAA/MM/RUC/SERIE-NÚMERO. «Descargar todo» arma ZIP por partes con esa misma
+            estructura, para llevarlos a otra PC o al celular.
           </p>
         </Menu>
         {puedeOperar && (

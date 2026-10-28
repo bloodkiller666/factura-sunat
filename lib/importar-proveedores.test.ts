@@ -21,7 +21,7 @@ const entrada = (ruta: string): EntradaImportacion => ({
 });
 
 describe("agruparEntradas", () => {
-  it("una carpeta es una compra: su XML, PDF y CDR viajan juntos", () => {
+  it("una carpeta es una compra: su XML y PDF viajan juntos", () => {
     const { grupos, ignorados } = agruparEntradas([
       entrada("2026/10/20999999999/F010-00000456/b.pdf"),
       entrada("2026/10/20999999999/F010-00000456/a.xml"),
@@ -117,7 +117,14 @@ describe("aplicarRespuesta y resumirFilas", () => {
     filas = aplicarRespuesta(filas, "g1", [
       item({ archivo: "f.xml", tipo: "xml", situacion: "nueva", numero: "F010-00000456" }),
       item({ archivo: "f.pdf", tipo: "pdf", situacion: "guardado" }),
-      item({ archivo: "r.xml", tipo: "cdr", situacion: "guardado" }),
+      item({
+        archivo: "r.xml",
+        tipo: "xml",
+        ok: false,
+        situacion: "omitido",
+        code: "cdr_ignorado",
+        mensaje: "El portal no guarda CDR",
+      }),
     ]);
     filas = aplicarRespuesta(filas, "g2", [
       item({ archivo: "g.xml", tipo: "xml", ok: false, code: "invalid_document", mensaje: "No válido" }),
@@ -126,7 +133,7 @@ describe("aplicarRespuesta y resumirFilas", () => {
     expect(filas.map((f) => [f.archivo, f.tipo, f.estado])).toEqual([
       ["f.xml", "xml", "nueva"],
       ["f.pdf", "pdf", "guardado"],
-      ["r.xml", "cdr", "guardado"],
+      ["r.xml", "xml", "omitido"],
       ["g.xml", "xml", "error"],
     ]);
     expect(resumirFilas(filas)).toMatchObject({
@@ -135,9 +142,8 @@ describe("aplicarRespuesta y resumirFilas", () => {
       nuevas: 1,
       completadas: 0,
       pdfGuardados: 1,
-      cdrGuardados: 1,
       errores: 1,
-      omitidos: 0,
+      omitidos: 1, // el CDR se ignora y se informa, no es un error
     });
   });
 

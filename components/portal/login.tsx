@@ -19,7 +19,7 @@ const PUNTOS = [
   {
     icono: Archive,
     titulo: "Respaldo ordenado",
-    texto: "XML, CDR y evidencia de SUNAT guardados con su huella digital, listos para una auditoría.",
+    texto: "XML, PDF y evidencia de SUNAT guardados con su huella digital, listos para una auditoría.",
   },
   {
     icono: ShieldCheck,

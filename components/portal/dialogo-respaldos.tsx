@@ -125,7 +125,7 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
           cuota_restante: r.cuota_restante,
           canal: r.canal,
         });
-        archivos += r.xml_guardados + r.cdr_guardados;
+        archivos += r.xml_guardados;
         // Sin items: no queda nada por consultar, o hubo una detención (tope, bloqueo, etc.).
         if (r.items.length === 0 || r.detenido_por) break;
         hechos += r.items.length;
@@ -158,7 +158,6 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
     sin_resultado: items.filter((i) => i.resultado === "sin_resultado").length,
     fallidos: items.filter((i) => i.resultado === "error").length,
     xml_guardados: items.filter((i) => i.xml_guardado).length,
-    cdr_guardados: items.filter((i) => i.cdr_guardado).length,
     detenido_por: meta.detenido_por,
     mensaje: meta.mensaje,
     cuota_restante: meta.cuota_restante,
@@ -173,7 +172,7 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
     <Dialogo
       abierto={abierto}
       onCerrar={cerrar}
-      titulo="Traer XML y CDR desde Bizlinks"
+      titulo="Traer XML desde Bizlinks"
       descripcion="Recupera los archivos firmados de los comprobantes emitidos que aún no los tienen."
       ancho="lg"
       pie={
@@ -186,7 +185,7 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
               disabled={!token || !ruc}
               onClick={() => void traer()}
             >
-              Traer XML y CDR
+              Traer XML
             </Boton>
           </>
         ) : corriendo ? (
@@ -223,7 +222,7 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
             <div className="grid gap-4 sm:grid-cols-2">
               <Grupo
                 etiqueta="Cuántos comprobantes"
-                ayuda="Solo se consultan los que no tienen XML o CDR archivado."
+                ayuda="Solo se consultan los que no tienen XML archivado."
               >
                 <Seleccion
                   value={String(limite)}
@@ -249,8 +248,8 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
                 SUNAT ni en el OSE, y se puede repetir sin duplicar archivos.
               </li>
               <li>
-                <strong className="font-medium text-fg">Qué se archiva:</strong> el XML firmado y el
-                CDR reales, en el almacenamiento privado, con su huella SHA-256. Si el comprobante
+                <strong className="font-medium text-fg">Qué se archiva:</strong> el XML firmado
+                real, en el almacenamiento privado, con su huella SHA-256. Si el comprobante
                 vino de SIRE, el XML además completa sus ítems.
               </li>
               <li>
@@ -275,8 +274,7 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
                 </Etiqueta>
                 <span className="text-[12.5px] text-fg-3">
                   {formatearEntero(items.length)} de {formatearEntero(limite)} ·{" "}
-                  {formatearEntero(acumulado.xml_guardados)} XML ·{" "}
-                  {formatearEntero(acumulado.cdr_guardados)} CDR
+                  {formatearEntero(acumulado.xml_guardados)} XML
                   {meta.cuota_restante !== null
                     ? ` · quedan ${formatearEntero(meta.cuota_restante)} hoy`
                     : ""}

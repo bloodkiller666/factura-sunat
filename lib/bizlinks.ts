@@ -1,5 +1,5 @@
 /**
- * Lectura de la respuesta del respaldo de Bizlinks (XML firmado y CDR).
+ * Lectura de la respuesta del respaldo de Bizlinks (XML firmado).
  *
  * El backend ya decide qué comprobantes consultar; aquí solo se traduce el resultado a
  * algo que la persona pueda leer: cuántos se completaron, a quiénes les falta algo y por
@@ -58,7 +58,7 @@ export function pendientes(sync: ApiBizlinksSync): ApiBizlinksItem[] {
  * archivaron, que es lo que le importa a quien pulsa el botón.
  */
 export function resumirRespaldos(sync: ApiBizlinksSync): ResumenRespaldos {
-  const archivos = sync.xml_guardados + sync.cdr_guardados;
+  const archivos = sync.xml_guardados;
   const detenido = motivoDetencion(sync.detenido_por);
 
   if (sync.revisados === 0) {
@@ -67,18 +67,14 @@ export function resumirRespaldos(sync: ApiBizlinksSync): ResumenRespaldos {
       detalle:
         detenido ??
         sync.mensaje ??
-        "Todos los comprobantes emitidos ya tienen su XML y su CDR archivados.",
+        "Todos los comprobantes emitidos ya tienen su XML archivado.",
       tono: detenido ? "error" : "ok",
     };
   }
 
   if (archivos > 0) {
-    const partes = [
-      `${formatearEntero(sync.xml_guardados)} XML`,
-      `${formatearEntero(sync.cdr_guardados)} CDR`,
-    ];
     return {
-      titulo: `Respaldos recuperados: ${partes.join(" · ")}`,
+      titulo: `XML recuperados: ${formatearEntero(sync.xml_guardados)}`,
       detalle: detenido
         ? `${detenido} Se recuperaron ${formatearEntero(sync.completos)} completos antes de detenerse.`
         : `${formatearEntero(sync.completos)} completos, ${formatearEntero(sync.parciales)} parciales de ${formatearEntero(sync.revisados)} revisados.`,
@@ -112,8 +108,8 @@ export function resumirRespaldos(sync: ApiBizlinksSync): ResumenRespaldos {
 export function describirItem(item: ApiBizlinksItem): string {
   if (item.resultado === "completo") {
     return item.items_cargados > 0
-      ? `XML y CDR archivados · ${formatearEntero(item.items_cargados)} ítems cargados`
-      : "XML y CDR archivados";
+      ? `XML archivado · ${formatearEntero(item.items_cargados)} ítems cargados`
+      : "XML archivado";
   }
   if (item.resultado === "parcial") return "Solo se pudo archivar una parte";
   if (item.resultado === "error") return item.mensaje ?? "No se pudo completar";

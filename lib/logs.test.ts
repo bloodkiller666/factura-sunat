@@ -20,7 +20,7 @@ describe("duracionLegible", () => {
 
 describe("frasesDeNovedades", () => {
   it("solo cuenta lo que es mayor que cero", () => {
-    expect(frasesDeNovedades({ "PDF unidos": 3, "CDR guardados": 0, "compras nuevas": 1 })).toEqual([
+    expect(frasesDeNovedades({ "PDF unidos": 3, "compras nuevas": 1 })).toEqual([
       "3 PDF unidos",
       "1 compras nuevas",
     ]);
@@ -43,7 +43,7 @@ describe("bloquesDeDetalle", () => {
     const detalle: ApiLogAutomatizacion["detalle"] = {
       sire: { meses: ["202610", "202609"], ventas_nuevas: 2, compras_nuevas: 5 },
       correo: { revisados: 979, con_facturas: 7, comprobantes_de_la_empresa: 2 },
-      importacion: { completadas: 4, nuevas: 1, repetidas: 3, pdf_guardados: 6, cdr_guardados: 2 },
+      importacion: { completadas: 4, nuevas: 1, repetidas: 3, pdf_guardados: 6 },
     };
 
     const bloques = bloquesDeDetalle(detalle);

@@ -13,7 +13,6 @@ import {
   FileText,
   MoreHorizontal,
   SearchX,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
@@ -27,7 +26,7 @@ import { formatearEntero, formatearFecha, formatearMoneda } from "@/lib/format";
 import type { Comprobante } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export type TipoDescarga = "xml" | "cdr" | "pdf";
+export type TipoDescarga = "xml" | "pdf";
 
 interface Props {
   /** Solo la página actual: el servidor ya filtró, ordenó y paginó. */
@@ -55,7 +54,7 @@ interface Props {
   onLimpiarSeleccion: () => void;
   onAbrir: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, tipo: TipoDescarga) => void;
-  onConsultarCdr: (comprobante: Comprobante) => void;
+  onConsultarEstado: (comprobante: Comprobante) => void;
   onExportarExcel: () => void;
   onLote: () => void;
   onLimpiarFiltros: () => void;
@@ -76,14 +75,14 @@ function MenuFila({
   consultando,
   onAbrir,
   onDescargar,
-  onConsultarCdr,
+  onConsultarEstado,
 }: {
   comprobante: Comprobante;
   puedeOperar: boolean;
   consultando: boolean;
   onAbrir: Props["onAbrir"];
   onDescargar: Props["onDescargar"];
-  onConsultarCdr: Props["onConsultarCdr"];
+  onConsultarEstado: Props["onConsultarEstado"];
 }) {
   const esBoleta = comprobante.codigoTipo === "03";
   return (
@@ -110,14 +109,6 @@ function MenuFila({
       >
         Descargar XML
       </ItemMenu>
-      <ItemMenu
-        icono={ShieldCheck}
-        deshabilitado={!comprobante.tieneCdr}
-        ayuda={comprobante.tieneCdr ? undefined : "No archivado"}
-        onClick={() => onDescargar(comprobante, "cdr")}
-      >
-        Descargar CDR
-      </ItemMenu>
       {comprobante.origen === "recibido" && (
         <ItemMenu
           icono={FileText}
@@ -135,9 +126,9 @@ function MenuFila({
             icono={FileSearch}
             deshabilitado={consultando || esBoleta}
             ayuda={esBoleta ? "No aplica a boletas" : undefined}
-            onClick={() => onConsultarCdr(comprobante)}
+            onClick={() => onConsultarEstado(comprobante)}
           >
-            Consultar CDR en SUNAT
+            Consultar estado en SUNAT
           </ItemMenu>
         </>
       )}
@@ -149,7 +140,6 @@ function Respaldos({ c }: { c: Comprobante }) {
   return (
     <span className="inline-flex items-center gap-1">
       <ChipRespaldo nombre="XML" presente={c.tieneXml} />
-      <ChipRespaldo nombre="CDR" presente={c.tieneCdr} />
       {c.origen === "recibido" && <ChipRespaldo nombre="PDF" presente={c.tienePdf} />}
     </span>
   );
@@ -177,7 +167,7 @@ export function TablaComprobantes({
   onLimpiarSeleccion,
   onAbrir,
   onDescargar,
-  onConsultarCdr,
+  onConsultarEstado,
   onExportarExcel,
   onLote,
   onLimpiarFiltros,
@@ -367,7 +357,7 @@ export function TablaComprobantes({
                           consultando={consultando.has(c.id)}
                           onAbrir={onAbrir}
                           onDescargar={onDescargar}
-                          onConsultarCdr={onConsultarCdr}
+                          onConsultarEstado={onConsultarEstado}
                         />
                       </div>
                     </td>

@@ -60,7 +60,6 @@ export interface ApiComprobante {
   forma_pago?: string | null;
   fuente?: "xml" | "sire";
   tiene_xml?: boolean;
-  tiene_cdr?: boolean;
   tiene_pdf?: boolean;
   moneda: string;
   monto_total: string | null;
@@ -107,13 +106,13 @@ export interface ApiResumen {
   por_estado: Record<string, number>;
   /** Neto por moneda (decimales como texto): notas de crédito restan; sin anulados/rechazados. */
   facturado_neto: Record<string, string | number>;
-  cobertura: { exigibles: number; con_xml: number; con_cdr: number };
+  cobertura: { exigibles: number; con_xml: number };
 }
 
 export interface ApiArchivo {
   id: string;
   comprobante_id: string | null;
-  tipo: "pdf" | "xml" | "cdr" | "zip";
+  tipo: "pdf" | "xml" | "zip";
   nombre: string;
   mime_type: string | null;
   size_bytes: number | null;
@@ -136,8 +135,6 @@ export interface ApiResultadoImportacion {
   total: number;
   importados: number;
   con_pdf: number;
-  /** Solo el importador de proveedores une el CDR al comprobante. */
-  con_cdr?: number;
   /** Compras que no estaban en SIRE ni en la tabla y se registraron con su XML. */
   nuevas?: number;
   /** Compras que SIRE ya traía y se completaron con su XML. */
@@ -150,30 +147,11 @@ export interface ApiResultadoImportacion {
     comprobante_id?: string;
     numero?: string;
     pdf?: boolean;
-    cdr?: boolean;
-    /** Importador de proveedores: qué archivo es (xml, pdf, cdr) y qué pasó con él. */
+    /** Importador de proveedores: qué archivo es (xml, pdf) y qué pasó con él. */
     tipo?: string;
     situacion?: string;
     code?: string;
     mensaje?: string;
-  }>;
-}
-
-export interface ApiResultadoCdr {
-  ruc: string;
-  total: number;
-  asociados: number;
-  ya_tenian: number;
-  sin_comprobante: number;
-  con_error: number;
-  items: Array<{
-    archivo: string;
-    ok: boolean;
-    comprobante_id?: string | null;
-    numero?: string | null;
-    estado?: string | null;
-    code?: string | null;
-    mensaje?: string | null;
   }>;
 }
 
@@ -197,7 +175,7 @@ export interface ApiLoteRefresco {
   }>;
 }
 
-export interface ApiConsultaCdr {
+export interface ApiConsultaEstado {
   comprobante_id: string;
   numero: string;
   estado_anterior: string;
@@ -225,7 +203,7 @@ export interface ApiSireSync {
 }
 
 /* ------------------------------------------------------------------ *
- * Bizlinks (OSE): XML firmado y CDR
+ * Bizlinks (OSE): XML firmado
  * ------------------------------------------------------------------ */
 
 export type ApiResultadoRespaldo = "completo" | "parcial" | "sin_resultado" | "error";
@@ -235,7 +213,6 @@ export interface ApiBizlinksItem {
   numero: string | null;
   resultado: ApiResultadoRespaldo;
   xml_guardado: boolean;
-  cdr_guardado: boolean;
   items_cargados: number;
   mensaje: string | null;
   error_code: string | null;
@@ -253,7 +230,6 @@ export interface ApiBizlinksSync {
   sin_resultado: number;
   fallidos: number;
   xml_guardados: number;
-  cdr_guardados: number;
   /** Motivo por el que el lote se detuvo (bloqueo, cuota, credenciales…). */
   detenido_por: string | null;
   mensaje: string | null;
@@ -334,7 +310,7 @@ export interface FiltrosApi {
   vencimiento_desde?: string;
   vencimiento_hasta?: string;
   moneda?: string;
-  respaldo?: "sin_xml" | "sin_cdr" | "completo";
+  respaldo?: "sin_xml" | "completo";
   orden?: "fecha" | "numero" | "cliente" | "importe";
   direccion?: "asc" | "desc";
   limit?: number;
@@ -376,7 +352,7 @@ export async function apiDetalle(token: string, id: string): Promise<ApiDetalle>
   return pedir<ApiDetalle>(`/api/v1/comprobantes/${id}`, token);
 }
 
-/** Archivos archivados del comprobante (XML, CDR, PDF). */
+/** Archivos archivados del comprobante (XML y PDF). */
 export async function apiArchivos(token: string, id: string): Promise<ApiArchivo[]> {
   const cuerpo = await pedir<{ items: ApiArchivo[] }>(`/api/v1/comprobantes/${id}/archivos`, token);
   return cuerpo.items;
@@ -423,7 +399,7 @@ export async function apiAbrirCarpeta(token: string, partes: string[]): Promise<
   });
 }
 
-/** Descarga el primer archivo de un tipo (`xml`, `cdr`…) del comprobante. */
+/** Descarga el primer archivo de un tipo (`xml` o `pdf`) del comprobante. */
 export async function apiDescargarTipo(
   token: string,
   comprobanteId: string,
@@ -435,9 +411,7 @@ export async function apiDescargarTipo(
     throw new ApiError(
       tipo === "xml"
         ? "Este comprobante no tiene el XML archivado. Impórtalo desde el sistema que lo emite."
-        : tipo === "pdf"
-          ? "Este comprobante no tiene el PDF archivado."
-          : "Este comprobante no tiene el CDR archivado.",
+        : "Este comprobante no tiene el PDF archivado.",
       "archivo_no_encontrado",
       404,
     );
@@ -477,7 +451,7 @@ export async function apiImportarPaquete(
 }
 
 /**
- * Compras: un ZIP con una carpeta por compra (`RUC/SERIE-NÚMERO/` con su XML, PDF y CDR). Registra
+ * Compras: un ZIP con una carpeta por compra (`RUC/SERIE-NÚMERO/` con su XML y su PDF). Registra
  * lo que SIRE no refleja y completa lo que sí; lo ya cargado no se duplica.
  */
 export async function apiImportarProveedores(
@@ -495,7 +469,7 @@ export async function apiImportarProveedores(
 }
 
 /**
- * Importa UNA compra de proveedor (su XML, PDF y CDR) como archivos sueltos. El portal manda una
+ * Importa UNA compra de proveedor (su XML y su PDF) como archivos sueltos. El portal manda una
  * compra por llamada para mostrar el avance en vivo; cada llamada se confirma sola.
  */
 export async function apiImportarGrupoProveedores(
@@ -512,21 +486,7 @@ export async function apiImportarGrupoProveedores(
   );
 }
 
-/** Carga masiva de CDR: un ZIP con `R-{RUC}-{tipo}-{serie}-{numero}.zip|xml`. */
-export async function apiImportarCdr(
-  token: string,
-  ruc: string,
-  archivo: File,
-): Promise<ApiResultadoCdr> {
-  const cuerpo = new FormData();
-  cuerpo.append("paquete", archivo);
-  return pedir<ApiResultadoCdr>(`/api/v1/companies/${ruc}/comprobantes/import-cdr`, token, {
-    method: "POST",
-    body: cuerpo,
-  });
-}
-
-/** Sube un archivo (XML, CDR o PDF) al comprobante indicado. */
+/** Sube un archivo (XML o PDF) al comprobante indicado. */
 export async function apiSubirArchivo(
   token: string,
   comprobanteId: string,
@@ -585,9 +545,9 @@ export async function apiSincronizarPendientes(
   );
 }
 
-/** Consulta el estado y el CDR de un comprobante en SUNAT (admin/emisor). */
-export async function apiConsultarCdr(token: string, id: string): Promise<ApiConsultaCdr> {
-  return pedir<ApiConsultaCdr>(`/api/v1/comprobantes/${id}/refresh-cdr`, token, {
+/** Consulta el estado de un comprobante en SUNAT (admin/emisor). No se guarda ningún CDR. */
+export async function apiConsultarEstado(token: string, id: string): Promise<ApiConsultaEstado> {
+  return pedir<ApiConsultaEstado>(`/api/v1/comprobantes/${id}/refresh-cdr`, token, {
     method: "POST",
   });
 }
@@ -613,7 +573,7 @@ export async function apiSireSync(
 }
 
 /**
- * Recupera desde Bizlinks (el OSE) el XML firmado y el CDR que falten de los comprobantes
+ * Recupera desde Bizlinks (el OSE) el XML firmado que falte de los comprobantes
  * emitidos (admin/emisor). Es idempotente: lo ya archivado no se vuelve a pedir.
  */
 export async function apiBizlinksRespaldos(
@@ -799,7 +759,6 @@ export function mapComprobante(api: ApiComprobante): Comprobante {
     cdrCodigo: api.cdr_codigo,
     cdrDescripcion: api.cdr_descripcion,
     tieneXml: api.tiene_xml ?? false,
-    tieneCdr: api.tiene_cdr ?? false,
     tienePdf: api.tiene_pdf ?? false,
   };
 }
@@ -820,7 +779,6 @@ export function conDetalle(comprobante: Comprobante, api: ApiDetalle): Comproban
   const items = api.items.map(mapItem);
   const respaldos = {
     tieneXml: api.tiene_xml ?? comprobante.tieneXml,
-    tieneCdr: api.tiene_cdr ?? comprobante.tieneCdr,
     tienePdf: api.tiene_pdf ?? comprobante.tienePdf,
   };
   if (items.length === 0) return { ...comprobante, ...respaldos };

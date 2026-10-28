@@ -60,13 +60,13 @@ export function EstadoPill({ estado }: { estado: EstadoSunat }) {
   );
 }
 
-/** Indicador de un respaldo (XML, CDR o PDF): lleno si existe, apagado si falta. */
+/** Indicador de un respaldo (XML o PDF): lleno si existe, apagado si falta. */
 export function ChipRespaldo({
   nombre,
   presente,
   detalle,
 }: {
-  nombre: "XML" | "CDR" | "PDF";
+  nombre: "XML" | "PDF";
   presente: boolean;
   detalle?: string;
 }) {

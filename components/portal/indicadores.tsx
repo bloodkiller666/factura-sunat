@@ -15,7 +15,7 @@ interface Props {
   cargando: boolean;
   onFiltrarEstado: (estado: EstadoSunat) => void;
   onFiltrarRespaldo: (filtro: FiltroRespaldo) => void;
-  /** Las compras no traen XML ni CDR (vienen de SIRE): ahí no se muestra la cobertura. */
+  /** Las compras no traen XML (vienen de SIRE): ahí no se muestra la cobertura. */
   conRespaldo?: boolean;
 }
 
@@ -88,7 +88,6 @@ export function Indicadores({
   const { cobertura } = metricas;
   const total = metricas.totalComprobantes;
   const sinXml = cobertura.total - cobertura.conXml;
-  const sinCdr = cobertura.total - cobertura.conCdr;
   const vigentes = total - metricas.anulados - metricas.rechazados;
 
   return (
@@ -161,14 +160,9 @@ export function Indicadores({
 
       {/* Respaldo */}
       {conRespaldo && (
-      <Tarjeta titulo="Respaldo para auditoría" subtitulo="XML y CDR archivados">
+      <Tarjeta titulo="Respaldo para auditoría" subtitulo="XML archivados">
         <div className="space-y-2.5">
-          {(
-            [
-              ["XML", cobertura.conXml],
-              ["CDR", cobertura.conCdr],
-            ] as const
-          ).map(([nombre, cantidad]) => {
+          {([["XML", cobertura.conXml]] as const).map(([nombre, cantidad]) => {
             const pct = porcentaje(cantidad, cobertura.total);
             return (
               <div key={nombre} className="flex items-center gap-3">
@@ -194,14 +188,6 @@ export function Indicadores({
             className="font-medium text-accent hover:underline disabled:pointer-events-none disabled:text-fg-4 disabled:no-underline"
           >
             {sinXml === 0 ? "Todos con XML" : `Ver ${formatearEntero(sinXml)} sin XML`}
-          </button>
-          <button
-            type="button"
-            onClick={() => onFiltrarRespaldo("SIN_CDR")}
-            disabled={sinCdr === 0}
-            className="font-medium text-accent hover:underline disabled:pointer-events-none disabled:text-fg-4 disabled:no-underline"
-          >
-            {sinCdr === 0 ? "Todos con CDR" : `Ver ${formatearEntero(sinCdr)} sin CDR`}
           </button>
         </div>
       </Tarjeta>

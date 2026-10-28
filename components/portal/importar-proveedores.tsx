@@ -12,7 +12,6 @@ import {
   Loader2,
   MinusCircle,
   Repeat2,
-  ShieldCheck,
   Upload,
 } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
@@ -66,7 +65,6 @@ const ESTADOS: Record<
 const ICONO_TIPO: Record<TipoArchivo, typeof FileText> = {
   xml: FileCode2,
   pdf: FileText,
-  cdr: ShieldCheck,
   otro: FileText,
 };
 
@@ -79,7 +77,7 @@ const FILTROS: Array<{ id: Filtro; etiqueta: string }> = [
   { id: "error", etiqueta: "Con error" },
 ];
 
-/** Qué filas muestra cada filtro (los PDF y CDR guardados cuentan como «importadas»). */
+/** Qué filas muestra cada filtro (los PDF guardados cuentan como «importadas»). */
 function coincide(fila: FilaImportacion, filtro: Filtro): boolean {
   if (filtro === "todos") return true;
   if (filtro === "completada") return fila.estado === "completada" || fila.estado === "guardado";
@@ -235,7 +233,7 @@ export function ImportarProveedores({ token, ruc, puedeOperar, onImportado, onOc
             Elige la carpeta, los ZIP o los archivos de tus proveedores
           </p>
           <p className="mt-1 max-w-lg text-[12.5px] text-fg-3">
-            Cada carpeta es una compra con su XML, PDF y CDR. También sirven ZIP (como los lotes del
+            Cada carpeta es una compra con su XML y su PDF. También sirven ZIP (como los lotes del
             extractor) o XML y PDF sueltos: un PDF sin XML se une a una compra ya registrada si su
             texto trae el RUC y la serie-número. Verás cada archivo importarse en vivo.
           </p>
@@ -314,7 +312,7 @@ export function ImportarProveedores({ token, ruc, puedeOperar, onImportado, onOc
         <Contador valor={resumen.completadas} etiqueta="Importadas (estaban en SIRE)" clase="text-ok" />
         <Contador valor={resumen.nuevas} etiqueta="Nuevas (no estaban en SIRE)" clase="text-accent" />
         <Contador valor={resumen.yaEstaban} etiqueta="Ya estaban" />
-        <Contador valor={resumen.pdfGuardados + resumen.cdrGuardados} etiqueta="PDF y CDR guardados" clase="text-ok" />
+        <Contador valor={resumen.pdfGuardados} etiqueta="PDF guardados" clase="text-ok" />
         <Contador valor={resumen.omitidos} etiqueta="No se importaron" clase="text-warn" />
         <Contador valor={resumen.errores} etiqueta="Con error" clase={resumen.errores ? "text-bad" : undefined} />
       </div>

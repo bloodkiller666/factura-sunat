@@ -29,7 +29,6 @@ export function comprobante(parcial: Partial<Comprobante> = {}): Comprobante {
     cdrCodigo: null,
     cdrDescripcion: null,
     tieneXml: false,
-    tieneCdr: false,
     tienePdf: false,
     ...parcial,
   };

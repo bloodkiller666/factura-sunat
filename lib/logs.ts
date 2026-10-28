@@ -88,7 +88,7 @@ export function bloquesDeDetalle(detalle: ApiLogAutomatizacion["detalle"]): Bloq
       titulo: "Importación al portal",
       lineas: [
         `Completadas con su XML: ${numero(importacion.completadas)} · Nuevas (no estaban en SIRE): ${numero(importacion.nuevas)} · Ya estaban: ${numero(importacion.repetidas)}`,
-        `PDF guardados: ${numero(importacion.pdf_guardados)} · CDR guardados: ${numero(importacion.cdr_guardados)} · PDF sueltos unidos: ${numero(importacion.pdf_sueltos_unidos)}`,
+        `PDF guardados: ${numero(importacion.pdf_guardados)} · PDF sueltos unidos: ${numero(importacion.pdf_sueltos_unidos)}`,
       ],
     });
   }

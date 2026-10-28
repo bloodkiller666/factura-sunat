@@ -2,7 +2,7 @@
  * Importación de compras de proveedores con avance en vivo: lógica pura, sin React.
  *
  * El usuario elige una carpeta, uno o varios ZIP, o archivos sueltos (XML y PDF). Aquí se leen,
- * se reparten en GRUPOS (una carpeta = una compra con su XML, PDF y CDR) y, mientras la pantalla
+ * se reparten en GRUPOS (una carpeta = una compra con su XML y su PDF) y, mientras la pantalla
  * los manda de a uno al servidor, cada archivo cambia de estado: en espera → importando →
  * resultado. Para el usuario hay cinco desenlaces: completada desde SIRE, nueva (no estaba en SIRE
  * ni en la tabla pero se registró), ya estaba, omitida (no se puede importar y no es un fallo) y
@@ -18,7 +18,7 @@ const EXTENSIONES_UTILES = new Set(["xml", "pdf"]);
 
 export type ItemImportacion = ApiResultadoImportacion["items"][number];
 
-export type TipoArchivo = "xml" | "pdf" | "cdr" | "otro";
+export type TipoArchivo = "xml" | "pdf" | "otro";
 
 export type EstadoArchivo =
   | "espera"
@@ -35,8 +35,7 @@ const MOTIVOS_OMITIDOS = new Set([
   "conflict",
   "sin_xml",
   "guia",
-  "cdr_sin_comprobante",
-  "cdr_repetido",
+  "cdr_ignorado",
   "xml_no_reconocido",
   "tipo_no_soportado",
   "sin_comprobante",
@@ -83,7 +82,6 @@ export interface ResumenImportacion {
   /** Compras que ya tenían su XML. */
   yaEstaban: number;
   pdfGuardados: number;
-  cdrGuardados: number;
   /** Archivos que no se importaron pero no son un fallo (guías, PDF sin XML…). */
   omitidos: number;
   errores: number;
@@ -213,12 +211,12 @@ export function estadoDeItem(item: ItemImportacion): EstadoArchivo {
     case "ya_estaba":
       return "ya_estaba";
     default:
-      return "guardado"; // PDF o CDR guardado / unido
+      return "guardado"; // PDF guardado / unido
   }
 }
 
 function tipoDeItem(item: ItemImportacion, previo: TipoArchivo): TipoArchivo {
-  return item.tipo === "xml" || item.tipo === "pdf" || item.tipo === "cdr" ? item.tipo : previo;
+  return item.tipo === "xml" || item.tipo === "pdf" ? item.tipo : previo;
 }
 
 export function marcarGrupo(
@@ -283,7 +281,6 @@ export function resumirFilas(filas: FilaImportacion[]): ResumenImportacion {
     nuevas: cuenta("xml", "nueva"),
     yaEstaban: cuenta("xml", "ya_estaba"),
     pdfGuardados: cuenta("pdf", "guardado"),
-    cdrGuardados: cuenta("cdr", "guardado"),
     omitidos: filas.filter((f) => f.estado === "omitido").length,
     errores: filas.filter((f) => f.estado === "error").length,
   };

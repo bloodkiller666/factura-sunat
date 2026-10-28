@@ -64,16 +64,16 @@ function carpetaFalsa(nombre = "raiz"): Falsa {
 }
 
 describe("guardarArchivos", () => {
-  it("crea la estructura y escribe el XML y el CDR dentro de la carpeta del RUC", async () => {
+  it("crea la estructura y escribe el XML y el PDF dentro de la carpeta del RUC", async () => {
     const raiz = carpetaFalsa();
     await guardarArchivos(raiz as unknown as FileSystemDirectoryHandle, partesCarpeta(doc), [
       { nombre: "F.xml", blob: new Blob(["<xml/>"]) },
-      { nombre: "R-F.zip", blob: new Blob(["cdr"]) },
+      { nombre: "F.pdf", blob: new Blob(["pdf"]) },
     ]);
     const hoja = raiz.hijos.get("2026")!.hijos.get("09")!.hijos.get("20100000001")!.hijos.get("FF01-00000123")!;
     expect([...hoja.archivos.entries()]).toEqual([
       ["F.xml", "<xml/>"],
-      ["R-F.zip", "cdr"],
+      ["F.pdf", "pdf"],
     ]);
   });
 });

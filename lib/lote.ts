@@ -1,20 +1,34 @@
 /**
- * Lote de respaldo: un ZIP con los archivos REALES de cada comprobante (el XML y el
- * CDR guardados en R2) más un manifiesto con el SHA-256 de cada archivo.
+ * Lote de respaldo: un ZIP con los archivos REALES de cada comprobante (el XML y, en compras,
+ * el PDF guardados en R2) más un manifiesto con el SHA-256 de cada archivo.
  *
- * Nunca fabrica XML: si un comprobante no tiene su XML o su CDR archivado, el lote lo
- * dice en el LEEME en lugar de inventarlo. Así el ZIP sirve como paquete de auditoría.
+ * Cada comprobante queda en su carpeta `AAAA/MM/RUC/SERIE-NÚMERO/`, la misma estructura que
+ * usa «Guardar en mi PC» y la automatización del correo: así los ZIP se pueden descomprimir
+ * todos en una misma carpeta (en otra PC o en el celular) y las partes se juntan solas.
+ *
+ * Nunca fabrica archivos: si un comprobante no tiene su XML (o, en compras, su PDF) archivado,
+ * el lote lo dice en el LEEME en lugar de inventarlo. Así el ZIP sirve como paquete de auditoría.
+ *
+ * Para muchos comprobantes, `descargarTodoPorPartes` los reparte en varios ZIP (el navegador
+ * arma cada uno en memoria) y los entrega uno tras otro.
  */
 
 import { apiArchivos, apiDescargarArchivo, type ApiArchivo } from "./api";
+import { partesCarpeta } from "./carpeta-local";
 import { formatearFecha } from "./format";
 import type { Comprobante, Empresa } from "./types";
 import { crearZip, type EntradaZip } from "./zip";
 
-/** Tope por lote: el ZIP se arma en memoria del navegador. */
+/** Tope por ZIP: se arma en memoria del navegador. */
 export const MAX_COMPROBANTES_LOTE = 120;
+/** Comprobantes por ZIP al descargar todo: cada parte pesa pocos MB y cabe en un celular. */
+export const COMPROBANTES_POR_PARTE = 100;
+/** Pausa entre dos descargas seguidas: el navegador descarta las que llegan pegadas. */
+const ESPERA_ENTRE_PARTES_MS = 900;
 const SIMULTANEOS = 3;
 const SALTO = "\r\n";
+
+export type TipoRespaldo = "XML" | "PDF";
 
 export interface ProgresoLote {
   hecho: number;
@@ -23,7 +37,7 @@ export interface ProgresoLote {
 
 export interface FaltanteLote {
   numero: string;
-  faltan: Array<"XML" | "CDR">;
+  faltan: TipoRespaldo[];
 }
 
 export interface ResultadoLote {
@@ -32,6 +46,12 @@ export interface ResultadoLote {
   archivos: number;
   faltantes: FaltanteLote[];
   nombre: string;
+}
+
+/** Qué parte de una descarga masiva es un ZIP (1 de N). */
+export interface ParteLote {
+  numero: number;
+  total: number;
 }
 
 /** Operaciones de red que usa el lote; se inyectan para poder probarlo sin servidor. */
@@ -52,8 +72,20 @@ export function nombreBase(comprobante: Comprobante): string {
   return (comprobante.nombreArchivo || comprobante.numero).replace(/[\\/:*?"<>|]+/g, "-");
 }
 
-export function nombreLote(cantidad: number, empresa: Pick<Empresa, "ruc">): string {
-  return `respaldo-comprobantes-${empresa.ruc}-${cantidad}.zip`;
+/** Carpeta del comprobante dentro del ZIP: `AAAA/MM/RUC/SERIE-NÚMERO`. */
+export function carpetaDeLote(comprobante: Comprobante): string {
+  return partesCarpeta(comprobante).join("/");
+}
+
+const dos = (n: number) => String(n).padStart(2, "0");
+
+export function nombreLote(
+  cantidad: number,
+  empresa: Pick<Empresa, "ruc">,
+  parte?: ParteLote,
+): string {
+  if (!parte || parte.total <= 1) return `respaldo-comprobantes-${empresa.ruc}-${cantidad}.zip`;
+  return `respaldo-${empresa.ruc}-parte-${dos(parte.numero)}-de-${dos(parte.total)}.zip`;
 }
 
 async function sha256(datos: Uint8Array): Promise<string> {
@@ -73,6 +105,7 @@ export function textoLeeme(
   empresa: Pick<Empresa, "ruc" | "razonSocial">,
   comprobantes: Comprobante[],
   faltantes: FaltanteLote[],
+  parte?: ParteLote,
 ): string {
   const lineas = [
     "LOTE DE RESPALDO DE COMPROBANTES ELECTRÓNICOS",
@@ -80,24 +113,40 @@ export function textoLeeme(
     `Empresa: ${empresa.razonSocial}`,
     `RUC: ${empresa.ruc}`,
     `Generado: ${formatearFecha(new Date().toISOString().slice(0, 10))}`,
+    ...(parte && parte.total > 1 ? [`Parte ${parte.numero} de ${parte.total}`] : []),
     `Comprobantes en el lote: ${comprobantes.length}`,
     "",
-    "Contenido: una carpeta por comprobante con su XML y su CDR (tal como están archivados",
-    "en el almacenamiento). manifiesto.csv trae el SHA-256 de cada archivo para verificar",
-    "que no se alteró.",
+    "Contenido: una carpeta por comprobante (AAAA/MM/RUC/SERIE-NÚMERO) con su XML y, en las",
+    "compras, su PDF, tal como están archivados en el almacenamiento. El manifiesto trae el",
+    "SHA-256 de cada archivo para verificar que no se alteró.",
+    ...(parte && parte.total > 1
+      ? [
+          "",
+          "Si descargaste varias partes, descomprímelas todas en la misma carpeta: cada una trae",
+          "sus propias carpetas y no se pisan.",
+        ]
+      : []),
     "",
   ];
   if (faltantes.length === 0) {
-    lineas.push("Todos los comprobantes del lote tienen XML y CDR archivados.");
+    lineas.push("Todos los comprobantes del lote tienen sus archivos archivados.");
   } else {
     lineas.push(
       `Comprobantes con respaldo incompleto (${faltantes.length}):`,
       ...faltantes.map((f) => `- ${f.numero}: falta ${f.faltan.join(", ")}`),
       "",
-      "Para completarlos: importa el XML y el CDR desde el sistema que emite los comprobantes.",
+      "Para completarlos: importa el XML (y el PDF de las compras) desde el sistema que los emite.",
     );
   }
   return lineas.join(SALTO);
+}
+
+/** Reparte `elementos` en grupos de a lo más `tamano`, conservando el orden. */
+export function dividirEnPartes<T>(elementos: T[], tamano: number): T[][] {
+  if (tamano < 1) throw new Error("El tamaño de cada parte debe ser al menos 1");
+  const partes: T[][] = [];
+  for (let i = 0; i < elementos.length; i += tamano) partes.push(elementos.slice(i, i + tamano));
+  return partes;
 }
 
 /** Ejecuta `tarea` sobre cada elemento con un máximo de `limite` a la vez. */
@@ -122,6 +171,7 @@ export async function construirLoteRespaldo(
   comprobantes: Comprobante[],
   alProgresar: (progreso: ProgresoLote) => void = () => {},
   deps: DependenciasLote = DEPENDENCIAS_REALES,
+  parte?: ParteLote,
 ): Promise<ResultadoLote> {
   if (comprobantes.length > MAX_COMPROBANTES_LOTE) {
     throw new Error(
@@ -132,23 +182,35 @@ export async function construirLoteRespaldo(
   const entradas: EntradaZip[] = [];
   const faltantes: FaltanteLote[] = [];
   const manifiesto: string[][] = [];
+  const usadas = new Set<string>();
   let hecho = 0;
 
   await enParalelo(comprobantes, SIMULTANEOS, async (comprobante) => {
-    const base = nombreBase(comprobante);
-    const faltan: FaltanteLote["faltan"] = [];
-    const agregar = async (tipo: string, nombre: string, blob: Blob) => {
+    // Dos comprobantes no comparten carpeta; si algún dato repetido las hiciera coincidir, la
+    // segunda se distingue en vez de pisar los archivos de la primera.
+    let carpeta = carpetaDeLote(comprobante);
+    if (usadas.has(carpeta)) carpeta = `${carpeta} (${comprobante.id.slice(0, 6)})`;
+    usadas.add(carpeta);
+
+    const faltan: TipoRespaldo[] = [];
+    const agregar = async (tipo: TipoRespaldo, nombre: string, blob: Blob) => {
       const bytes = new Uint8Array(await blob.arrayBuffer());
-      entradas.push({ nombre: `${base}/${nombre}`, contenido: bytes });
-      manifiesto.push([base, nombre, tipo, String(bytes.length), await sha256(bytes)]);
+      entradas.push({ nombre: `${carpeta}/${nombre}`, contenido: bytes });
+      manifiesto.push([carpeta, nombre, tipo, String(bytes.length), await sha256(bytes)]);
     };
+
+    // El PDF solo existe en compras: en ventas el portal no maneja PDF.
+    const tipos: Array<readonly ["xml" | "pdf", TipoRespaldo]> =
+      comprobante.origen === "recibido"
+        ? [
+            ["xml", "XML"],
+            ["pdf", "PDF"],
+          ]
+        : [["xml", "XML"]];
 
     try {
       const guardados = await deps.listarArchivos(token, comprobante.id);
-      for (const [tipo, etiqueta] of [
-        ["xml", "XML"],
-        ["cdr", "CDR"],
-      ] as const) {
+      for (const [tipo, etiqueta] of tipos) {
         const archivo = guardados.find((candidato) => candidato.tipo === tipo);
         if (!archivo) {
           faltan.push(etiqueta);
@@ -163,25 +225,26 @@ export async function construirLoteRespaldo(
         }
       }
     } catch {
-      faltan.push("XML", "CDR");
+      faltan.push(...tipos.map(([, etiqueta]) => etiqueta));
     }
 
-    if (faltan.length > 0) faltantes.push({ numero: comprobante.numero, faltan: [...new Set(faltan)] });
+    if (faltan.length > 0) faltantes.push({ numero: comprobante.numero, faltan });
     hecho += 1;
     alProgresar({ hecho, total: comprobantes.length });
   });
 
   const archivos = entradas.length;
+  const sufijo = parte && parte.total > 1 ? `-parte-${dos(parte.numero)}` : "";
   manifiesto.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
-  const csv = [["comprobante", "archivo", "tipo", "bytes", "sha256"], ...manifiesto]
+  const csv = [["carpeta", "archivo", "tipo", "bytes", "sha256"], ...manifiesto]
     .map((fila) => fila.map(escaparCsv).join(","))
     .join(SALTO);
 
   faltantes.sort((a, b) => a.numero.localeCompare(b.numero));
   entradas.sort((a, b) => a.nombre.localeCompare(b.nombre));
   entradas.push(
-    { nombre: "LEEME.txt", contenido: textoLeeme(empresa, comprobantes, faltantes) },
-    { nombre: "manifiesto.csv", contenido: csv },
+    { nombre: `LEEME${sufijo}.txt`, contenido: textoLeeme(empresa, comprobantes, faltantes, parte) },
+    { nombre: `manifiesto${sufijo}.csv`, contenido: csv },
   );
 
   return {
@@ -189,6 +252,103 @@ export async function construirLoteRespaldo(
     comprobantes: comprobantes.length,
     archivos,
     faltantes,
-    nombre: nombreLote(comprobantes.length, empresa),
+    nombre: nombreLote(comprobantes.length, empresa, parte),
   };
+}
+
+/* ------------------------ Descarga masiva por partes ------------------------ */
+
+export interface ProgresoDescargaMasiva {
+  /** Parte que se está armando (1 = primera). */
+  parte: number;
+  partes: number;
+  /** Comprobantes ya revisados de la parte actual. */
+  hechoEnParte: number;
+  totalEnParte: number;
+  /** Comprobantes de las partes ya entregadas + los de la parte en curso. */
+  hecho: number;
+  total: number;
+}
+
+export interface ResumenDescargaMasiva {
+  partes: number;
+  entregadas: number;
+  comprobantes: number;
+  archivos: number;
+  faltantes: FaltanteLote[];
+  cancelada: boolean;
+}
+
+export interface OpcionesDescargaMasiva {
+  /** Recibe cada ZIP terminado (en el navegador, dispara la descarga). */
+  entregar: (zip: Blob, nombre: string) => void | Promise<void>;
+  alProgresar?: (progreso: ProgresoDescargaMasiva) => void;
+  porParte?: number;
+  deps?: DependenciasLote;
+  signal?: AbortSignal;
+  /** Pausa entre partes; se inyecta para no esperar de verdad en las pruebas. */
+  esperar?: (ms: number) => Promise<void>;
+}
+
+/**
+ * Descarga TODOS los comprobantes dados, repartidos en ZIP de `porParte` comprobantes cada uno.
+ * Lo que falte de cada comprobante se declara en el LEEME de su parte y se suma al resumen.
+ */
+export async function descargarTodoPorPartes(
+  token: string,
+  empresa: Pick<Empresa, "ruc" | "razonSocial">,
+  comprobantes: Comprobante[],
+  opciones: OpcionesDescargaMasiva,
+): Promise<ResumenDescargaMasiva> {
+  const {
+    entregar,
+    alProgresar = () => {},
+    porParte = COMPROBANTES_POR_PARTE,
+    deps = DEPENDENCIAS_REALES,
+    signal,
+    esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms)),
+  } = opciones;
+
+  const grupos = dividirEnPartes(comprobantes, Math.min(porParte, MAX_COMPROBANTES_LOTE));
+  const resumen: ResumenDescargaMasiva = {
+    partes: grupos.length,
+    entregadas: 0,
+    comprobantes: 0,
+    archivos: 0,
+    faltantes: [],
+    cancelada: false,
+  };
+  let completos = 0;
+
+  for (const [indice, grupo] of grupos.entries()) {
+    if (signal?.aborted) {
+      resumen.cancelada = true;
+      break;
+    }
+    const parte: ParteLote = { numero: indice + 1, total: grupos.length };
+    const lote = await construirLoteRespaldo(
+      token,
+      empresa,
+      grupo,
+      ({ hecho }) =>
+        alProgresar({
+          parte: parte.numero,
+          partes: parte.total,
+          hechoEnParte: hecho,
+          totalEnParte: grupo.length,
+          hecho: completos + hecho,
+          total: comprobantes.length,
+        }),
+      deps,
+      parte,
+    );
+    await entregar(new Blob([lote.zip], { type: "application/zip" }), lote.nombre);
+    completos += grupo.length;
+    resumen.entregadas += 1;
+    resumen.comprobantes += lote.comprobantes;
+    resumen.archivos += lote.archivos;
+    resumen.faltantes.push(...lote.faltantes);
+    if (indice < grupos.length - 1) await esperar(ESPERA_ENTRE_PARTES_MS);
+  }
+  return resumen;
 }

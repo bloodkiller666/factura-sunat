@@ -11,7 +11,6 @@ import {
   FolderOpen,
   HardDriveDownload,
   Info,
-  ShieldCheck,
   Upload,
 } from "lucide-react";
 import { Boton, type IconoLucide } from "@/components/ui/boton";
@@ -37,10 +36,9 @@ interface Props {
   descargando: Set<string>;
   consultando: boolean;
   onCerrar: () => void;
-  onDescargar: (c: Comprobante, tipo: "xml" | "cdr" | "pdf") => void;
-  onConsultarCdr: (c: Comprobante) => void;
+  onDescargar: (c: Comprobante, tipo: "xml" | "pdf") => void;
+  onConsultarEstado: (c: Comprobante) => void;
   onImportarXml: (archivo: File) => void;
-  onAbrirImportarCdr: () => void;
   guardandoPc: boolean;
   onGuardarEnPc: (c: Comprobante) => void;
   onAbrirCarpeta: (c: Comprobante) => void;
@@ -123,7 +121,7 @@ function Resumen({ c, empresa }: { c: Comprobante; empresa: Empresa | null }) {
               {c.cdrDescripcion ? ` · ${c.cdrDescripcion}` : ""}
             </>
           ) : c.fuente === "sire" ? (
-            "Listado por SUNAT en el registro de ventas (SIRE). Aún no hay un CDR archivado."
+            "Listado por SUNAT en el registro de ventas (SIRE). Aún no se ha consultado su estado."
           ) : (
             "Sin respuesta registrada todavía."
           )}
@@ -297,22 +295,16 @@ function Archivos({
   c,
   puedeOperar,
   descargando,
-  consultando,
   cargarArchivos,
   onDescargar,
-  onConsultarCdr,
   onImportarXml,
-  onAbrirImportarCdr,
 }: Pick<
   Props,
   | "puedeOperar"
   | "descargando"
-  | "consultando"
   | "cargarArchivos"
   | "onDescargar"
-  | "onConsultarCdr"
   | "onImportarXml"
-  | "onAbrirImportarCdr"
 > & { c: Comprobante }) {
   const [archivos, setArchivos] = useState<ArchivoGuardado[] | null>(null);
   const [error, setError] = useState(false);
@@ -349,14 +341,19 @@ function Archivos({
   }
 
   const de = (tipo: ArchivoGuardado["tipo"]) => archivos.find((a) => a.tipo === tipo);
-  const esBoleta = c.codigoTipo === "03";
 
   return (
     <div className="space-y-3 p-5">
       <p className="text-[12.5px] text-fg-3">
         Lo que el portal tiene guardado de este comprobante. Ante una auditoría, la evidencia es
-        el <strong className="font-medium text-fg-2">XML firmado</strong> junto con su{" "}
-        <strong className="font-medium text-fg-2">CDR</strong>.
+        el <strong className="font-medium text-fg-2">XML firmado</strong>
+        {c.origen === "recibido" && (
+          <>
+            {" "}
+            junto con el <strong className="font-medium text-fg-2">PDF</strong> del proveedor
+          </>
+        )}
+        .
       </p>
       <ul className="space-y-3">
         <FilaArchivo
@@ -426,51 +423,6 @@ function Archivos({
             }
           />
         )}
-        <FilaArchivo
-          icono={ShieldCheck}
-          titulo="CDR (constancia de recepción)"
-          archivo={de("cdr")}
-          vacio={
-            esBoleta ? (
-              <>Las boletas no tienen consulta de CDR en SUNAT; pide el CDR al emisor.</>
-            ) : (
-              <>
-                Consulta a SUNAT. Si el comprobante lo emite otro sistema (OSE, PSE, SAP), SUNAT
-                responde que no lo reconoce y el CDR hay que importarlo desde ese sistema.
-              </>
-            )
-          }
-          acciones={
-            de("cdr") ? (
-              <Boton
-                tamano="sm"
-                icono={Download}
-                cargando={descargando.has(`${c.id}:cdr`)}
-                onClick={() => onDescargar(c, "cdr")}
-              >
-                Descargar CDR
-              </Boton>
-            ) : (
-              puedeOperar && (
-                <>
-                  {!esBoleta && c.origen === "emitido" && (
-                    <Boton
-                      tamano="sm"
-                      icono={FileSearch}
-                      cargando={consultando}
-                      onClick={() => onConsultarCdr(c)}
-                    >
-                      Consultar en SUNAT
-                    </Boton>
-                  )}
-                  <Boton tamano="sm" icono={Upload} onClick={onAbrirImportarCdr}>
-                    Importar CDR (ZIP)
-                  </Boton>
-                </>
-              )
-            )
-          }
-        />
       </ul>
     </div>
   );
@@ -520,16 +472,16 @@ export function DetalleComprobante(props: Props) {
       pie={
         c && (
           <>
-            {puedeOperar && c.origen === "emitido" && c.codigoTipo !== "03" && !c.tieneCdr && (
+            {puedeOperar && c.origen === "emitido" && c.codigoTipo !== "03" && (
               <Boton
                 icono={FileSearch}
                 cargando={props.consultando}
-                onClick={() => props.onConsultarCdr(c)}
+                onClick={() => props.onConsultarEstado(c)}
               >
-                Consultar CDR
+                Consultar estado en SUNAT
               </Boton>
             )}
-            {(c.tieneXml || c.tieneCdr || c.tienePdf) && (
+            {(c.tieneXml || c.tienePdf) && (
               <>
                 <Boton
                   icono={FolderOpen}
@@ -544,8 +496,8 @@ export function DetalleComprobante(props: Props) {
                   onClick={() => props.onGuardarEnPc(c)}
                   title={
                     c.origen === "recibido"
-                      ? "Guarda el XML, el CDR y el PDF en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
-                      : "Guarda el XML y el CDR en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
+                      ? "Guarda el XML y el PDF en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
+                      : "Guarda el XML en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
                   }
                 >
                   Guardar en mi PC
@@ -610,16 +562,13 @@ export function DetalleComprobante(props: Props) {
             )}
             {pestana === "archivos" && (
               <Archivos
-                key={`${c.id}:${c.tieneXml}:${c.tieneCdr}`}
+                key={`${c.id}:${c.tieneXml}:${c.tienePdf}`}
                 c={c}
                 puedeOperar={puedeOperar}
                 descargando={props.descargando}
-                consultando={props.consultando}
                 cargarArchivos={props.cargarArchivos}
                 onDescargar={props.onDescargar}
-                onConsultarCdr={props.onConsultarCdr}
                 onImportarXml={props.onImportarXml}
-                onAbrirImportarCdr={props.onAbrirImportarCdr}
               />
             )}
           </div>

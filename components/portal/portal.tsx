@@ -140,7 +140,6 @@ export function Portal({ token, email, onSalir }: Props) {
         onSap={setSapAbierto}
         importar={importar}
         onImportar={setImportar}
-        onAbrirImportar={abrirImportar}
       />
     </div>
   );

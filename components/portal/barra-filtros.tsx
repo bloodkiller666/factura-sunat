@@ -16,8 +16,7 @@ interface Props {
 const ETIQUETA_RESPALDO: Record<FiltrosState["respaldo"], string> = {
   TODOS: "",
   SIN_XML: "Sin XML",
-  SIN_CDR: "Sin CDR",
-  COMPLETO: "Con XML y CDR",
+  COMPLETO: "Con XML",
 };
 
 interface Chip {

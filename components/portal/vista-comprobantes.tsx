@@ -32,6 +32,9 @@ export function VistaComprobantes({ p, compras, onRespaldos, onImportar, onSap, 
         sincronizando={p.sincronizando}
         exportando={p.exportando}
         guardandoPc={p.guardandoPc}
+        descargaMasiva={p.descargaMasiva}
+        onDescargarTodo={() => void p.descargarTodo()}
+        onCancelarDescargaTodo={p.cancelarDescargaTodo}
         seleccionados={p.seleccion.length}
         total={p.total}
         onRespaldos={onRespaldos}
@@ -92,7 +95,7 @@ export function VistaComprobantes({ p, compras, onRespaldos, onImportar, onSap, 
         onLimpiarSeleccion={p.limpiarSeleccion}
         onAbrir={(c) => void p.abrirDetalle(c)}
         onDescargar={(c, tipo) => void p.descargar(c, tipo)}
-        onConsultarCdr={(c) => void p.consultarCdr(c)}
+        onConsultarEstado={(c) => void p.consultarEstado(c)}
         onExportarExcel={() => void p.exportarExcel()}
         onLote={() => void p.generarLote()}
         onLimpiarFiltros={p.limpiarFiltros}

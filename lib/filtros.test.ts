@@ -65,7 +65,7 @@ describe("filtrosParaApi", () => {
           q: "  alfa  ",
           tipo: "Nota de Crédito",
           estadoSunat: "Aprobado",
-          respaldo: "SIN_CDR",
+          respaldo: "SIN_XML",
           moneda: "USD",
           numeroSap: " 4500 ",
           desde: "2026-09-01",
@@ -79,7 +79,7 @@ describe("filtrosParaApi", () => {
       q: "alfa",
       tipo_documento: "07",
       estado: "aprobado",
-      respaldo: "sin_cdr",
+      respaldo: "sin_xml",
       moneda: "USD",
       n_sap: "4500",
       fecha_desde: "2026-09-01",
@@ -177,7 +177,7 @@ describe("metricasDeResumen", () => {
     total: 720,
     por_estado: { pendiente: 1, aprobado: 686, rechazado: 0, anulado: 33 },
     facturado_neto: { PEN: "44224155.32", USD: "2971065.88" },
-    cobertura: { exigibles: 687, con_xml: 10, con_cdr: 4 },
+    cobertura: { exigibles: 687, con_xml: 10 },
   };
 
   it("mapea estados, cobertura y facturado por moneda", () => {
@@ -192,7 +192,7 @@ describe("metricasDeResumen", () => {
       facturadoUsd: 2971065.88,
       etiquetaRango: "Setiembre 2026",
     });
-    expect(m.cobertura).toEqual({ total: 687, conXml: 10, conCdr: 4 });
+    expect(m.cobertura).toEqual({ total: 687, conXml: 10 });
   });
 
   it("una moneda ausente cuenta como cero", () => {

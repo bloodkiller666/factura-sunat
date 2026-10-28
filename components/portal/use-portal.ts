@@ -6,7 +6,7 @@ import {
   apiAbrirCarpeta,
   apiArchivos,
   apiComprobantes,
-  apiConsultarCdr,
+  apiConsultarEstado,
   apiDescargarArchivo,
   apiDescargarTipo,
   apiDetalle,
@@ -45,7 +45,12 @@ import {
   type Orden,
 } from "@/lib/filtros";
 import { formatearEntero } from "@/lib/format";
-import { MAX_COMPROBANTES_LOTE, construirLoteRespaldo } from "@/lib/lote";
+import {
+  MAX_COMPROBANTES_LOTE,
+  construirLoteRespaldo,
+  descargarTodoPorPartes,
+  type ProgresoDescargaMasiva,
+} from "@/lib/lote";
 import { descargarBlob, descargarExcel, TIPO_ZIP } from "@/lib/exportar";
 import type {
   ArchivoGuardado,
@@ -62,6 +67,8 @@ const RETARDO_BUSQUEDA_MS = 300;
 /** Tope de filas de un reporte Excel de «todo lo filtrado» (con selección no aplica). */
 export const MAX_EXPORTACION = 5000;
 const POR_PAGINA_EXPORTACION = 100;
+/** Tope de comprobantes de una descarga masiva («Descargar todo»). */
+export const MAX_DESCARGA_MASIVA = 20000;
 /** Páginas ya pedidas que se conservan para ir y volver sin esperar. */
 const MAX_PAGINAS_EN_CACHE = 40;
 
@@ -124,6 +131,10 @@ export function usePortal(token: string | null) {
   const [consultando, setConsultando] = useState<Set<string>>(() => new Set());
   const [sincronizando, setSincronizando] = useState(false);
   const [generandoLote, setGenerandoLote] = useState(false);
+  const [descargaMasiva, setDescargaMasiva] = useState<ProgresoDescargaMasiva | "preparando" | null>(
+    null,
+  );
+  const cancelarMasiva = useRef<AbortController | null>(null);
   const [guardandoPc, setGuardandoPc] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [evidencias, setEvidencias] = useState<ArchivoGuardado[] | null>(null);
@@ -466,7 +477,7 @@ export function usePortal(token: string | null) {
   );
 
   const descargar = useCallback(
-    async (c: Comprobante, tipo: "xml" | "cdr" | "pdf") => {
+    async (c: Comprobante, tipo: "xml" | "pdf") => {
       if (!token) return;
       await conClave("descargando", `${c.id}:${tipo}`, async () => {
         try {
@@ -481,19 +492,19 @@ export function usePortal(token: string | null) {
     [token, conClave],
   );
 
-  const consultarCdr = useCallback(
+  const consultarEstado = useCallback(
     async (c: Comprobante) => {
       if (!token) return;
       await conClave("consultando", c.id, async () => {
         try {
-          const r = await apiConsultarCdr(token, c.id);
+          const r = await apiConsultarEstado(token, c.id);
           if (r.cdr) {
-            aviso.ok(`CDR recibido de SUNAT · ${r.estado_label}`, r.cdr.descripcion);
+            aviso.ok(`SUNAT respondió · ${r.estado_label}`, r.cdr.descripcion);
           } else {
             aviso.info(
-              "SUNAT no entregó el CDR",
+              "SUNAT no informó un estado",
               r.mensaje ??
-                "Si el comprobante lo emite otro sistema (OSE/PSE), importa su CDR desde Importar → CDR.",
+                "Si el comprobante lo emite otro sistema (OSE/PSE), SUNAT puede no reconocerlo: su estado es el de SIRE.",
             );
           }
           recargar();
@@ -633,7 +644,7 @@ export function usePortal(token: string | null) {
         );
         return;
       }
-      aviso.info(`Armando el lote de ${conjunto.length} comprobantes…`, "Descargando XML y CDR.");
+      aviso.info(`Armando el lote de ${conjunto.length} comprobantes…`, "Descargando XML y PDF.");
       const resultado = await construirLoteRespaldo(token, empresa, conjunto);
       descargarBlob(new Blob([resultado.zip], { type: TIPO_ZIP }), resultado.nombre);
       const incompletos = resultado.faltantes.length;
@@ -652,7 +663,63 @@ export function usePortal(token: string | null) {
   }, [token, empresa, generandoLote, seleccion, total, traerFiltrados, recargar]);
 
   /**
-   * Guarda el XML y el CDR reales de los comprobantes en la PC, en la carpeta que el usuario
+   * «Descargar todo»: baja el XML (y el PDF de las compras) de todo lo filtrado, o de la selección
+   * si la hay, en ZIP por partes con la estructura AAAA/MM/RUC/SERIE-NÚMERO. Sirve para llevarse
+   * los documentos a otra PC o al celular, donde no hay carpeta compartida.
+   */
+  const descargarTodo = useCallback(async () => {
+    if (!token || !empresa || descargaMasiva !== null) return;
+    const control = new AbortController();
+    cancelarMasiva.current = control;
+    setDescargaMasiva("preparando");
+    try {
+      let conjunto = seleccion;
+      let truncado = false;
+      if (conjunto.length === 0) {
+        aviso.info("Preparando la descarga…", "Trayendo la lista de comprobantes filtrados.");
+        ({ items: conjunto, truncado } = await traerFiltrados(MAX_DESCARGA_MASIVA));
+      }
+      if (conjunto.length === 0) {
+        aviso.error("No hay comprobantes para descargar", "Ajusta los filtros o selecciona filas.");
+        return;
+      }
+      const resumen = await descargarTodoPorPartes(token, empresa, conjunto, {
+        signal: control.signal,
+        alProgresar: setDescargaMasiva,
+        entregar: (zip, nombre) => descargarBlob(zip, nombre),
+      });
+      const faltantes = resumen.faltantes.length;
+      if (resumen.cancelada) {
+        aviso.info(
+          "Descarga cancelada",
+          `Se entregaron ${resumen.entregadas} de ${resumen.partes} ZIP.`,
+        );
+      } else {
+        aviso.ok(
+          `${formatearEntero(resumen.comprobantes)} comprobantes en ${resumen.partes} ZIP`,
+          [
+            `${formatearEntero(resumen.archivos)} archivos · descomprime todas las partes en la misma carpeta`,
+            faltantes > 0 ? `${formatearEntero(faltantes)} con respaldo incompleto (ver LEEME)` : "",
+            truncado
+              ? `solo los primeros ${formatearEntero(MAX_DESCARGA_MASIVA)}; acota los filtros para el resto`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        );
+      }
+    } catch (error) {
+      aviso.error("No se pudo completar la descarga", mensajeDe(error, "Reintenta."));
+    } finally {
+      cancelarMasiva.current = null;
+      setDescargaMasiva(null);
+    }
+  }, [token, empresa, descargaMasiva, seleccion, traerFiltrados]);
+
+  const cancelarDescargaTodo = useCallback(() => cancelarMasiva.current?.abort(), []);
+
+  /**
+   * Guarda el XML y el PDF reales de los comprobantes en la PC, en la carpeta que el usuario
    * eligió (su Descargas): `AAAA/MM/RUC/SERIE-NÚMERO`. Lo que no esté archivado se informa.
    */
   const guardarEnPc = useCallback(
@@ -672,7 +739,7 @@ export function usePortal(token: string | null) {
           const existentes = await apiArchivos(token, c.id);
           const aGuardar: Array<{ nombre: string; blob: Blob }> = [];
           // El PDF solo se guarda en compras: el portal no maneja PDF de las ventas.
-          const tipos = c.origen === "recibido" ? (["xml", "cdr", "pdf"] as const) : (["xml", "cdr"] as const);
+          const tipos = c.origen === "recibido" ? (["xml", "pdf"] as const) : (["xml"] as const);
           for (const tipo of tipos) {
             const archivo = existentes.find((a) => a.tipo === tipo);
             if (!archivo) continue;
@@ -687,14 +754,14 @@ export function usePortal(token: string | null) {
             await guardarArchivos(raiz, partesCarpeta(c), aGuardar);
             guardados += 1;
           }
-          if (aGuardar.length < (c.codigoTipo === "03" ? 1 : 2)) incompletos.push(c.numero);
+          if (aGuardar.length < tipos.length) incompletos.push(c.numero);
         }
         const destino =
           comprobantes.length === 1
             ? rutaRelativa(raiz.name, partesCarpeta(comprobantes[0]))
             : `${raiz.name}\\AAAA\\MM\\RUC\\SERIE-NÚMERO`;
         if (guardados === 0) {
-          aviso.error("No había nada que guardar", "Estos comprobantes no tienen XML ni CDR archivados.");
+          aviso.error("No había nada que guardar", "Estos comprobantes no tienen XML ni PDF archivados.");
         } else {
           aviso.ok(
             `${formatearEntero(guardados)} comprobante${guardados === 1 ? "" : "s"} guardado${guardados === 1 ? "" : "s"} en tu PC`,
@@ -807,12 +874,15 @@ export function usePortal(token: string | null) {
     consultando,
     sincronizando,
     generandoLote,
+    descargaMasiva,
+    descargarTodo,
+    cancelarDescargaTodo,
     guardandoPc,
     guardarEnPc,
     abrirCarpeta,
     exportando,
     descargar,
-    consultarCdr,
+    consultarEstado,
     sincronizarPendientes,
     importarXmlDeComprobante,
     cargarArchivos,
