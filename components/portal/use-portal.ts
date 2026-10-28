@@ -14,6 +14,7 @@ import {
   apiEvidencias,
   apiImportarXml,
   apiResumen,
+  apiRegistrarFallo,
   apiRestaurarCarpeta,
   apiSincronizarPendientes,
   conDetalle,
@@ -24,7 +25,7 @@ import {
   type ApiPagina,
   type ApiResumen,
 } from "@/lib/api";
-import { aviso } from "@/lib/avisos";
+import { aviso, conectarReportadorDeFallos, registrarFallo } from "@/lib/avisos";
 import {
   guardarArchivos,
   obtenerRaiz,
@@ -151,6 +152,22 @@ export function usePortal(token: string | null) {
     [empresas, rucActivo],
   );
   const puedeOperar = empresa?.rol === "admin" || empresa?.rol === "emisor";
+
+  /* Todo fallo que el portal le muestre al usuario queda también en «Logs» de la empresa activa. */
+  useEffect(() => {
+    if (!token || !rucActivo) return;
+    const recientes = new Map<string, number>();
+    return conectarReportadorDeFallos(({ accion, mensaje }) => {
+      // El mismo fallo repetido (p. ej. reintentos seguidos) se registra una vez cada 30 s.
+      const clave = `${accion}|${mensaje}`;
+      const ahora = Date.now();
+      if (ahora - (recientes.get(clave) ?? 0) < 30_000) return;
+      recientes.set(clave, ahora);
+      apiRegistrarFallo(token, rucActivo, { accion, mensaje }).catch(() => {
+        // Sin backend o sin permiso: el usuario ya vio su aviso, no se suma otro error.
+      });
+    });
+  }, [token, rucActivo]);
 
   /* La búsqueda de texto espera a que el usuario deje de teclear; el resto es inmediato. */
   useEffect(() => {
@@ -287,13 +304,15 @@ export function usePortal(token: string | null) {
         aplicar(respuesta);
       } catch (error) {
         if (!vigente) return;
+        const mensaje = mensajeDe(error, "No se pudieron cargar los comprobantes.");
+        registrarFallo("Cargar comprobantes", mensaje);
         setCargada({
           ruc,
           clave,
           items: [],
           hayMas: false,
           total: null,
-          error: mensajeDe(error, "No se pudieron cargar los comprobantes."),
+          error: mensaje,
         });
       }
     })();
@@ -325,7 +344,10 @@ export function usePortal(token: string | null) {
         setErrorResumen(null);
       })
       .catch((error) => {
-        if (vigente) setErrorResumen(mensajeDe(error, "No se pudieron calcular los indicadores."));
+        if (!vigente) return;
+        const mensaje = mensajeDe(error, "No se pudieron calcular los indicadores.");
+        registrarFallo("Calcular indicadores", mensaje);
+        setErrorResumen(mensaje);
       });
     return () => {
       vigente = false;
@@ -602,7 +624,9 @@ export function usePortal(token: string | null) {
         ({ items: conjunto, truncado } = await traerFiltrados(MAX_EXPORTACION));
       }
       if (conjunto.length === 0) {
-        aviso.error("No hay comprobantes para exportar", "Ajusta los filtros o selecciona filas.");
+        aviso.error("No hay comprobantes para exportar", "Ajusta los filtros o selecciona filas.", {
+          registrar: false,
+        });
         return;
       }
       const nombre = descargarExcel(conjunto, empresa);
@@ -629,19 +653,23 @@ export function usePortal(token: string | null) {
           aviso.error(
             `Un lote admite hasta ${MAX_COMPROBANTES_LOTE} comprobantes`,
             `Hay ${total === null ? "demasiados" : formatearEntero(total)}: selecciona menos o filtra por fechas.`,
+            { registrar: false },
           );
           return;
         }
         ({ items: conjunto } = await traerFiltrados(MAX_COMPROBANTES_LOTE));
       }
       if (conjunto.length === 0) {
-        aviso.error("No hay comprobantes para el lote", "Selecciona filas o ajusta los filtros.");
+        aviso.error("No hay comprobantes para el lote", "Selecciona filas o ajusta los filtros.", {
+          registrar: false,
+        });
         return;
       }
       if (conjunto.length > MAX_COMPROBANTES_LOTE) {
         aviso.error(
           `Un lote admite hasta ${MAX_COMPROBANTES_LOTE} comprobantes`,
           `Hay ${conjunto.length}: selecciona menos o filtra por fechas.`,
+          { registrar: false },
         );
         return;
       }
@@ -684,7 +712,9 @@ export function usePortal(token: string | null) {
         ({ items: conjunto, truncado } = await traerFiltrados(MAX_DESCARGA_MASIVA));
       }
       if (conjunto.length === 0) {
-        aviso.error("No hay comprobantes para descargar", "Ajusta los filtros o selecciona filas.");
+        aviso.error("No hay comprobantes para descargar", "Ajusta los filtros o selecciona filas.", {
+          registrar: false,
+        });
         return;
       }
       const resumen = await descargarTodoPorPartes(token, empresa, conjunto, {
@@ -813,6 +843,7 @@ export function usePortal(token: string | null) {
         aviso.error(
           sinBackendLocal ? "No se puede abrir desde la web" : "No se pudo abrir la carpeta",
           sinBackendLocal ? `Ruta copiada: ${relativa}` : mensajeDe(error, "Reintenta."),
+          { registrar: !sinBackendLocal }, // sin backend local no es un fallo: es la web
         );
       }
     },
@@ -825,7 +856,9 @@ export function usePortal(token: string | null) {
     try {
       setEvidencias(await apiEvidencias(token, rucActivo));
     } catch (error) {
-      setErrorEvidencias(mensajeDe(error, "Reintenta en un momento."));
+      const mensaje = mensajeDe(error, "Reintenta en un momento.");
+      registrarFallo("Cargar evidencias SIRE", mensaje);
+      setErrorEvidencias(mensaje);
     }
   }, [token, rucActivo]);
 

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Boton, type IconoLucide } from "@/components/ui/boton";
 import { Dialogo } from "@/components/ui/dialogo";
-import { EstadoPill, Etiqueta } from "@/components/ui/etiqueta";
+import { EstadoCorreoPill, EstadoPill, Etiqueta } from "@/components/ui/etiqueta";
 import { BotonCopiar, Esqueleto } from "@/components/ui/varios";
 import {
   formatearFecha,
@@ -24,6 +24,7 @@ import {
   formatearMoneda,
   formatearTamano,
 } from "@/lib/format";
+import { estadoCorreo } from "@/lib/correo";
 import type { ArchivoGuardado, Comprobante, Empresa } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -137,7 +138,10 @@ function Resumen({ c, empresa }: { c: Comprobante; empresa: Empresa | null }) {
 
       {c.origen === "recibido" && (
         <div className="rounded-xl border border-line p-4 sm:col-span-2">
-          <p className="text-[12px] font-medium text-fg-3">Correo de origen</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[12px] font-medium text-fg-3">Correo de origen</p>
+            <EstadoCorreoPill estado={estadoCorreo(c)} />
+          </div>
           {c.correo ? (
             <>
               <p className="mt-1.5 text-[13px] text-fg">{c.correo.asunto}</p>

@@ -689,10 +689,17 @@ export interface ApiLogsPage {
 export async function apiLogsAutomatizacion(
   token: string,
   ruc: string,
-  opciones: { resultado?: ApiLogAutomatizacion["resultado"]; limit?: number; offset?: number } = {},
+  opciones: {
+    resultado?: ApiLogAutomatizacion["resultado"];
+    /** `portal`: fallos que vio el usuario; `automatizacion`: las corridas. */
+    origen?: "portal" | "automatizacion";
+    limit?: number;
+    offset?: number;
+  } = {},
 ): Promise<ApiLogsPage> {
   const params = new URLSearchParams();
   if (opciones.resultado) params.set("resultado", opciones.resultado);
+  if (opciones.origen) params.set("origen", opciones.origen);
   if (opciones.limit !== undefined) params.set("limit", String(opciones.limit));
   if (opciones.offset !== undefined) params.set("offset", String(opciones.offset));
   const texto = params.toString();
@@ -700,6 +707,22 @@ export async function apiLogsAutomatizacion(
     `/api/v1/companies/${ruc}/automatizacion/logs${texto ? `?${texto}` : ""}`,
     token,
   );
+}
+
+/**
+ * Deja en «Logs» un fallo que el portal le mostró al usuario (abrir, importar, exportar,
+ * sincronizar…). `registrado` es `false` si su rol (`lector`) no puede escribir en los logs.
+ */
+export async function apiRegistrarFallo(
+  token: string,
+  ruc: string,
+  fallo: { accion: string; mensaje: string; codigo?: string; contexto?: Record<string, string> },
+): Promise<{ registrado: boolean }> {
+  return pedir<{ registrado: boolean }>(`/api/v1/companies/${ruc}/portal/fallos`, token, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fallo),
+  });
 }
 
 /** ZIP originales de SIRE archivados como evidencia de auditoría. */

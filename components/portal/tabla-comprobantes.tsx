@@ -19,9 +19,10 @@ import {
 import { Boton } from "@/components/ui/boton";
 import { Casilla, Seleccion } from "@/components/ui/campos";
 import { EncabezadoOrden } from "@/components/ui/encabezado-orden";
-import { ChipRespaldo, EstadoPill } from "@/components/ui/etiqueta";
+import { ChipRespaldo, EstadoCorreoPill, EstadoPill } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
 import { Esqueleto, EstadoVacio } from "@/components/ui/varios";
+import { estadoCorreo } from "@/lib/correo";
 import type { CampoOrden, Orden } from "@/lib/filtros";
 import { formatearEntero, formatearFecha, formatearFechaHora, formatearMoneda } from "@/lib/format";
 import type { Comprobante } from "@/lib/types";
@@ -285,6 +286,11 @@ export function TablaComprobantes({
                   Correo
                 </th>
               )}
+              {compras && (
+                <th scope="col" className={cn(TH, "hidden xl:table-cell")}>
+                  Estado correo
+                </th>
+              )}
               <th scope="col" className={cn(TH, "hidden lg:table-cell")}>
                 N° de SAP
               </th>
@@ -299,7 +305,7 @@ export function TablaComprobantes({
             {cargando &&
               Array.from({ length: 8 }, (_, i) => (
                 <tr key={`e${i}`}>
-                  <td colSpan={11} className="px-4 py-3.5">
+                  <td colSpan={12} className="px-4 py-3.5">
                     <Esqueleto className="h-5 w-full" />
                   </td>
                 </tr>
@@ -384,6 +390,11 @@ export function TablaComprobantes({
                     {compras && (
                       <td className="hidden max-w-[260px] px-3 py-2.5 xl:table-cell">
                         <CeldaCorreo c={c} />
+                      </td>
+                    )}
+                    {compras && (
+                      <td className="hidden px-3 py-2.5 xl:table-cell">
+                        <EstadoCorreoPill estado={estadoCorreo(c)} />
                       </td>
                     )}
                     <td className="hidden px-3 py-2.5 lg:table-cell">

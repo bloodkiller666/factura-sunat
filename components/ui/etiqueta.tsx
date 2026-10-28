@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Ban, CheckCircle2, CircleX, Clock } from "lucide-react";
+import { AYUDA_ESTADO_CORREO, type EstadoCorreo } from "@/lib/correo";
 import type { EstadoSunat } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,20 @@ export function Etiqueta({
     >
       {children}
     </span>
+  );
+}
+
+/** «Estado correo» de una compra: SUBIDO (verde) o NO ENCONTRADO (rojo). */
+export function EstadoCorreoPill({ estado }: { estado: EstadoCorreo }) {
+  const subido = estado === "SUBIDO";
+  const Icono = subido ? CheckCircle2 : CircleX;
+  return (
+    <Etiqueta tono={subido ? "ok" : "error"} className="uppercase">
+      <span title={AYUDA_ESTADO_CORREO[estado]} className="inline-flex items-center gap-1">
+        <Icono className="h-3 w-3" aria-hidden />
+        {estado}
+      </span>
+    </Etiqueta>
   );
 }
 

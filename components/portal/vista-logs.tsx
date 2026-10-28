@@ -25,6 +25,7 @@ import {
   ETIQUETA_RESULTADO,
   FILTROS_LOGS,
   bloquesDeDetalle,
+  consultaDeFiltroLogs,
   duracionLegible,
   etiquetaDeCarpeta,
   etiquetaTarea,
@@ -179,10 +180,7 @@ export function VistaLogs({ token, ruc }: Props) {
   useEffect(() => {
     if (!token || !ruc) return;
     let vigente = true;
-    apiLogsAutomatizacion(token, ruc, {
-      resultado: filtro === "todos" ? undefined : filtro,
-      limit: TAMANO_PAGINA,
-    })
+    apiLogsAutomatizacion(token, ruc, { ...consultaDeFiltroLogs(filtro), limit: TAMANO_PAGINA })
       .then((pagina) => {
         if (!vigente) return;
         setError(null);
@@ -205,7 +203,7 @@ export function VistaLogs({ token, ruc }: Props) {
     setCargandoMas(true);
     try {
       const pagina = await apiLogsAutomatizacion(token, ruc, {
-        resultado: filtro === "todos" ? undefined : filtro,
+        ...consultaDeFiltroLogs(filtro),
         limit: TAMANO_PAGINA,
         offset: items.length,
       });
@@ -233,6 +231,8 @@ export function VistaLogs({ token, ruc }: Props) {
           (SIRE una vez al día y el correo de proveedores tres veces) queda aquí su resumen: lo que
           se registró de nuevo, los errores y lo que aún falta importar. Es el mismo registro que la
           PC guarda en sus archivos locales (bitácora, estado y pendientes), visible desde el portal.
+          También quedan aquí, como <strong className="font-medium text-fg">Fallos del portal</strong>,
+          los errores que el portal te mostró al abrir, importar, exportar o sincronizar.
         </p>
       </div>
 

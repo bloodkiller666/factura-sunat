@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ApiLogAutomatizacion } from "./api";
 import {
   bloquesDeDetalle,
+  consultaDeFiltroLogs,
   duracionLegible,
   etiquetaDeCarpeta,
   etiquetaTarea,
@@ -53,5 +54,26 @@ describe("bloquesDeDetalle", () => {
     expect(bloques[0].lineas[1]).toBe("Ventas nuevas: 2 · Compras nuevas: 5");
     expect(bloques[2].lineas[1]).toContain("PDF sueltos unidos: 0");
     expect(bloquesDeDetalle({})).toEqual([]);
+  });
+});
+
+describe("fallos del portal", () => {
+  it("el chip «Fallos del portal» pide el origen y los demás el resultado", () => {
+    expect(consultaDeFiltroLogs("todos")).toEqual({});
+    expect(consultaDeFiltroLogs("portal")).toEqual({ origen: "portal" });
+    expect(consultaDeFiltroLogs("con_errores")).toEqual({ resultado: "con_errores" });
+  });
+
+  it("etiqueta la tarea y detalla la acción del fallo", () => {
+    expect(etiquetaTarea("portal")).toBe("Portal");
+    const bloques = bloquesDeDetalle({
+      portal: { accion: "Abrir carpeta", contexto: { documento: "E001-278" } },
+    });
+    expect(bloques).toEqual([
+      {
+        titulo: "Fallo mostrado en el portal",
+        lineas: ["Acción: Abrir carpeta", "documento: E001-278"],
+      },
+    ]);
   });
 });

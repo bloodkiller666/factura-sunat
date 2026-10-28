@@ -9,14 +9,25 @@
 import type { ApiLogAutomatizacion } from "./api";
 
 export type ResultadoLog = ApiLogAutomatizacion["resultado"];
-export type FiltroLogs = "todos" | ResultadoLog;
+/** `portal` = fallos que el usuario vio en la interfaz (no corridas de la automatización). */
+export type FiltroLogs = "todos" | ResultadoLog | "portal";
 
 export const FILTROS_LOGS: Array<{ id: FiltroLogs; etiqueta: string }> = [
   { id: "todos", etiqueta: "Todas" },
   { id: "con_novedades", etiqueta: "Con novedades" },
   { id: "con_errores", etiqueta: "Con errores" },
   { id: "ok", etiqueta: "Sin novedades" },
+  { id: "portal", etiqueta: "Fallos del portal" },
 ];
+
+/** Lo que se pide al servidor según el chip elegido: el resultado o el origen, nunca ambos. */
+export function consultaDeFiltroLogs(filtro: FiltroLogs): {
+  resultado?: ResultadoLog;
+  origen?: "portal";
+} {
+  if (filtro === "todos") return {};
+  return filtro === "portal" ? { origen: "portal" } : { resultado: filtro };
+}
 
 export const ETIQUETA_RESULTADO: Record<ResultadoLog, string> = {
   ok: "Sin novedades",
@@ -24,7 +35,11 @@ export const ETIQUETA_RESULTADO: Record<ResultadoLog, string> = {
   con_errores: "Con errores",
 };
 
-const ETIQUETA_TAREA: Record<string, string> = { sire: "SIRE", correo: "Correo" };
+const ETIQUETA_TAREA: Record<string, string> = {
+  sire: "SIRE",
+  correo: "Correo",
+  portal: "Portal",
+};
 
 export function etiquetaTarea(tarea: string): string {
   return ETIQUETA_TAREA[tarea] ?? tarea;
@@ -80,6 +95,18 @@ export function bloquesDeDetalle(detalle: ApiLogAutomatizacion["detalle"]): Bloq
         `Correos revisados: ${numero(correo.revisados)} · Con facturas: ${numero(correo.con_facturas)}`,
         `Compras de la empresa con archivos: ${numero(correo.comprobantes_de_la_empresa)}`,
       ],
+    });
+  }
+  const portal = detalle.portal;
+  if (portal) {
+    const contexto = portal.contexto;
+    const datos =
+      contexto && typeof contexto === "object"
+        ? Object.entries(contexto as Record<string, unknown>).map(([k, v]) => `${k}: ${String(v)}`)
+        : [];
+    bloques.push({
+      titulo: "Fallo mostrado en el portal",
+      lineas: [`Acción: ${typeof portal.accion === "string" ? portal.accion : "—"}`, ...datos],
     });
   }
   const importacion = detalle.importacion;
