@@ -13,6 +13,7 @@ import {
   FileText,
   MoreHorizontal,
   SearchX,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
@@ -22,11 +23,11 @@ import { ChipRespaldo, EstadoPill } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
 import { Esqueleto, EstadoVacio } from "@/components/ui/varios";
 import type { CampoOrden, Orden } from "@/lib/filtros";
-import { formatearEntero, formatearFecha, formatearMoneda } from "@/lib/format";
+import { formatearEntero, formatearFecha, formatearFechaHora, formatearMoneda } from "@/lib/format";
 import type { Comprobante } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export type TipoDescarga = "xml" | "pdf";
+export type TipoDescarga = "xml" | "cdr" | "pdf";
 
 interface Props {
   /** Solo la página actual: el servidor ya filtró, ordenó y paginó. */
@@ -54,7 +55,7 @@ interface Props {
   onLimpiarSeleccion: () => void;
   onAbrir: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, tipo: TipoDescarga) => void;
-  onConsultarEstado: (comprobante: Comprobante) => void;
+  onConsultarCdr: (comprobante: Comprobante) => void;
   onExportarExcel: () => void;
   onLote: () => void;
   onLimpiarFiltros: () => void;
@@ -75,14 +76,14 @@ function MenuFila({
   consultando,
   onAbrir,
   onDescargar,
-  onConsultarEstado,
+  onConsultarCdr,
 }: {
   comprobante: Comprobante;
   puedeOperar: boolean;
   consultando: boolean;
   onAbrir: Props["onAbrir"];
   onDescargar: Props["onDescargar"];
-  onConsultarEstado: Props["onConsultarEstado"];
+  onConsultarCdr: Props["onConsultarCdr"];
 }) {
   const esBoleta = comprobante.codigoTipo === "03";
   return (
@@ -109,6 +110,17 @@ function MenuFila({
       >
         Descargar XML
       </ItemMenu>
+      {/* Las compras no guardan CDR: solo XML y PDF. */}
+      {comprobante.origen === "emitido" && (
+        <ItemMenu
+          icono={ShieldCheck}
+          deshabilitado={!comprobante.tieneCdr}
+          ayuda={comprobante.tieneCdr ? undefined : "No archivado"}
+          onClick={() => onDescargar(comprobante, "cdr")}
+        >
+          Descargar CDR
+        </ItemMenu>
+      )}
       {comprobante.origen === "recibido" && (
         <ItemMenu
           icono={FileText}
@@ -126,9 +138,9 @@ function MenuFila({
             icono={FileSearch}
             deshabilitado={consultando || esBoleta}
             ayuda={esBoleta ? "No aplica a boletas" : undefined}
-            onClick={() => onConsultarEstado(comprobante)}
+            onClick={() => onConsultarCdr(comprobante)}
           >
-            Consultar estado en SUNAT
+            Consultar CDR en SUNAT
           </ItemMenu>
         </>
       )}
@@ -136,10 +148,26 @@ function MenuFila({
   );
 }
 
+/** Asunto del correo en que llegó la compra; remitente y fecha al pasar el cursor. */
+function CeldaCorreo({ c }: { c: Comprobante }) {
+  if (!c.correo) return <span className="text-[13px] text-fg-4">—</span>;
+  const { asunto, remitente, recibido } = c.correo;
+  const detalle = [remitente && `De: ${remitente}`, recibido && `Recibido: ${formatearFechaHora(recibido)}`]
+    .filter(Boolean)
+    .join("\n");
+  return (
+    <div title={detalle ? `${asunto}\n${detalle}` : asunto}>
+      <p className="truncate text-[13px] text-fg">{asunto}</p>
+      {remitente && <p className="truncate text-[11.5px] text-fg-3">{remitente}</p>}
+    </div>
+  );
+}
+
 function Respaldos({ c }: { c: Comprobante }) {
   return (
     <span className="inline-flex items-center gap-1">
       <ChipRespaldo nombre="XML" presente={c.tieneXml} />
+      {c.origen === "emitido" && <ChipRespaldo nombre="CDR" presente={c.tieneCdr} />}
       {c.origen === "recibido" && <ChipRespaldo nombre="PDF" presente={c.tienePdf} />}
     </span>
   );
@@ -167,7 +195,7 @@ export function TablaComprobantes({
   onLimpiarSeleccion,
   onAbrir,
   onDescargar,
-  onConsultarEstado,
+  onConsultarCdr,
   onExportarExcel,
   onLote,
   onLimpiarFiltros,
@@ -175,6 +203,8 @@ export function TablaComprobantes({
 }: Props) {
   // El servidor ya filtró, ordenó y paginó: aquí solo se pinta la página recibida.
   const visibles = comprobantes;
+  // La columna «Correo» solo existe en Compras: es el correo del buzón de facturas.
+  const compras = contraparte === "Proveedor";
   const marcadosEnPagina = visibles.filter((c) => seleccionados.has(c.id)).length;
   const todosMarcados = visibles.length > 0 && marcadosEnPagina === visibles.length;
 
@@ -250,6 +280,11 @@ export function TablaComprobantes({
               <th scope="col" className={TH}>
                 Respaldo
               </th>
+              {compras && (
+                <th scope="col" className={cn(TH, "hidden xl:table-cell")}>
+                  Correo
+                </th>
+              )}
               <th scope="col" className={cn(TH, "hidden lg:table-cell")}>
                 N° de SAP
               </th>
@@ -264,7 +299,7 @@ export function TablaComprobantes({
             {cargando &&
               Array.from({ length: 8 }, (_, i) => (
                 <tr key={`e${i}`}>
-                  <td colSpan={10} className="px-4 py-3.5">
+                  <td colSpan={11} className="px-4 py-3.5">
                     <Esqueleto className="h-5 w-full" />
                   </td>
                 </tr>
@@ -346,6 +381,11 @@ export function TablaComprobantes({
                     <td className="px-3 py-2.5">
                       <Respaldos c={c} />
                     </td>
+                    {compras && (
+                      <td className="hidden max-w-[260px] px-3 py-2.5 xl:table-cell">
+                        <CeldaCorreo c={c} />
+                      </td>
+                    )}
                     <td className="hidden px-3 py-2.5 lg:table-cell">
                       <span className="font-mono text-[12px] text-fg-3">{c.numeroSap || "—"}</span>
                     </td>
@@ -357,7 +397,7 @@ export function TablaComprobantes({
                           consultando={consultando.has(c.id)}
                           onAbrir={onAbrir}
                           onDescargar={onDescargar}
-                          onConsultarEstado={onConsultarEstado}
+                          onConsultarCdr={onConsultarCdr}
                         />
                       </div>
                     </td>

@@ -8,6 +8,7 @@ import { Etiqueta } from "@/components/ui/etiqueta";
 import { ImportarProveedores } from "@/components/portal/importar-proveedores";
 import {
   ApiError,
+  apiImportarCdr,
   apiImportarPaquete,
   apiImportarXml,
 } from "@/lib/api";
@@ -21,7 +22,7 @@ import { leerHojaXlsx } from "@/lib/xlsx-lectura";
 import { formatearEntero } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export type PestanaImportar = "comprobantes" | "excel";
+export type PestanaImportar = "comprobantes" | "cdr" | "excel";
 
 interface Props {
   abierto: boolean;
@@ -49,10 +50,21 @@ interface Resultado {
   filas: Fila[];
 }
 
+const MOTIVOS_CDR: Record<string, string> = {
+  nombre_invalido: "Nombre no reconocido (debe ser R-RUC-tipo-serie-número)",
+  sin_comprobante: "No hay un comprobante emitido con esa numeración",
+  ya_tiene_cdr: "Ya tenía su CDR; no se modificó",
+  ruc_distinto: "Pertenece a otro RUC",
+  no_archivado: "No se pudo guardar en el almacenamiento",
+  cdr_parse_error: "El CDR está dañado o no se pudo leer",
+};
+
 // Archivos que el importador de proveedores deja de lado a propósito: se avisa, no es un error.
 const MOTIVOS_INFORMATIVOS = new Set([
   "sin_xml",
   "guia",
+  "cdr_sin_comprobante",
+  "cdr_repetido",
   "cdr_ignorado",
   "xml_no_reconocido",
   "tipo_no_soportado",
@@ -63,8 +75,10 @@ const MOTIVOS_XML: Record<string, string> = {
   invalid_document: "No es un comprobante UBL válido",
   sin_xml: "PDF sin XML en su carpeta (o que no se puede unir a un comprobante)",
   guia: "Guía de remisión: no se registra como compra",
-  cdr_ignorado: "El portal ya no guarda CDR: solo XML y PDF",
-  xml_no_reconocido: "XML que no es un comprobante",
+  cdr_sin_comprobante: "CDR sin comprobante en su carpeta",
+  cdr_repetido: "Ya había otro CDR en la carpeta",
+  cdr_ignorado: "Las compras no guardan CDR: solo XML y PDF",
+  xml_no_reconocido: "XML que no es un comprobante ni un CDR",
   tipo_no_soportado: "Solo se importan XML y PDF",
 };
 
@@ -226,11 +240,12 @@ function ReporteExcel({ reporte }: { reporte: ReporteImportacion }) {
 
 const PESTANAS: Array<{ id: PestanaImportar; etiqueta: string }> = [
   { id: "comprobantes", etiqueta: "XML / ZIP" },
+  { id: "cdr", etiqueta: "CDR (ZIP)" },
   { id: "excel", etiqueta: "Excel (análisis)" },
 ];
 
-// En compras el PDF viaja dentro de la carpeta de cada proveedor.
-const PESTANAS_COMPRAS = PESTANAS;
+// En compras el CDR viaja dentro de la carpeta de cada proveedor, no en un ZIP aparte.
+const PESTANAS_COMPRAS = PESTANAS.filter((p) => p.id !== "cdr");
 
 export function DialogoImportar({
   abierto,
@@ -283,7 +298,7 @@ export function DialogoImportar({
                     ? "aviso"
                     : "error",
               texto: item.ok
-                ? `Importado${item.pdf ? " con PDF" : ""}`
+                ? `Importado${item.pdf ? " con PDF" : ""}${item.cdr ? " y CDR" : ""}`
                 : (item.code && MOTIVOS_XML[item.code]) || item.mensaje || "Con error",
             });
           }
@@ -311,6 +326,45 @@ export function DialogoImportar({
     });
     setOcupado(false);
     if (nuevos > 0) onImportado(nuevos);
+  }
+
+  async function importarCdr(archivos: File[]) {
+    if (!token || !ruc) return;
+    setOcupado(true);
+    setResultado(null);
+    const filas: Fila[] = [];
+    let asociados = 0;
+    let yaTenian = 0;
+    let sinComprobante = 0;
+    for (const archivo of archivos) {
+      try {
+        const reporte = await apiImportarCdr(token, ruc, archivo);
+        asociados += reporte.asociados;
+        yaTenian += reporte.ya_tenian;
+        sinComprobante += reporte.sin_comprobante;
+        for (const item of reporte.items) {
+          filas.push({
+            archivo: item.archivo,
+            tono: item.ok ? "ok" : item.code === "ya_tiene_cdr" ? "aviso" : "error",
+            texto: item.ok
+              ? `Asociado a ${item.numero ?? "el comprobante"}${item.estado ? ` · ${item.estado}` : ""}`
+              : (item.code && MOTIVOS_CDR[item.code]) || item.mensaje || "Con error",
+          });
+        }
+      } catch (error) {
+        filas.push({
+          archivo: archivo.name,
+          tono: "error",
+          texto: error instanceof Error ? error.message : "No se pudo importar",
+        });
+      }
+    }
+    setResultado({
+      resumen: `${formatearEntero(asociados)} CDR asociado(s)${yaTenian ? ` · ${yaTenian} ya tenían` : ""}${sinComprobante ? ` · ${sinComprobante} sin comprobante` : ""}`,
+      filas: filas.filter((f) => f.tono !== "ok" || filas.length <= 12),
+    });
+    setOcupado(false);
+    if (asociados > 0) onImportado(asociados);
   }
 
   async function analizarExcel([archivo]: File[]) {
@@ -347,7 +401,7 @@ export function DialogoImportar({
       descripcion={
         compras
           ? "Trae al portal los XML y PDF que te enviaron tus proveedores."
-          : "Trae al portal los XML que emite tu sistema de facturación."
+          : "Trae al portal los XML y CDR que emite tu sistema de facturación."
       }
       ancho="lg"
       pie={<Boton onClick={cerrar}>Cerrar</Boton>}
@@ -397,6 +451,20 @@ export function DialogoImportar({
               ayuda="Hasta 200 archivos por ZIP; si traen el PDF con el mismo nombre, también se guarda. Un comprobante que ya está por SIRE se completa con su XML e ítems."
               ocupado={ocupado || !puedeOperar}
               onArchivos={(a) => void importarComprobantes(a)}
+            />
+            {resultado && <ListaResultado resultado={resultado} />}
+          </>
+        )}
+
+        {pestana === "cdr" && (
+          <>
+            <ZonaArchivos
+              accept=".zip"
+              multiple
+              titulo="Arrastra aquí el ZIP de CDR"
+              ayuda="Cada archivo debe llamarse como lo entrega SUNAT: R-RUC-tipo-serie-número (.zip o .xml). Se asocia al comprobante, se guarda con su hash y actualiza el estado."
+              ocupado={ocupado || !puedeOperar}
+              onArchivos={(a) => void importarCdr(a)}
             />
             {resultado && <ListaResultado resultado={resultado} />}
           </>

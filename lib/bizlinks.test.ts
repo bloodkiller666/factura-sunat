@@ -14,6 +14,7 @@ const item = (parcial: Partial<ApiBizlinksItem> = {}): ApiBizlinksItem => ({
   numero: "20514831620-01-FF04-00000600",
   resultado: "completo",
   xml_guardado: true,
+  cdr_guardado: true,
   items_cargados: 1,
   mensaje: null,
   error_code: null,
@@ -29,6 +30,7 @@ const sync = (parcial: Partial<ApiBizlinksSync> = {}): ApiBizlinksSync => ({
   sin_resultado: 0,
   fallidos: 0,
   xml_guardados: 1,
+  cdr_guardados: 1,
   detenido_por: null,
   mensaje: null,
   cuota_restante: 49,
@@ -42,12 +44,12 @@ describe("resumirRespaldos", () => {
   it("informa los archivos que realmente se archivaron", () => {
     const r = resumirRespaldos(sync());
     expect(r.tono).toBe("ok");
-    expect(r.titulo).toBe("XML recuperados: 1");
+    expect(r.titulo).toBe("Respaldos recuperados: 1 XML · 1 CDR");
     expect(r.detalle).toContain("1 completos");
   });
 
   it("sin candidatos lo dice tal cual, sin alarmar", () => {
-    const r = resumirRespaldos(sync({ revisados: 0, items: [], xml_guardados: 0 }));
+    const r = resumirRespaldos(sync({ revisados: 0, items: [], xml_guardados: 0, cdr_guardados: 0 }));
     expect(r).toMatchObject({ tono: "ok", titulo: "Nada que recuperar" });
   });
 
@@ -57,6 +59,7 @@ describe("resumirRespaldos", () => {
         completos: 0,
         fallidos: 1,
         xml_guardados: 0,
+        cdr_guardados: 0,
         items: [item({ resultado: "error", mensaje: "No se pudo archivar el XML", xml_guardado: false })],
       }),
     );
@@ -71,6 +74,7 @@ describe("resumirRespaldos", () => {
         completos: 0,
         sin_resultado: 1,
         xml_guardados: 0,
+        cdr_guardados: 0,
         items: [item({ resultado: "sin_resultado", mensaje: "No corresponde a ningún documento" })],
       }),
     );
@@ -80,7 +84,7 @@ describe("resumirRespaldos", () => {
 
   it("explica por qué se detuvo el lote (credenciales, bloqueo, cuota)", () => {
     const r = resumirRespaldos(
-      sync({ revisados: 0, items: [], detenido_por: "bizlinks_blocked", xml_guardados: 0 }),
+      sync({ revisados: 0, items: [], detenido_por: "bizlinks_blocked", xml_guardados: 0, cdr_guardados: 0 }),
     );
     expect(r.tono).toBe("error");
     expect(r.titulo).toBe("No se pudo consultar Bizlinks");
@@ -102,7 +106,7 @@ describe("detalle por comprobante", () => {
 
   it("describe el resultado y su tono", () => {
     expect(describirItem(item())).toContain("1 ítems cargados");
-    expect(describirItem(item({ items_cargados: 0 }))).toBe("XML archivado");
+    expect(describirItem(item({ items_cargados: 0 }))).toBe("XML y CDR archivados");
     expect(describirItem(item({ resultado: "parcial" }))).toContain("parte");
     expect(describirItem(item({ resultado: "error", mensaje: "falló" }))).toBe("falló");
     expect(describirItem(item({ resultado: "sin_resultado", mensaje: null }))).toBe(

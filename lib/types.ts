@@ -57,10 +57,21 @@ export interface Comprobante {
   nombreArchivo: string;
   cdrCodigo: string | null;
   cdrDescripcion: string | null;
-  /** Qué respaldos (XML y PDF) hay archivados en R2 para este comprobante. */
+  /** Correo del buzón de facturas en que llegó la compra; `null` si no vino por correo. */
+  correo: CorreoDeCompra | null;
+  /** Qué respaldos (XML y CDR) hay archivados en R2 para este comprobante. */
   tieneXml: boolean;
+  tieneCdr: boolean;
   /** PDF del proveedor: solo se muestra en compras (en ventas el portal no maneja PDF). */
   tienePdf: boolean;
+}
+
+/** De qué correo llegó una compra (columna «Correo» de Compras). */
+export interface CorreoDeCompra {
+  asunto: string;
+  remitente: string | null;
+  /** Cuándo lo recibió el buzón (ISO). */
+  recibido: string | null;
 }
 
 export interface Empresa {
@@ -74,7 +85,7 @@ export interface Empresa {
 }
 
 /** Filtro por cobertura de respaldo: clave para preparar una auditoría. */
-export type FiltroRespaldo = "TODOS" | "SIN_XML" | "COMPLETO";
+export type FiltroRespaldo = "TODOS" | "SIN_XML" | "SIN_CDR" | "COMPLETO";
 
 export interface FiltrosState {
   /** Búsqueda por N° de documento, cliente, RUC u orden de compra. */
@@ -94,10 +105,10 @@ export interface FiltrosState {
   venceHasta: string;
 }
 
-/** Archivo guardado en R2 (XML, PDF o el ZIP de evidencia de SIRE). */
+/** Archivo guardado en R2 (XML, CDR o ZIP de SIRE; los PDF antiguos siguen listándose). */
 export interface ArchivoGuardado {
   id: string;
-  tipo: "pdf" | "xml" | "zip";
+  tipo: "pdf" | "xml" | "cdr" | "zip";
   nombre: string;
   tamano: number | null;
   hashSha256: string | null;

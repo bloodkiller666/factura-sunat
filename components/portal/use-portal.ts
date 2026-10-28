@@ -6,7 +6,7 @@ import {
   apiAbrirCarpeta,
   apiArchivos,
   apiComprobantes,
-  apiConsultarEstado,
+  apiConsultarCdr,
   apiDescargarArchivo,
   apiDescargarTipo,
   apiDetalle,
@@ -477,7 +477,7 @@ export function usePortal(token: string | null) {
   );
 
   const descargar = useCallback(
-    async (c: Comprobante, tipo: "xml" | "pdf") => {
+    async (c: Comprobante, tipo: "xml" | "cdr" | "pdf") => {
       if (!token) return;
       await conClave("descargando", `${c.id}:${tipo}`, async () => {
         try {
@@ -492,19 +492,19 @@ export function usePortal(token: string | null) {
     [token, conClave],
   );
 
-  const consultarEstado = useCallback(
+  const consultarCdr = useCallback(
     async (c: Comprobante) => {
       if (!token) return;
       await conClave("consultando", c.id, async () => {
         try {
-          const r = await apiConsultarEstado(token, c.id);
+          const r = await apiConsultarCdr(token, c.id);
           if (r.cdr) {
-            aviso.ok(`SUNAT respondió · ${r.estado_label}`, r.cdr.descripcion);
+            aviso.ok(`CDR recibido de SUNAT · ${r.estado_label}`, r.cdr.descripcion);
           } else {
             aviso.info(
-              "SUNAT no informó un estado",
+              "SUNAT no entregó el CDR",
               r.mensaje ??
-                "Si el comprobante lo emite otro sistema (OSE/PSE), SUNAT puede no reconocerlo: su estado es el de SIRE.",
+                "Si el comprobante lo emite otro sistema (OSE/PSE), importa su CDR desde Importar → CDR.",
             );
           }
           recargar();
@@ -644,7 +644,10 @@ export function usePortal(token: string | null) {
         );
         return;
       }
-      aviso.info(`Armando el lote de ${conjunto.length} comprobantes…`, "Descargando XML y PDF.");
+      aviso.info(
+        `Armando el lote de ${conjunto.length} comprobantes…`,
+        "Descargando XML y CDR (XML y PDF en compras).",
+      );
       const resultado = await construirLoteRespaldo(token, empresa, conjunto);
       descargarBlob(new Blob([resultado.zip], { type: TIPO_ZIP }), resultado.nombre);
       const incompletos = resultado.faltantes.length;
@@ -663,9 +666,9 @@ export function usePortal(token: string | null) {
   }, [token, empresa, generandoLote, seleccion, total, traerFiltrados, recargar]);
 
   /**
-   * «Descargar todo»: baja el XML (y el PDF de las compras) de todo lo filtrado, o de la selección
-   * si la hay, en ZIP por partes con la estructura AAAA/MM/RUC/SERIE-NÚMERO. Sirve para llevarse
-   * los documentos a otra PC o al celular, donde no hay carpeta compartida.
+   * «Descargar todo»: baja los archivos de todo lo filtrado, o de la selección si la hay, en ZIP
+   * por partes con la estructura AAAA/MM/RUC/SERIE-NÚMERO. Sirve para llevarse los documentos a
+   * otra PC o al celular, donde no hay carpeta compartida.
    */
   const descargarTodo = useCallback(async () => {
     if (!token || !empresa || descargaMasiva !== null) return;
@@ -719,7 +722,7 @@ export function usePortal(token: string | null) {
   const cancelarDescargaTodo = useCallback(() => cancelarMasiva.current?.abort(), []);
 
   /**
-   * Guarda el XML y el PDF reales de los comprobantes en la PC, en la carpeta que el usuario
+   * Guarda el XML y el CDR reales de los comprobantes en la PC, en la carpeta que el usuario
    * eligió (su Descargas): `AAAA/MM/RUC/SERIE-NÚMERO`. Lo que no esté archivado se informa.
    */
   const guardarEnPc = useCallback(
@@ -738,8 +741,8 @@ export function usePortal(token: string | null) {
         for (const c of comprobantes) {
           const existentes = await apiArchivos(token, c.id);
           const aGuardar: Array<{ nombre: string; blob: Blob }> = [];
-          // El PDF solo se guarda en compras: el portal no maneja PDF de las ventas.
-          const tipos = c.origen === "recibido" ? (["xml", "pdf"] as const) : (["xml"] as const);
+          // Compras: XML y PDF (no guardan CDR). Ventas: XML y CDR (no hay PDF).
+          const tipos = c.origen === "recibido" ? (["xml", "pdf"] as const) : (["xml", "cdr"] as const);
           for (const tipo of tipos) {
             const archivo = existentes.find((a) => a.tipo === tipo);
             if (!archivo) continue;
@@ -754,14 +757,15 @@ export function usePortal(token: string | null) {
             await guardarArchivos(raiz, partesCarpeta(c), aGuardar);
             guardados += 1;
           }
-          if (aGuardar.length < tipos.length) incompletos.push(c.numero);
+          const esperados = c.origen === "recibido" ? 2 : c.codigoTipo === "03" ? 1 : 2;
+          if (aGuardar.length < esperados) incompletos.push(c.numero);
         }
         const destino =
           comprobantes.length === 1
             ? rutaRelativa(raiz.name, partesCarpeta(comprobantes[0]))
             : `${raiz.name}\\AAAA\\MM\\RUC\\SERIE-NÚMERO`;
         if (guardados === 0) {
-          aviso.error("No había nada que guardar", "Estos comprobantes no tienen XML ni PDF archivados.");
+          aviso.error("No había nada que guardar", "Estos comprobantes no tienen archivos guardados.");
         } else {
           aviso.ok(
             `${formatearEntero(guardados)} comprobante${guardados === 1 ? "" : "s"} guardado${guardados === 1 ? "" : "s"} en tu PC`,
@@ -882,7 +886,7 @@ export function usePortal(token: string | null) {
     abrirCarpeta,
     exportando,
     descargar,
-    consultarEstado,
+    consultarCdr,
     sincronizarPendientes,
     importarXmlDeComprobante,
     cargarArchivos,

@@ -62,6 +62,7 @@ const CODIGO_DE_TIPO: Record<TipoDocumento, string> = {
 
 const RESPALDO_API = {
   SIN_XML: "sin_xml",
+  SIN_CDR: "sin_cdr",
   COMPLETO: "completo",
 } as const;
 
@@ -141,6 +142,7 @@ export interface Cobertura {
   /** Comprobantes que deberían tener respaldo (todos menos los anulados). */
   total: number;
   conXml: number;
+  conCdr: number;
 }
 
 export interface Metricas {
@@ -179,6 +181,7 @@ export function metricasDeResumen(
     cobertura: {
       total: api.cobertura.exigibles,
       conXml: api.cobertura.con_xml,
+      conCdr: api.cobertura.con_cdr,
     },
     etiquetaRango: describirRango(rango.desde, rango.hasta),
   };

@@ -28,7 +28,9 @@ export function comprobante(parcial: Partial<Comprobante> = {}): Comprobante {
     nombreArchivo: `20514831620-01-${numero}`,
     cdrCodigo: null,
     cdrDescripcion: null,
+    correo: null,
     tieneXml: false,
+    tieneCdr: false,
     tienePdf: false,
     ...parcial,
   };

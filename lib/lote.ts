@@ -1,12 +1,12 @@
 /**
- * Lote de respaldo: un ZIP con los archivos REALES de cada comprobante (el XML y, en compras,
- * el PDF guardados en R2) más un manifiesto con el SHA-256 de cada archivo.
+ * Lote de respaldo: un ZIP con los archivos REALES de cada comprobante (en ventas el XML y el
+ * CDR; en compras el XML y el PDF, guardados en R2) más un manifiesto con el SHA-256 de cada archivo.
  *
  * Cada comprobante queda en su carpeta `AAAA/MM/RUC/SERIE-NÚMERO/`, la misma estructura que
  * usa «Guardar en mi PC» y la automatización del correo: así los ZIP se pueden descomprimir
  * todos en una misma carpeta (en otra PC o en el celular) y las partes se juntan solas.
  *
- * Nunca fabrica archivos: si un comprobante no tiene su XML (o, en compras, su PDF) archivado,
+ * Nunca fabrica archivos: si un comprobante no tiene su XML (o su CDR / PDF) archivado,
  * el lote lo dice en el LEEME en lugar de inventarlo. Así el ZIP sirve como paquete de auditoría.
  *
  * Para muchos comprobantes, `descargarTodoPorPartes` los reparte en varios ZIP (el navegador
@@ -28,7 +28,7 @@ const ESPERA_ENTRE_PARTES_MS = 900;
 const SIMULTANEOS = 3;
 const SALTO = "\r\n";
 
-export type TipoRespaldo = "XML" | "PDF";
+export type TipoRespaldo = "XML" | "CDR" | "PDF";
 
 export interface ProgresoLote {
   hecho: number;
@@ -116,9 +116,9 @@ export function textoLeeme(
     ...(parte && parte.total > 1 ? [`Parte ${parte.numero} de ${parte.total}`] : []),
     `Comprobantes en el lote: ${comprobantes.length}`,
     "",
-    "Contenido: una carpeta por comprobante (AAAA/MM/RUC/SERIE-NÚMERO) con su XML y, en las",
-    "compras, su PDF, tal como están archivados en el almacenamiento. El manifiesto trae el",
-    "SHA-256 de cada archivo para verificar que no se alteró.",
+    "Contenido: una carpeta por comprobante (AAAA/MM/RUC/SERIE-NÚMERO) con su XML y, según el",
+    "caso, su CDR (ventas) o su PDF (compras), tal como están archivados en el almacenamiento.",
+    "El manifiesto trae el SHA-256 de cada archivo para verificar que no se alteró.",
     ...(parte && parte.total > 1
       ? [
           "",
@@ -135,7 +135,7 @@ export function textoLeeme(
       `Comprobantes con respaldo incompleto (${faltantes.length}):`,
       ...faltantes.map((f) => `- ${f.numero}: falta ${f.faltan.join(", ")}`),
       "",
-      "Para completarlos: importa el XML (y el PDF de las compras) desde el sistema que los emite.",
+      "Para completarlos: importa el XML y el CDR (o el PDF de las compras) desde el sistema que los emite.",
     );
   }
   return lineas.join(SALTO);
@@ -199,14 +199,17 @@ export async function construirLoteRespaldo(
       manifiesto.push([carpeta, nombre, tipo, String(bytes.length), await sha256(bytes)]);
     };
 
-    // El PDF solo existe en compras: en ventas el portal no maneja PDF.
-    const tipos: Array<readonly ["xml" | "pdf", TipoRespaldo]> =
+    // Ventas: XML y CDR. Compras: XML y PDF (las compras no guardan CDR y en ventas no hay PDF).
+    const tipos: Array<readonly ["xml" | "cdr" | "pdf", TipoRespaldo]> =
       comprobante.origen === "recibido"
         ? [
             ["xml", "XML"],
             ["pdf", "PDF"],
           ]
-        : [["xml", "XML"]];
+        : [
+            ["xml", "XML"],
+            ["cdr", "CDR"],
+          ];
 
     try {
       const guardados = await deps.listarArchivos(token, comprobante.id);

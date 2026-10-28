@@ -27,6 +27,7 @@ interface Props {
   onSap: (abierto: boolean) => void;
   importar: EstadoImportar;
   onImportar: (cambio: (previo: EstadoImportar) => EstadoImportar) => void;
+  onAbrirImportar: (pestana: PestanaImportar) => void;
 }
 
 /** El detalle del comprobante y los diálogos de sincronización e importación. */
@@ -44,6 +45,7 @@ export function DialogosPortal({
   onSap,
   importar,
   onImportar,
+  onAbrirImportar,
 }: Props) {
   return (
     <>
@@ -56,8 +58,12 @@ export function DialogosPortal({
         consultando={p.detalle ? p.consultando.has(p.detalle.id) : false}
         onCerrar={p.cerrarDetalle}
         onDescargar={(c, tipo) => void p.descargar(c, tipo)}
-        onConsultarEstado={(c) => void p.consultarEstado(c)}
+        onConsultarCdr={(c) => void p.consultarCdr(c)}
         onImportarXml={(archivo) => void p.importarXmlDeComprobante(archivo)}
+        onAbrirImportarCdr={() => {
+          p.cerrarDetalle();
+          onAbrirImportar("cdr");
+        }}
         guardandoPc={p.guardandoPc}
         onGuardarEnPc={(c) => void p.guardarEnPc([c])}
         onAbrirCarpeta={(c) => void p.abrirCarpeta(c)}

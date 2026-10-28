@@ -1,5 +1,5 @@
 /**
- * Guardado del XML y el PDF en una carpeta de la PC del usuario, con la estructura que pide
+ * Guardado del XML y el CDR en una carpeta de la PC del usuario, con la estructura que pide
  * el área de Contabilidad: `Descargas / AAAA / MM / RUC / SERIE-NÚMERO`.
  *
  * Usa la File System Access API (Chrome y Edge): el usuario elige UNA vez su carpeta

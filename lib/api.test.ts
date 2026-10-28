@@ -5,6 +5,7 @@ import {
   apiBizlinksRespaldos,
   apiDescargarArchivo,
   apiDescargarTipo,
+  apiImportarCdr,
   apiSireSync,
   conDetalle,
   mapArchivo,
@@ -56,6 +57,7 @@ describe("mapComprobante", () => {
       formaPago: null,
       fuente: "xml",
       tieneXml: false,
+      tieneCdr: false,
     });
     expect(c.cliente).toEqual({ ruc: "20987654321", razonSocial: "CLIENTE SAC" });
   });
@@ -90,6 +92,7 @@ describe("mapComprobante", () => {
       fecha_vencimiento: "2026-11-04",
       forma_pago: "Crédito 30 días",
       tiene_xml: true,
+      tiene_cdr: true,
       estado: "anulado",
     });
     expect(c).toMatchObject({
@@ -99,7 +102,33 @@ describe("mapComprobante", () => {
       fechaVencimiento: "2026-11-04",
       formaPago: "Crédito 30 días",
       tieneXml: true,
+      tieneCdr: true,
       estadoSunat: "Anulado",
+    });
+  });
+
+  it("una compra que llegó por correo trae su asunto, remitente y fecha", () => {
+    const c = mapComprobante({
+      ...base,
+      origen: "recibido",
+      correo_asunto: "Factura F010-456 octubre",
+      correo_remitente: "Proveedor <v@p.pe>",
+      correo_recibido_at: "2026-10-20T14:30:00Z",
+    });
+    expect(c.correo).toEqual({
+      asunto: "Factura F010-456 octubre",
+      remitente: "Proveedor <v@p.pe>",
+      recibido: "2026-10-20T14:30:00Z",
+    });
+  });
+
+  it("sin asunto no hay correo (compras de SIRE y ventas)", () => {
+    expect(mapComprobante(base).correo).toBeNull();
+    expect(mapComprobante({ ...base, correo_asunto: null, correo_remitente: "x" }).correo).toBeNull();
+    expect(mapComprobante({ ...base, correo_asunto: "Hola" }).correo).toEqual({
+      asunto: "Hola",
+      remitente: null,
+      recibido: null,
     });
   });
 
@@ -229,6 +258,21 @@ describe("llamadas a la API", () => {
     expect(error).toMatchObject({ status: 502, message: "Bad Gateway" });
   });
 
+  it("apiImportarCdr sube el ZIP como `paquete` a la empresa indicada", async () => {
+    fetchMock.mockResolvedValueOnce(
+      respuesta({ ruc: "20514831620", total: 1, asociados: 1, ya_tenian: 0, sin_comprobante: 0, con_error: 0, items: [] }),
+    );
+    const archivo = new File(["PK"], "cdrs.zip", { type: "application/zip" });
+
+    const r = await apiImportarCdr("T", "20514831620", archivo);
+
+    expect(r.asociados).toBe(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/api/v1/companies/20514831620/comprobantes/import-cdr");
+    expect(init.method).toBe("POST");
+    expect((init.body as FormData).get("paquete")).toBeInstanceOf(File);
+  });
+
   it("apiSireSync envía el ticket solo cuando se retoma", async () => {
     fetchMock.mockImplementation(async () => respuesta({ estado: "completado" }));
     await apiSireSync("T", "205", "202609");
@@ -259,6 +303,7 @@ describe("llamadas a la API", () => {
         sin_resultado: 0,
         fallidos: 0,
         xml_guardados: 1,
+        cdr_guardados: 1,
         detenido_por: null,
         mensaje: null,
         cuota_restante: 49,
@@ -274,7 +319,7 @@ describe("llamadas a la API", () => {
       hasta: "2026-09-30",
     });
 
-    expect(r.xml_guardados).toBe(1);
+    expect(r.cdr_guardados).toBe(1);
     const [url, init] = fetchMock.mock.calls[0];
     const texto = String(url);
     expect(texto).toContain("/api/v1/companies/20514831620/bizlinks/respaldos/sync?");

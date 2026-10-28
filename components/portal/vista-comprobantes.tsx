@@ -95,7 +95,7 @@ export function VistaComprobantes({ p, compras, onRespaldos, onImportar, onSap, 
         onLimpiarSeleccion={p.limpiarSeleccion}
         onAbrir={(c) => void p.abrirDetalle(c)}
         onDescargar={(c, tipo) => void p.descargar(c, tipo)}
-        onConsultarEstado={(c) => void p.consultarEstado(c)}
+        onConsultarCdr={(c) => void p.consultarCdr(c)}
         onExportarExcel={() => void p.exportarExcel()}
         onLote={() => void p.generarLote()}
         onLimpiarFiltros={p.limpiarFiltros}
