@@ -14,6 +14,7 @@ import {
   apiEvidencias,
   apiImportarXml,
   apiResumen,
+  apiRestaurarCarpeta,
   apiSincronizarPendientes,
   conDetalle,
   mapArchivo,
@@ -789,7 +790,15 @@ export function usePortal(token: string | null) {
       if (!token) return;
       const partes = partesCarpeta(c);
       try {
-        const { ruta } = await apiAbrirCarpeta(token, partes);
+        let ruta: string;
+        try {
+          ({ ruta } = await apiAbrirCarpeta(token, partes, c.origen));
+        } catch (error) {
+          // La carpeta solo existe si el correo o «Guardar en mi PC» la crearon: si sus archivos
+          // están en el bucket, el backend los copia a la PC y la abre.
+          if (!(error instanceof ApiError && error.status === 404)) throw error;
+          ({ ruta } = await apiRestaurarCarpeta(token, c.id));
+        }
         aviso.ok("Carpeta abierta", ruta);
       } catch (error) {
         const relativa = rutaRelativa("Descargas", partes);

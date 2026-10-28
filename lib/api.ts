@@ -418,11 +418,30 @@ export async function apiDescargarArchivo(
  * Pide al backend abrir en el Explorador la carpeta local del comprobante. Solo funciona si el
  * backend corre en la misma PC (`LOCAL_ABRIR_CARPETA=true`); si no, responde 409.
  */
-export async function apiAbrirCarpeta(token: string, partes: string[]): Promise<{ ruta: string }> {
+export async function apiAbrirCarpeta(
+  token: string,
+  partes: string[],
+  origen: "emitido" | "recibido",
+): Promise<{ ruta: string }> {
   return pedir<{ ruta: string }>("/api/v1/carpeta-local/abrir", token, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ partes }),
+    body: JSON.stringify({ partes, origen }),
+  });
+}
+
+/**
+ * Copia del bucket a la PC los archivos que falten del comprobante y abre su carpeta. Es el
+ * respaldo de `apiAbrirCarpeta` cuando esa carpeta aún no existe localmente (404).
+ */
+export async function apiRestaurarCarpeta(
+  token: string,
+  comprobanteId: string,
+): Promise<{ ruta: string }> {
+  return pedir<{ ruta: string }>("/api/v1/carpeta-local/restaurar-y-abrir", token, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ comprobante_id: comprobanteId }),
   });
 }
 
