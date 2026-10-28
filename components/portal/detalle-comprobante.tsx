@@ -504,25 +504,6 @@ export function DetalleComprobante(props: Props) {
                 </Boton>
               </>
             )}
-            {c.origen === "recibido" && c.tienePdf && (
-              <Boton
-                icono={FileText}
-                cargando={props.descargando.has(`${c.id}:pdf`)}
-                onClick={() => props.onDescargar(c, "pdf")}
-              >
-                Descargar PDF
-              </Boton>
-            )}
-            {c.tieneXml && (
-              <Boton
-                variante="primario"
-                icono={Download}
-                cargando={props.descargando.has(`${c.id}:xml`)}
-                onClick={() => props.onDescargar(c, "xml")}
-              >
-                Descargar XML
-              </Boton>
-            )}
           </>
         )
       }
