@@ -95,7 +95,7 @@ export function Indicadores({
     <div
       className={cn(
         CONTENEDOR,
-        conRespaldo ? "lg:grid-cols-3" : "lg:grid-cols-2",
+        "lg:grid-cols-3",
         actualizando && "opacity-70 transition-opacity",
       )}
       aria-busy={actualizando || undefined}
@@ -205,6 +205,46 @@ export function Indicadores({
           </button>
         </div>
       </Tarjeta>
+      )}
+
+      {/* Estado correo (solo Compras) */}
+      {!conRespaldo && (
+        <Tarjeta titulo="Estado correo" subtitulo="según el asunto cargado">
+          <div
+            className="flex h-2 w-full overflow-hidden rounded-full bg-surface-3"
+            role="img"
+            aria-label="Correos enviados y no enviados"
+          >
+            {metricas.correos.enviados > 0 && (
+              <span
+                className="bg-ok"
+                style={{ width: `${(metricas.correos.enviados / Math.max(total, 1)) * 100}%` }}
+              />
+            )}
+            {metricas.correos.noEnviados > 0 && (
+              <span
+                className="bg-bad"
+                style={{ width: `${(metricas.correos.noEnviados / Math.max(total, 1)) * 100}%` }}
+              />
+            )}
+          </div>
+          <ul className="mt-3 space-y-1">
+            {(
+              [
+                ["Correo enviado", "bg-ok", metricas.correos.enviados],
+                ["Correo no enviado", "bg-bad", metricas.correos.noEnviados],
+              ] as const
+            ).map(([nombre, color, cantidad]) => (
+              <li key={nombre} className="flex items-center gap-2 px-1.5 py-1">
+                <span className={cn("h-2 w-2 shrink-0 rounded-full", color)} aria-hidden />
+                <span className="flex-1 text-[12.5px] text-fg-2">{nombre}</span>
+                <span className="tnum text-[13px] font-semibold text-fg">
+                  {formatearEntero(cantidad)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Tarjeta>
       )}
     </div>
   );

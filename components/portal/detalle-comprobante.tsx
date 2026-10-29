@@ -565,7 +565,7 @@ export function DetalleComprobante(props: Props) {
                 <Boton
                   icono={FolderOpen}
                   onClick={() => props.onAbrirCarpeta(c)}
-                  title="Abre Descargas/AAAA/MM/RUC/SERIE-NÚMERO (requiere el backend en tu PC)"
+                  title="Abre Descargas/AAAA/MES/RUC/SERIE-NÚMERO (requiere el backend en tu PC)"
                 >
                   Abrir carpeta
                 </Boton>
@@ -575,8 +575,8 @@ export function DetalleComprobante(props: Props) {
                   onClick={() => props.onGuardarEnPc(c)}
                   title={
                     c.origen === "recibido"
-                      ? "Guarda el XML y el PDF en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
-                      : "Guarda el XML y el CDR en Descargas/AAAA/MM/RUC/SERIE-NÚMERO"
+                      ? "Guarda el XML y el PDF en Descargas/AAAA/MES/RUC/SERIE-NÚMERO"
+                      : "Guarda el XML y el CDR en Descargas/AAAA/MES/RUC/SERIE-NÚMERO"
                   }
                 >
                   Guardar en mi PC

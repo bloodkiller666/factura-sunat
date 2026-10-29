@@ -111,6 +111,8 @@ export interface ApiResumen {
   /** Neto por moneda (decimales como texto): notas de crédito restan; sin anulados/rechazados. */
   facturado_neto: Record<string, string | number>;
   cobertura: { exigibles: number; con_xml: number; con_cdr: number };
+  /** Compras con y sin correo vinculado («Estado correo»). */
+  correos?: { enviados: number; no_enviados: number };
 }
 
 export interface ApiArchivo {
@@ -472,6 +474,22 @@ export async function apiDescargarTipo(
     );
   }
   return apiDescargarArchivo(token, archivo);
+}
+
+/**
+ * Descarga todos los archivos de un tipo del comprobante. Solo el PDF de una compra puede ser
+ * varios (factura, guía de remisión, nota…); de los demás tipos se baja el primero.
+ */
+export async function apiDescargarTipos(
+  token: string,
+  comprobanteId: string,
+  tipo: ApiArchivo["tipo"],
+): Promise<Array<{ blob: Blob; nombre: string }>> {
+  const archivos = await apiArchivos(token, comprobanteId);
+  const delTipo = archivos.filter((candidato) => candidato.tipo === tipo);
+  if (delTipo.length === 0) return [await apiDescargarTipo(token, comprobanteId, tipo)];
+  const aBajar = tipo === "pdf" ? delTipo : delTipo.slice(0, 1);
+  return Promise.all(aBajar.map((archivo) => apiDescargarArchivo(token, archivo)));
 }
 
 export async function apiImportarXml(

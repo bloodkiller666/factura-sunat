@@ -5,9 +5,9 @@ const doc = { fechaEmision: "2026-09-05", numero: "FF01-00000123", cliente: { ru
 
 describe("partesCarpeta", () => {
   it("arma año / mes / documento / RUC", () => {
-    expect(partesCarpeta(doc)).toEqual(["2026", "09", "20100000001", "FF01-00000123"]);
+    expect(partesCarpeta(doc)).toEqual(["2026", "SETIEMBRE", "20100000001", "FF01-00000123"]);
     expect(rutaRelativa("Descargas", partesCarpeta(doc))).toBe(
-      "Descargas\\2026\\09\\20100000001\\FF01-00000123",
+      "Descargas\\2026\\SETIEMBRE\\20100000001\\FF01-00000123",
     );
   });
 
@@ -70,7 +70,7 @@ describe("guardarArchivos", () => {
       { nombre: "F.xml", blob: new Blob(["<xml/>"]) },
       { nombre: "R-F.zip", blob: new Blob(["cdr"]) },
     ]);
-    const hoja = raiz.hijos.get("2026")!.hijos.get("09")!.hijos.get("20100000001")!.hijos.get("FF01-00000123")!;
+    const hoja = raiz.hijos.get("2026")!.hijos.get("SETIEMBRE")!.hijos.get("20100000001")!.hijos.get("FF01-00000123")!;
     expect([...hoja.archivos.entries()]).toEqual([
       ["F.xml", "<xml/>"],
       ["R-F.zip", "cdr"],

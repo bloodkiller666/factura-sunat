@@ -204,6 +204,14 @@ describe("metricasDeResumen", () => {
     expect(m.cobertura).toEqual({ total: 687, conXml: 10, conCdr: 4 });
   });
 
+  it("trae los correos enviados y no enviados (0 si el servidor aún no los informa)", () => {
+    const rango = { desde: "", hasta: "" };
+    expect(
+      metricasDeResumen({ ...api, correos: { enviados: 30, no_enviados: 690 } }, rango).correos,
+    ).toEqual({ enviados: 30, noEnviados: 690 });
+    expect(metricasDeResumen(api, rango).correos).toEqual({ enviados: 0, noEnviados: 0 });
+  });
+
   it("una moneda ausente cuenta como cero", () => {
     const m = metricasDeResumen({ ...api, facturado_neto: { PEN: 100 } }, { desde: "", hasta: "" });
     expect(m.facturadoUsd).toBe(0);

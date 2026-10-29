@@ -143,7 +143,7 @@ export function EncabezadoComprobantes({
           <Boton
             icono={FolderDown}
             onClick={onDescargarTodo}
-            title="Baja los archivos en ZIP por partes, con sus carpetas AAAA/MM/RUC/SERIE-NÚMERO"
+            title="Baja los archivos en ZIP por partes, con sus carpetas AAAA/MES/RUC/SERIE-NÚMERO"
           >
             Descargar todo{cuentaExportable ? ` (${cuentaExportable})` : ""}
           </Boton>
@@ -191,7 +191,7 @@ export function EncabezadoComprobantes({
           <p className="px-2.5 py-1.5 text-[11.5px] leading-4 text-fg-4">
             Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML y CDR
             reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas) los deja en
-            Descargas/AAAA/MM/RUC/SERIE-NÚMERO.
+            Descargas/AAAA/MES/RUC/SERIE-NÚMERO.
             «Descargar todo» arma ZIP por partes con esa misma estructura, para llevarlos a otra PC
             o al celular.
           </p>

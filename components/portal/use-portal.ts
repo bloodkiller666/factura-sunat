@@ -8,7 +8,7 @@ import {
   apiComprobantes,
   apiConsultarCdr,
   apiDescargarArchivo,
-  apiDescargarTipo,
+  apiDescargarTipos,
   apiDetalle,
   apiEmpresas,
   apiEvidencias,
@@ -508,9 +508,15 @@ export function usePortal(token: string | null) {
       if (!token) return;
       await conClave("descargando", `${c.id}:${tipo}`, async () => {
         try {
-          const { blob, nombre } = await apiDescargarTipo(token, c.id, tipo);
-          descargarBlob(blob, nombre);
-          aviso.ok(`${tipo.toUpperCase()} descargado`, nombre);
+          // Una compra puede tener varios PDF (factura, guías…): se bajan todos.
+          const archivos = await apiDescargarTipos(token, c.id, tipo);
+          for (const { blob, nombre } of archivos) descargarBlob(blob, nombre);
+          aviso.ok(
+            archivos.length > 1
+              ? `${archivos.length} ${tipo.toUpperCase()} descargados`
+              : `${tipo.toUpperCase()} descargado`,
+            archivos.map((a) => a.nombre).join(", "),
+          );
         } catch (error) {
           aviso.error(`No se pudo descargar el ${tipo.toUpperCase()}`, mensajeDe(error, "Reintenta."));
         }
@@ -700,7 +706,7 @@ export function usePortal(token: string | null) {
 
   /**
    * «Descargar todo»: baja los archivos de todo lo filtrado, o de la selección si la hay, en ZIP
-   * por partes con la estructura AAAA/MM/RUC/SERIE-NÚMERO. Sirve para llevarse los documentos a
+   * por partes con la estructura AAAA/MES/RUC/SERIE-NÚMERO. Sirve para llevarse los documentos a
    * otra PC o al celular, donde no hay carpeta compartida.
    */
   const descargarTodo = useCallback(async () => {
@@ -758,7 +764,7 @@ export function usePortal(token: string | null) {
 
   /**
    * Guarda el XML y el CDR reales de los comprobantes en la PC, en la carpeta que el usuario
-   * eligió (su Descargas): `AAAA/MM/RUC/SERIE-NÚMERO`. Lo que no esté archivado se informa.
+   * eligió (su Descargas): `AAAA/MES/RUC/SERIE-NÚMERO`. Lo que no esté archivado se informa.
    */
   const guardarEnPc = useCallback(
     async (comprobantes: Comprobante[]) => {
@@ -779,13 +785,15 @@ export function usePortal(token: string | null) {
           // Compras: XML y PDF (no guardan CDR). Ventas: XML y CDR (no hay PDF).
           const tipos = c.origen === "recibido" ? (["xml", "pdf"] as const) : (["xml", "cdr"] as const);
           for (const tipo of tipos) {
-            const archivo = existentes.find((a) => a.tipo === tipo);
-            if (!archivo) continue;
-            try {
-              const { blob, nombre } = await apiDescargarArchivo(token, archivo);
-              aGuardar.push({ nombre, blob });
-            } catch {
-              // Se informa abajo como incompleto; no frena al resto.
+            // Todos los PDF de la compra (factura, guías, notas…); del resto, el primero.
+            const delTipo = existentes.filter((a) => a.tipo === tipo);
+            for (const archivo of tipo === "pdf" ? delTipo : delTipo.slice(0, 1)) {
+              try {
+                const { blob, nombre } = await apiDescargarArchivo(token, archivo);
+                aGuardar.push({ nombre, blob });
+              } catch {
+                // Se informa abajo como incompleto; no frena al resto.
+              }
             }
           }
           if (aGuardar.length > 0) {
@@ -798,7 +806,7 @@ export function usePortal(token: string | null) {
         const destino =
           comprobantes.length === 1
             ? rutaRelativa(raiz.name, partesCarpeta(comprobantes[0]))
-            : `${raiz.name}\\AAAA\\MM\\RUC\\SERIE-NÚMERO`;
+            : `${raiz.name}\\AAAA\\MES\\RUC\\SERIE-NÚMERO`;
         if (guardados === 0) {
           aviso.error("No había nada que guardar", "Estos comprobantes no tienen archivos guardados.");
         } else {

@@ -160,6 +160,8 @@ export interface Metricas {
   /** Facturado neto en dólares, aparte: no se convierte a soles. */
   facturadoUsd: number;
   cobertura: Cobertura;
+  /** «Estado correo» del conjunto filtrado: correos enviados y no enviados. */
+  correos: { enviados: number; noEnviados: number };
   /** Texto del rango de fechas que cubren los indicadores. */
   etiquetaRango: string;
 }
@@ -187,6 +189,7 @@ export function metricasDeResumen(
       conXml: api.cobertura.con_xml,
       conCdr: api.cobertura.con_cdr,
     },
+    correos: { enviados: api.correos?.enviados ?? 0, noEnviados: api.correos?.no_enviados ?? 0 },
     etiquetaRango: describirRango(rango.desde, rango.hasta),
   };
 }

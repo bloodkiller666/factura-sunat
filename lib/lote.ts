@@ -2,7 +2,7 @@
  * Lote de respaldo: un ZIP con los archivos REALES de cada comprobante (en ventas el XML y el
  * CDR; en compras el XML y el PDF, guardados en R2) más un manifiesto con el SHA-256 de cada archivo.
  *
- * Cada comprobante queda en su carpeta `AAAA/MM/RUC/SERIE-NÚMERO/`, la misma estructura que
+ * Cada comprobante queda en su carpeta `AAAA/MES/RUC/SERIE-NÚMERO/`, la misma estructura que
  * usa «Guardar en mi PC» y la automatización del correo: así los ZIP se pueden descomprimir
  * todos en una misma carpeta (en otra PC o en el celular) y las partes se juntan solas.
  *
@@ -72,7 +72,7 @@ export function nombreBase(comprobante: Comprobante): string {
   return (comprobante.nombreArchivo || comprobante.numero).replace(/[\\/:*?"<>|]+/g, "-");
 }
 
-/** Carpeta del comprobante dentro del ZIP: `AAAA/MM/RUC/SERIE-NÚMERO`. */
+/** Carpeta del comprobante dentro del ZIP: `AAAA/MES/RUC/SERIE-NÚMERO`. */
 export function carpetaDeLote(comprobante: Comprobante): string {
   return partesCarpeta(comprobante).join("/");
 }
@@ -116,7 +116,7 @@ export function textoLeeme(
     ...(parte && parte.total > 1 ? [`Parte ${parte.numero} de ${parte.total}`] : []),
     `Comprobantes en el lote: ${comprobantes.length}`,
     "",
-    "Contenido: una carpeta por comprobante (AAAA/MM/RUC/SERIE-NÚMERO) con su XML y, según el",
+    "Contenido: una carpeta por comprobante (AAAA/MES/RUC/SERIE-NÚMERO) con su XML y, según el",
     "caso, su CDR (ventas) o su PDF (compras), tal como están archivados en el almacenamiento.",
     "El manifiesto trae el SHA-256 de cada archivo para verificar que no se alteró.",
     ...(parte && parte.total > 1
@@ -214,17 +214,21 @@ export async function construirLoteRespaldo(
     try {
       const guardados = await deps.listarArchivos(token, comprobante.id);
       for (const [tipo, etiqueta] of tipos) {
-        const archivo = guardados.find((candidato) => candidato.tipo === tipo);
-        if (!archivo) {
+        // El PDF de una compra puede ser varios (factura, guía de remisión, nota…): van todos.
+        const delTipo = guardados.filter((candidato) => candidato.tipo === tipo);
+        const aBajar = tipo === "pdf" ? delTipo : delTipo.slice(0, 1);
+        if (aBajar.length === 0) {
           faltan.push(etiqueta);
           continue;
         }
         // Un archivo que no baja no invalida al otro: solo ese figura como faltante.
-        try {
-          const { blob, nombre } = await deps.descargar(token, archivo);
-          await agregar(etiqueta, nombre, blob);
-        } catch {
-          faltan.push(etiqueta);
+        for (const archivo of aBajar) {
+          try {
+            const { blob, nombre } = await deps.descargar(token, archivo);
+            await agregar(etiqueta, nombre, blob);
+          } catch {
+            if (!faltan.includes(etiqueta)) faltan.push(etiqueta);
+          }
         }
       }
     } catch {

@@ -7,6 +7,7 @@
  * ni enlaces `file://`; para eso existe el botón «Abrir carpeta» (backend local).
  */
 
+import { NOMBRES_MES } from "./calendario";
 import type { Comprobante } from "./types";
 
 const NO_PERMITIDO = /[\\/:*?"<>|\u0000-\u001f]+/g;
@@ -16,13 +17,20 @@ export function segmentoSeguro(texto: string, vacio: string): string {
   return texto.replace(NO_PERMITIDO, "-").replace(/^[ .]+|[ .]+$/g, "") || vacio;
 }
 
-/** Año, mes, RUC de la contraparte (cliente en ventas, proveedor en compras) y serie-número:
- * un mismo RUC agrupa varios documentos. */
+/** «10» → «OCTUBRE»: en la carpeta el mes va en letras, igual que en el backend y el extractor
+ * (`app/core/meses.py`), para que nadie confunda un mes con un día. */
+export function nombreDeMes(mes: string): string {
+  const n = Number(mes);
+  return Number.isInteger(n) && n >= 1 && n <= 12 ? NOMBRES_MES[n - 1].toUpperCase() : "";
+}
+
+/** Año, mes (en letras), RUC de la contraparte (cliente en ventas, proveedor en compras) y
+ * serie-número: un mismo RUC agrupa varios documentos. */
 export function partesCarpeta(c: Pick<Comprobante, "fechaEmision" | "numero" | "cliente">): string[] {
   const [anio, mes] = c.fechaEmision.split("-");
   return [
     segmentoSeguro(anio ?? "", "sin-fecha"),
-    segmentoSeguro(mes ?? "", "sin-fecha"),
+    segmentoSeguro(nombreDeMes(mes ?? ""), "sin-fecha"),
     segmentoSeguro(c.cliente.ruc, "sin-ruc"),
     segmentoSeguro(c.numero, "sin-numero"),
   ];
@@ -119,7 +127,7 @@ export async function obtenerRaiz(opciones: { cambiar?: boolean } = {}): Promise
   }
 }
 
-/** Escribe los archivos en `raiz/AAAA/MM/RUC/SERIE-NÚMERO/`, creando lo que falte. */
+/** Escribe los archivos en `raiz/AAAA/MES/RUC/SERIE-NÚMERO/`, creando lo que falte. */
 export async function guardarArchivos(
   raiz: FileSystemDirectoryHandle,
   partes: string[],

@@ -54,7 +54,7 @@ const compra = (parcial: Parameters<typeof comprobante>[0] = {}) =>
   });
 
 describe("construirLoteRespaldo", () => {
-  it("arma AAAA/MM/RUC/SERIE-NÚMERO por comprobante con sus archivos reales y un manifiesto con hashes", async () => {
+  it("arma AAAA/MES/RUC/SERIE-NÚMERO por comprobante con sus archivos reales y un manifiesto con hashes", async () => {
     const venta = comprobante({ numero: "F001-00000001", nombreArchivo: "20514831620-01-F001-00000001" });
     const resultado = await construirLoteRespaldo(
       "T",
@@ -74,13 +74,13 @@ describe("construirLoteRespaldo", () => {
 
     const zip = await leerZip(resultado.zip);
     expect([...zip.keys()].sort()).toEqual([
-      "2026/09/20987654321/F001-00000001/20514831620-01-F001-00000001.xml",
-      "2026/09/20987654321/F001-00000001/R-20514831620-01-F001-00000001.zip",
+      "2026/SETIEMBRE/20987654321/F001-00000001/20514831620-01-F001-00000001.xml",
+      "2026/SETIEMBRE/20987654321/F001-00000001/R-20514831620-01-F001-00000001.zip",
       "LEEME.txt",
       "manifiesto.csv",
     ]);
     expect(
-      texto(zip.get("2026/09/20987654321/F001-00000001/20514831620-01-F001-00000001.xml")!),
+      texto(zip.get("2026/SETIEMBRE/20987654321/F001-00000001/20514831620-01-F001-00000001.xml")!),
     ).toBe("contenido de 20514831620-01-F001-00000001.xml");
 
     const filas = texto(zip.get("manifiesto.csv")!).split("\r\n");
@@ -120,11 +120,38 @@ describe("construirLoteRespaldo", () => {
     expect(pedidos.sort()).toEqual(["f.pdf", "f.xml"]);
     const zip = await leerZip(resultado.zip);
     expect([...zip.keys()].sort()).toEqual([
-      "2026/09/20999999999/F010-00000456/f.pdf",
-      "2026/09/20999999999/F010-00000456/f.xml",
+      "2026/SETIEMBRE/20999999999/F010-00000456/f.pdf",
+      "2026/SETIEMBRE/20999999999/F010-00000456/f.xml",
       "LEEME.txt",
       "manifiesto.csv",
     ]);
+  });
+
+  it("en compras lleva TODOS los PDF del correo (factura, guías, notas), no solo el primero", async () => {
+    const c = compra({ numero: "F010-00000456" });
+    const resultado = await construirLoteRespaldo(
+      "T",
+      empresa,
+      [c],
+      () => {},
+      deps({
+        [c.id]: [
+          archivo("xml", "f.xml"),
+          archivo("pdf", "factura.pdf"),
+          archivo("pdf", "guia de remision.pdf"),
+        ],
+      }),
+    );
+
+    const zip = await leerZip(resultado.zip);
+    expect([...zip.keys()].sort()).toEqual([
+      "2026/SETIEMBRE/20999999999/F010-00000456/f.xml",
+      "2026/SETIEMBRE/20999999999/F010-00000456/factura.pdf",
+      "2026/SETIEMBRE/20999999999/F010-00000456/guia de remision.pdf",
+      "LEEME.txt",
+      "manifiesto.csv",
+    ]);
+    expect(resultado.faltantes).toEqual([]);
   });
 
   it("en ventas lleva el XML y el CDR; el PDF no se pide aunque exista", async () => {
