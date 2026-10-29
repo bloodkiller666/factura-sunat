@@ -95,6 +95,7 @@ export function VistaComprobantes({ p, compras, onRespaldos, onImportar, onSap, 
         onLimpiarSeleccion={p.limpiarSeleccion}
         onAbrir={(c) => void p.abrirDetalle(c)}
         onPrevisualizar={p.previsualizar}
+        onPrecargarPrevisualizacion={p.precargarPrevisualizacion}
         onDescargar={(c, tipo) => void p.descargar(c, tipo)}
         onConsultarCdr={(c) => void p.consultarCdr(c)}
         onExportarExcel={() => void p.exportarExcel()}

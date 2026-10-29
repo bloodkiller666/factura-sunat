@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
+import { CheckCircle2, CircleX, Info, TriangleAlert, X } from "lucide-react";
 import { descartarAviso, leerAvisos, suscribirAvisos, type TonoAviso } from "@/lib/avisos";
 import { cn } from "@/lib/utils";
 
@@ -9,12 +9,22 @@ const ICONOS: Record<TonoAviso, typeof Info> = {
   ok: CheckCircle2,
   info: Info,
   aviso: TriangleAlert,
+  error: CircleX,
 };
 
 const COLORES: Record<TonoAviso, string> = {
   ok: "text-ok",
   info: "text-accent",
   aviso: "text-warn",
+  error: "text-bad",
+};
+
+/** Borde y fondo: el rojo y el naranja se ven de lejos; los neutros quedan discretos. */
+const MARCOS: Record<TonoAviso, string> = {
+  ok: "border-line bg-surface",
+  info: "border-line bg-surface",
+  aviso: "border-warn-line bg-warn-bg",
+  error: "border-bad-line bg-bad-bg",
 };
 
 const VACIO: ReturnType<typeof leerAvisos> = [];
@@ -32,8 +42,11 @@ export function Avisos() {
         return (
           <div
             key={aviso.id}
-            role={aviso.tono === "aviso" ? "alert" : "status"}
-            className="pointer-events-auto flex animate-[aparece_160ms_ease-out] items-start gap-3 rounded-xl border border-line bg-surface p-3.5 shadow-pop"
+            role={aviso.tono === "aviso" || aviso.tono === "error" ? "alert" : "status"}
+            className={cn(
+              "pointer-events-auto flex animate-[aparece_160ms_ease-out] items-start gap-3 rounded-xl border p-3.5 shadow-pop",
+              MARCOS[aviso.tono],
+            )}
           >
             <Icono className={cn("mt-0.5 h-[18px] w-[18px] shrink-0", COLORES[aviso.tono])} aria-hidden />
             <div className="min-w-0 flex-1">

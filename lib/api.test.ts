@@ -5,6 +5,8 @@ import {
   apiBizlinksRespaldos,
   apiDescargarArchivo,
   apiDescargarTipo,
+  apiPrevisualizacion,
+  olvidarPrevisualizaciones,
   apiImportarCdr,
   apiSireSync,
   conDetalle,
@@ -290,6 +292,30 @@ describe("llamadas a la API", () => {
     await apiSireSync("T", "205", "202609", undefined, "compras");
     expect(String(fetchMock.mock.calls[0][0])).toContain("/companies/205/sire/ventas/sync");
     expect(String(fetchMock.mock.calls[1][0])).toContain("/companies/205/sire/compras/sync");
+  });
+
+  it("apiPrevisualizacion trae todo en una petición y la reutiliza (también la precarga en curso)", async () => {
+    olvidarPrevisualizaciones();
+    const items = [
+      { id: "1", tipo: "pdf", nombre: "f.pdf", size_bytes: 10, url: "https://r2/f.pdf" },
+      { id: "2", tipo: "xml", nombre: "f.xml", size_bytes: 20, url: "https://r2/f.xml" },
+    ];
+    fetchMock.mockResolvedValueOnce(respuesta({ comprobante_id: "c1", items, expires_in: 900 }));
+
+    // La precarga del menú «⋯» y la apertura de la ventana llegan casi a la vez: una sola petición.
+    const [a, b] = await Promise.all([apiPrevisualizacion("T", "c1"), apiPrevisualizacion("T", "c1")]);
+    const c = await apiPrevisualizacion("T", "c1");
+
+    expect(a).toEqual(items);
+    expect(b).toEqual(items);
+    expect(c).toEqual(items);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/comprobantes/c1/previsualizacion");
+
+    olvidarPrevisualizaciones();
+    fetchMock.mockResolvedValueOnce(respuesta({ comprobante_id: "c1", items: [], expires_in: 900 }));
+    expect(await apiPrevisualizacion("T", "c1")).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("apiBizlinksRespaldos llama al endpoint de respaldos con límite y fechas", async () => {

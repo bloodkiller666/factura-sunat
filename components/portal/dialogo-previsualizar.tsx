@@ -1,20 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, FileCode2, FileText } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, FileCode2, FileText, TriangleAlert } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
 import { Dialogo } from "@/components/ui/dialogo";
 import { Esqueleto } from "@/components/ui/varios";
-import { apiArchivos, apiDescargarArchivo } from "@/lib/api";
-import { aviso } from "@/lib/avisos";
-import {
-  MAXIMO_XML_BYTES,
-  archivosPrevisualizables,
-  decodificarXml,
-  moverIndice,
-  type ArchivoPrevisualizable,
-} from "@/lib/previsualizar";
+import { apiPrevisualizacion, type ApiPrevisualizacionItem } from "@/lib/api";
+import { aviso, gravedadDe } from "@/lib/avisos";
+import { MAXIMO_XML_BYTES, decodificarXml, moverIndice } from "@/lib/previsualizar";
 import type { Comprobante } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface Props {
   comprobante: Comprobante | null;
@@ -22,49 +17,92 @@ interface Props {
   onCerrar: () => void;
 }
 
-type Contenido = { tipo: "pdf"; url: string } | { tipo: "xml"; texto: string; truncado: boolean };
-
 /**
- * Previsualización de los PDF y XML archivados de un comprobante: el PDF en el visor del
- * navegador y el XML como texto plano. Con varios archivos, «Anterior/Siguiente» pasa de uno a otro.
- * Cada archivo se baja recién cuando se le muestra (una URL firmada por vez).
+ * Previsualización de los PDF y XML archivados de un comprobante.
+ *
+ * Los archivos salen del bucket privado de Cloudflare R2: el backend firma una URL temporal por
+ * archivo (una sola petición con todos) y el navegador los lee directo de R2. El PDF se muestra en
+ * el visor del navegador apuntando el `<iframe>` a esa URL (no se descarga a memoria antes) y los XML
+ * se leen en segundo plano apenas se abre la ventana, así «Anterior/Siguiente» es instantáneo.
  */
 export function DialogoPrevisualizar({ comprobante, token, onCerrar }: Props) {
   // `key`: cada comprobante empieza con su propio estado, sin reiniciarlo a mano en un efecto.
   if (!comprobante) return null;
-  return <Previsualizacion key={comprobante.id} comprobante={comprobante} token={token} onCerrar={onCerrar} />;
+  return (
+    <Previsualizacion
+      key={comprobante.id}
+      comprobante={comprobante}
+      token={token}
+      onCerrar={onCerrar}
+    />
+  );
 }
+
+type Textos = Record<string, { texto: string; truncado: boolean } | "error">;
 
 function Previsualizacion({
   comprobante,
   token,
   onCerrar,
 }: Props & { comprobante: Comprobante }) {
-  const [archivos, setArchivos] = useState<ArchivoPrevisualizable[] | null>(null);
+  const [archivos, setArchivos] = useState<ApiPrevisualizacionItem[] | null>(null);
   const [indice, setIndice] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ mensaje: string; gravedad: "error" | "aviso" } | null>(
+    null,
+  );
+  const [textos, setTextos] = useState<Textos>({});
+  const pedidos = useRef(new Set<string>());
   const id = comprobante.id;
 
-  // Lista de archivos al abrir.
+  // Una petición trae la lista con las URLs ya firmadas.
   useEffect(() => {
     if (!token) return;
     let vigente = true;
-    apiArchivos(token, id)
+    apiPrevisualizacion(token, id)
       .then((lista) => {
-        if (vigente) setArchivos(archivosPrevisualizables(lista));
+        if (vigente) setArchivos(lista);
       })
-      .catch(() => {
+      .catch((e: unknown) => {
         if (!vigente) return;
+        const mensaje = e instanceof Error ? e.message : "Reintenta en un momento.";
         setArchivos([]);
-        setError("No se pudo leer la lista de archivos. Reintenta.");
-        aviso.error("No se pudo previsualizar", "No se pudo leer la lista de archivos.");
+        setError({ mensaje, gravedad: gravedadDe(e) });
+        aviso.error("No se pudo previsualizar", mensaje, { gravedad: gravedadDe(e) });
       });
     return () => {
       vigente = false;
     };
   }, [token, id]);
 
+  // Los XML se leen en segundo plano, el que se está viendo primero.
   const actual = archivos?.[indice] ?? null;
+  useEffect(() => {
+    if (!archivos) return;
+    const orden = [...archivos].sort((a, b) => Number(b === actual) - Number(a === actual));
+    for (const archivo of orden) {
+      if (archivo.tipo !== "xml" || pedidos.current.has(archivo.id)) continue;
+      pedidos.current.add(archivo.id);
+      fetch(archivo.url)
+        .then(async (respuesta) => {
+          if (!respuesta.ok) throw new Error(String(respuesta.status));
+          const blob = await respuesta.blob();
+          const truncado = blob.size > MAXIMO_XML_BYTES;
+          const bytes = await (truncado ? blob.slice(0, MAXIMO_XML_BYTES) : blob).arrayBuffer();
+          setTextos((previo) => ({
+            ...previo,
+            [archivo.id]: { texto: decodificarXml(bytes), truncado },
+          }));
+        })
+        .catch(() => {
+          setTextos((previo) => ({ ...previo, [archivo.id]: "error" }));
+          aviso.error(
+            `No se pudo previsualizar ${archivo.nombre}`,
+            "El navegador no pudo leer el XML del almacenamiento. Reintenta en un momento.",
+          );
+        });
+    }
+  }, [archivos, actual]);
+
   const total = archivos?.length ?? 0;
 
   return (
@@ -98,86 +136,86 @@ function Previsualizacion({
       }
     >
       <div className="p-4">
-      {archivos === null && <Esqueleto className="h-[60vh] w-full" />}
-      {archivos !== null && total === 0 && !error && (
-        <p className="p-2 text-[13px] text-fg-3">
-          Este comprobante no tiene PDF ni XML archivados para previsualizar.
-        </p>
-      )}
-      {archivos !== null && total === 0 && error && <p className="text-[13px] text-bad">{error}</p>}
-      {actual && <VisorArchivo key={actual.id} token={token} archivo={actual} />}
+        {archivos === null && <Esqueleto className="h-[60vh] w-full" />}
+        {archivos !== null && total === 0 && error && <Aviso {...error} />}
+        {archivos !== null && total === 0 && !error && (
+          <p className="p-2 text-[13px] text-fg-3">
+            Este comprobante no tiene PDF ni XML archivados para previsualizar.
+          </p>
+        )}
+        {actual && (
+          <div className="space-y-2">
+            <p className="flex items-center gap-2 text-[13px] font-medium text-fg">
+              {actual.tipo === "pdf" ? (
+                <FileText className="h-4 w-4 text-fg-3" aria-hidden />
+              ) : (
+                <FileCode2 className="h-4 w-4 text-fg-3" aria-hidden />
+              )}
+              <span className="truncate">{actual.nombre}</span>
+            </p>
+            {actual.tipo === "pdf" ? (
+              <VisorPdf key={actual.id} archivo={actual} />
+            ) : (
+              <VisorXml texto={textos[actual.id]} />
+            )}
+          </div>
+        )}
       </div>
     </Dialogo>
   );
 }
 
-/** Baja y muestra un archivo; `key` por archivo, así que cada uno arranca sin contenido. */
-function VisorArchivo({ token, archivo: actual }: { token: string | null; archivo: ArchivoPrevisualizable }) {
-  const [contenido, setContenido] = useState<Contenido | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!token) return;
-    let vigente = true;
-    let urlObjeto: string | null = null;
-    apiDescargarArchivo(token, actual)
-      .then(async ({ blob }) => {
-        if (actual.tipo === "pdf") {
-          // El bucket puede responder con otro mime; sin `application/pdf` el visor no abre.
-          urlObjeto = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
-          if (vigente) setContenido({ tipo: "pdf", url: urlObjeto });
-          return;
-        }
-        const truncado = blob.size > MAXIMO_XML_BYTES;
-        const texto = decodificarXml(
-          await (truncado ? blob.slice(0, MAXIMO_XML_BYTES) : blob).arrayBuffer(),
-        );
-        if (vigente) setContenido({ tipo: "xml", texto, truncado });
-      })
-      .catch((e: unknown) => {
-        if (!vigente) return;
-        const detalle = e instanceof Error ? e.message : "Reintenta en un momento.";
-        setError(detalle);
-        aviso.error(`No se pudo previsualizar ${actual.nombre}`, detalle);
-      });
-    return () => {
-      vigente = false;
-      if (urlObjeto) URL.revokeObjectURL(urlObjeto);
-    };
-  }, [token, actual]);
-
+function Aviso({ mensaje, gravedad }: { mensaje: string; gravedad: "error" | "aviso" }) {
   return (
-        <div className="space-y-2">
-          <p className="flex items-center gap-2 text-[13px] font-medium text-fg">
-            {actual.tipo === "pdf" ? (
-              <FileText className="h-4 w-4 text-fg-3" aria-hidden />
-            ) : (
-              <FileCode2 className="h-4 w-4 text-fg-3" aria-hidden />
-            )}
-            <span className="truncate">{actual.nombre}</span>
-          </p>
-          {error && <p className="text-[13px] text-bad">{error}</p>}
-          {!error && !contenido && <Esqueleto className="h-[60vh] w-full" />}
-          {contenido?.tipo === "pdf" && (
-            <iframe
-              src={contenido.url}
-              title={actual.nombre}
-              className="h-[65vh] w-full rounded-md border border-line bg-white"
-            />
-          )}
-          {contenido?.tipo === "xml" && (
-            <>
-              <pre className="h-[65vh] overflow-auto rounded-md border border-line bg-surface-2 p-3 font-mono text-[12px] leading-5 break-all whitespace-pre-wrap text-fg-2">
-                {contenido.texto}
-              </pre>
-              {contenido.truncado && (
-                <p className="text-[12px] text-fg-3">
-                  El XML es muy grande: se muestran los primeros 2 MB. Descárgalo para verlo
-                  completo.
-                </p>
-              )}
-            </>
-          )}
+    <p
+      role="alert"
+      className={cn(
+        "flex items-start gap-2 rounded-lg border p-3 text-[13px]",
+        gravedad === "error"
+          ? "border-bad-line bg-bad-bg text-bad"
+          : "border-warn-line bg-warn-bg text-warn",
+      )}
+    >
+      <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      {mensaje}
+    </p>
+  );
+}
+
+/** PDF: el visor del navegador apuntado directo a la URL firmada; el esqueleto se ve hasta que carga. */
+function VisorPdf({ archivo }: { archivo: ApiPrevisualizacionItem }) {
+  const [cargado, setCargado] = useState(false);
+  return (
+    <div className="relative h-[65vh] w-full">
+      {!cargado && <Esqueleto className="absolute inset-0 h-full w-full" />}
+      <iframe
+        src={archivo.url}
+        title={archivo.nombre}
+        onLoad={() => setCargado(true)}
+        className={cn(
+          "h-full w-full rounded-md border border-line bg-white transition-opacity",
+          cargado ? "opacity-100" : "opacity-0",
+        )}
+      />
     </div>
+  );
+}
+
+function VisorXml({ texto }: { texto: Textos[string] | undefined }) {
+  if (texto === "error") {
+    return <Aviso gravedad="error" mensaje="No se pudo leer el XML del almacenamiento." />;
+  }
+  if (!texto) return <Esqueleto className="h-[65vh] w-full" />;
+  return (
+    <>
+      <pre className="h-[65vh] overflow-auto rounded-md border border-line bg-surface-2 p-3 font-mono text-[12px] leading-5 break-all whitespace-pre-wrap text-fg-2">
+        {texto.texto}
+      </pre>
+      {texto.truncado && (
+        <p className="text-[12px] text-fg-3">
+          El XML es muy grande: se muestran los primeros 2 MB. Descárgalo para verlo completo.
+        </p>
+      )}
+    </>
   );
 }

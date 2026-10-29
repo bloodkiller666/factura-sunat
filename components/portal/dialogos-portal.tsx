@@ -2,6 +2,7 @@
 
 import { DetalleComprobante } from "@/components/portal/detalle-comprobante";
 import { DialogoImportar, type PestanaImportar } from "@/components/portal/dialogo-importar";
+import { DialogoCarpeta } from "@/components/portal/dialogo-carpeta";
 import { DialogoPrevisualizar } from "@/components/portal/dialogo-previsualizar";
 import { DialogoRespaldos } from "@/components/portal/dialogo-respaldos";
 import { DialogoSap } from "@/components/portal/dialogo-sap";
@@ -69,6 +70,18 @@ export function DialogosPortal({
         onGuardarEnPc={(c) => void p.guardarEnPc([c])}
         onAbrirCarpeta={(c) => void p.abrirCarpeta(c)}
         cargarArchivos={p.cargarArchivos}
+      />
+
+      <DialogoCarpeta
+        fallo={p.carpetaFallida}
+        onAbrir={async () => {
+          if (p.carpetaFallida) await p.abrirCarpeta(p.carpetaFallida.comprobante);
+        }}
+        onGuardarEnPc={() => {
+          if (p.carpetaFallida) void p.guardarEnPc([p.carpetaFallida.comprobante]);
+        }}
+        guardandoPc={p.guardandoPc}
+        onCerrar={p.cerrarCarpetaFallida}
       />
 
       <DialogoPrevisualizar

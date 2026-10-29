@@ -14,6 +14,7 @@ export const FILTROS_INICIALES: FiltrosState = {
   tipo: "TODOS",
   estadoSunat: "TODOS",
   respaldo: "TODOS",
+  correo: "TODOS",
   origen: "emitido",
   moneda: "TODOS",
   numeroSap: "",
@@ -70,6 +71,8 @@ const RESPALDO_API = {
   NINGUNO: "ninguno",
 } as const;
 
+const CORREO_API = { ENVIADO: "enviado", NO_ENVIADO: "no_enviado" } as const;
+
 /** El servidor exige al menos 2 caracteres para buscar (evita escaneos por una letra). */
 export const MINIMO_BUSQUEDA = 2;
 
@@ -90,6 +93,7 @@ export function filtrosParaApi(filtros: FiltrosState): FiltrosApi {
     ...(filtros.tipo !== "TODOS" ? { tipo_documento: CODIGO_DE_TIPO[filtros.tipo] } : {}),
     ...(filtros.estadoSunat !== "TODOS" ? { estado: filtros.estadoSunat.toLowerCase() } : {}),
     ...(filtros.respaldo !== "TODOS" ? { respaldo: RESPALDO_API[filtros.respaldo] } : {}),
+    ...(filtros.correo !== "TODOS" ? { correo: CORREO_API[filtros.correo] } : {}),
     ...(filtros.moneda !== "TODOS" ? { moneda: filtros.moneda } : {}),
     ...(sap ? { n_sap: sap } : {}),
     ...(filtros.desde ? { fecha_desde: filtros.desde } : {}),

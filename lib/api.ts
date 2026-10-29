@@ -347,6 +347,7 @@ export interface FiltrosApi {
     | "solo_pdf"
     | "xml_pdf"
     | "ninguno";
+  correo?: "enviado" | "no_enviado";
   orden?: "fecha" | "numero" | "cliente" | "importe";
   direccion?: "asc" | "desc";
   limit?: number;
@@ -392,6 +393,52 @@ export async function apiDetalle(token: string, id: string): Promise<ApiDetalle>
 export async function apiArchivos(token: string, id: string): Promise<ApiArchivo[]> {
   const cuerpo = await pedir<{ items: ApiArchivo[] }>(`/api/v1/comprobantes/${id}/archivos`, token);
   return cuerpo.items;
+}
+
+/** Un PDF o XML del comprobante con su URL firmada para verlo directo desde el bucket. */
+export interface ApiPrevisualizacionItem {
+  id: string;
+  tipo: "pdf" | "xml";
+  nombre: string;
+  size_bytes: number | null;
+  url: string;
+}
+
+/**
+ * PDF y XML del comprobante, con las URLs ya firmadas, en UNA petición (en vez de listar y pedir una
+ * URL por archivo: cada viaje a la base cuesta ~300 ms). Primero los PDF y luego los XML.
+ */
+export async function apiPrevisualizacion(
+  token: string,
+  id: string,
+): Promise<ApiPrevisualizacionItem[]> {
+  const guardado = PREVISUALIZACIONES.get(id);
+  if (guardado && guardado.vence > Date.now()) return guardado.items;
+  // La misma petición en curso (precarga + apertura, o el doble efecto de React) se comparte.
+  const enCurso = EN_CURSO.get(id);
+  if (enCurso) return enCurso;
+  const peticion = pedir<{ items: ApiPrevisualizacionItem[] }>(
+    `/api/v1/comprobantes/${id}/previsualizacion`,
+    token,
+  )
+    .then(({ items }) => {
+      PREVISUALIZACIONES.set(id, { items, vence: Date.now() + VIGENCIA_PREVISUALIZACION_MS });
+      return items;
+    })
+    .finally(() => EN_CURSO.delete(id));
+  EN_CURSO.set(id, peticion);
+  return peticion;
+}
+
+/** Las URLs firmadas duran 15 min: se reutilizan 5 min para que reabrir sea instantáneo. */
+const VIGENCIA_PREVISUALIZACION_MS = 5 * 60 * 1000;
+const PREVISUALIZACIONES = new Map<string, { items: ApiPrevisualizacionItem[]; vence: number }>();
+const EN_CURSO = new Map<string, Promise<ApiPrevisualizacionItem[]>>();
+
+/** Solo para pruebas: olvida lo guardado. */
+export function olvidarPrevisualizaciones(): void {
+  PREVISUALIZACIONES.clear();
+  EN_CURSO.clear();
 }
 
 /** URL firmada temporal (15 min) para descargar un archivo del bucket. */

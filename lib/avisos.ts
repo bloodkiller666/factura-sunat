@@ -4,7 +4,11 @@
  * `useSyncExternalStore`.
  */
 
-export type TonoAviso = "ok" | "info" | "aviso";
+/**
+ * `error` (rojo): algo falló. `aviso` (naranja): hay que tener cuidado u orientar, pero no se
+ * rompió nada. `ok` y `info` son los neutros.
+ */
+export type TonoAviso = "ok" | "info" | "aviso" | "error";
 
 export interface Aviso {
   id: number;
@@ -47,7 +51,8 @@ export function avisar(tono: TonoAviso, titulo: string, detalle?: string): numbe
   avisos = [...avisos, { id, titulo, detalle, tono }].slice(-MAXIMO_VISIBLES);
   emitir();
   if (typeof window !== "undefined") {
-    window.setTimeout(() => descartarAviso(id), tono === "aviso" ? DURACION_ERROR_MS : DURACION_MS);
+    const largo = tono === "aviso" || tono === "error";
+    window.setTimeout(() => descartarAviso(id), largo ? DURACION_ERROR_MS : DURACION_MS);
   }
   return id;
 }
@@ -79,15 +84,31 @@ export function registrarFallo(accion: string, mensaje: string): void {
  * Un fallo se muestra al usuario Y queda en «Logs». Los avisos que solo orientan (no hay filas que
  * exportar, la web no puede abrir carpetas locales) pasan `registrar: false`: no son fallos.
  */
-function avisarFallo(titulo: string, detalle?: string, opciones: { registrar?: boolean } = {}) {
+function avisarFallo(
+  titulo: string,
+  detalle?: string,
+  opciones: { registrar?: boolean; gravedad?: "error" | "aviso" } = {},
+) {
   if (opciones.registrar !== false) registrarFallo(titulo, detalle ?? titulo);
-  return avisar("aviso", titulo, detalle);
+  return avisar(opciones.gravedad ?? "error", titulo, detalle);
+}
+
+/**
+ * Gravedad de un fallo según lo que respondió el servidor: sin respuesta o 5xx es ROJO (algo se
+ * rompió); un 4xx (no existe, está en conflicto, falta un dato…) es NARANJA: se puede corregir.
+ */
+export function gravedadDe(error: unknown): "error" | "aviso" {
+  const estado = (error as { status?: unknown } | null)?.status;
+  return typeof estado === "number" && estado >= 400 && estado < 500 ? "aviso" : "error";
 }
 
 export const aviso = {
   ok: (titulo: string, detalle?: string) => avisar("ok", titulo, detalle),
   info: (titulo: string, detalle?: string) => avisar("info", titulo, detalle),
+  /** Un fallo (rojo por defecto): se muestra y queda en «Logs». */
   error: avisarFallo,
+  /** Una advertencia u orientación (naranja): se muestra, no es un fallo y no va a «Logs». */
+  advertencia: (titulo: string, detalle?: string) => avisar("aviso", titulo, detalle),
 };
 
 /** Solo para pruebas: deja la cola vacía. */

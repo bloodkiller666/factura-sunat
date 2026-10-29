@@ -9,6 +9,7 @@ import {
   apiConsultarCdr,
   apiDescargarArchivo,
   apiDescargarTipos,
+  apiPrevisualizacion,
   apiDetalle,
   apiEmpresas,
   apiEvidencias,
@@ -25,7 +26,7 @@ import {
   type ApiPagina,
   type ApiResumen,
 } from "@/lib/api";
-import { aviso, conectarReportadorDeFallos, registrarFallo } from "@/lib/avisos";
+import { aviso, conectarReportadorDeFallos, gravedadDe, registrarFallo } from "@/lib/avisos";
 import {
   guardarArchivos,
   obtenerRaiz,
@@ -518,7 +519,7 @@ export function usePortal(token: string | null) {
             archivos.map((a) => a.nombre).join(", "),
           );
         } catch (error) {
-          aviso.error(`No se pudo descargar el ${tipo.toUpperCase()}`, mensajeDe(error, "Reintenta."));
+          aviso.error(`No se pudo descargar el ${tipo.toUpperCase()}`, mensajeDe(error, "Reintenta."), { gravedad: gravedadDe(error) });
         }
       });
     },
@@ -542,7 +543,7 @@ export function usePortal(token: string | null) {
           }
           recargar();
         } catch (error) {
-          aviso.error("No se pudo consultar a SUNAT", mensajeDe(error, "Reintenta en un momento."));
+          aviso.error("No se pudo consultar a SUNAT", mensajeDe(error, "Reintenta en un momento."), { gravedad: gravedadDe(error) });
         }
       });
     },
@@ -566,7 +567,7 @@ export function usePortal(token: string | null) {
         recargar();
       }
     } catch (error) {
-      aviso.error("No se pudo consultar a SUNAT", mensajeDe(error, "Reintenta en un momento."));
+      aviso.error("No se pudo consultar a SUNAT", mensajeDe(error, "Reintenta en un momento."), { gravedad: gravedadDe(error) });
     } finally {
       setSincronizando(false);
     }
@@ -580,7 +581,7 @@ export function usePortal(token: string | null) {
         aviso.ok("XML importado", "El comprobante se completó con su XML e ítems.");
         recargar();
       } catch (error) {
-        aviso.error("No se pudo importar el XML", mensajeDe(error, "Revisa el archivo."));
+        aviso.error("No se pudo importar el XML", mensajeDe(error, "Revisa el archivo."), { gravedad: gravedadDe(error) });
       }
     },
     [token, rucActivo, recargar],
@@ -634,9 +635,7 @@ export function usePortal(token: string | null) {
         ({ items: conjunto, truncado } = await traerFiltrados(MAX_EXPORTACION));
       }
       if (conjunto.length === 0) {
-        aviso.error("No hay comprobantes para exportar", "Ajusta los filtros o selecciona filas.", {
-          registrar: false,
-        });
+        aviso.advertencia("No hay comprobantes para exportar", "Ajusta los filtros o selecciona filas.");
         return;
       }
       const nombre = descargarExcel(conjunto, empresa);
@@ -647,7 +646,7 @@ export function usePortal(token: string | null) {
           : `${nombre} · ${formatearEntero(conjunto.length)} comprobantes`,
       );
     } catch (error) {
-      aviso.error("No se pudo preparar el reporte", mensajeDe(error, "Reintenta."));
+      aviso.error("No se pudo preparar el reporte", mensajeDe(error, "Reintenta."), { gravedad: gravedadDe(error) });
     } finally {
       setExportando(false);
     }
@@ -660,27 +659,21 @@ export function usePortal(token: string | null) {
       let conjunto = seleccion;
       if (conjunto.length === 0) {
         if ((total ?? Infinity) > MAX_COMPROBANTES_LOTE) {
-          aviso.error(
+          aviso.advertencia(
             `Un lote admite hasta ${MAX_COMPROBANTES_LOTE} comprobantes`,
-            `Hay ${total === null ? "demasiados" : formatearEntero(total)}: selecciona menos o filtra por fechas.`,
-            { registrar: false },
-          );
+            `Hay ${total === null ? "demasiados" : formatearEntero(total)}: selecciona menos o filtra por fechas.`);
           return;
         }
         ({ items: conjunto } = await traerFiltrados(MAX_COMPROBANTES_LOTE));
       }
       if (conjunto.length === 0) {
-        aviso.error("No hay comprobantes para el lote", "Selecciona filas o ajusta los filtros.", {
-          registrar: false,
-        });
+        aviso.advertencia("No hay comprobantes para el lote", "Selecciona filas o ajusta los filtros.");
         return;
       }
       if (conjunto.length > MAX_COMPROBANTES_LOTE) {
-        aviso.error(
+        aviso.advertencia(
           `Un lote admite hasta ${MAX_COMPROBANTES_LOTE} comprobantes`,
-          `Hay ${conjunto.length}: selecciona menos o filtra por fechas.`,
-          { registrar: false },
-        );
+          `Hay ${conjunto.length}: selecciona menos o filtra por fechas.`);
         return;
       }
       aviso.info(
@@ -698,7 +691,7 @@ export function usePortal(token: string | null) {
       );
       recargar();
     } catch (error) {
-      aviso.error("No se pudo armar el lote", mensajeDe(error, "Reintenta."));
+      aviso.error("No se pudo armar el lote", mensajeDe(error, "Reintenta."), { gravedad: gravedadDe(error) });
     } finally {
       setGenerandoLote(false);
     }
@@ -722,9 +715,7 @@ export function usePortal(token: string | null) {
         ({ items: conjunto, truncado } = await traerFiltrados(MAX_DESCARGA_MASIVA));
       }
       if (conjunto.length === 0) {
-        aviso.error("No hay comprobantes para descargar", "Ajusta los filtros o selecciona filas.", {
-          registrar: false,
-        });
+        aviso.advertencia("No hay comprobantes para descargar", "Ajusta los filtros o selecciona filas.");
         return;
       }
       const resumen = await descargarTodoPorPartes(token, empresa, conjunto, {
@@ -753,7 +744,7 @@ export function usePortal(token: string | null) {
         );
       }
     } catch (error) {
-      aviso.error("No se pudo completar la descarga", mensajeDe(error, "Reintenta."));
+      aviso.error("No se pudo completar la descarga", mensajeDe(error, "Reintenta."), { gravedad: gravedadDe(error) });
     } finally {
       cancelarMasiva.current = null;
       setDescargaMasiva(null);
@@ -770,7 +761,7 @@ export function usePortal(token: string | null) {
     async (comprobantes: Comprobante[]) => {
       if (!token || guardandoPc || comprobantes.length === 0) return;
       if (!soportaCarpetaLocal()) {
-        aviso.error("Tu navegador no permite guardar en carpetas", "Usa Chrome o Edge en el equipo.");
+        aviso.advertencia("Tu navegador no permite guardar en carpetas", "Usa Chrome o Edge en el equipo.");
         return;
       }
       setGuardandoPc(true);
@@ -808,7 +799,7 @@ export function usePortal(token: string | null) {
             ? rutaRelativa(raiz.name, partesCarpeta(comprobantes[0]))
             : `${raiz.name}\\AAAA\\MES\\RUC\\SERIE-NÚMERO`;
         if (guardados === 0) {
-          aviso.error("No había nada que guardar", "Estos comprobantes no tienen archivos guardados.");
+          aviso.advertencia("No había nada que guardar", "Estos comprobantes no tienen archivos guardados.");
         } else {
           aviso.ok(
             `${formatearEntero(guardados)} comprobante${guardados === 1 ? "" : "s"} guardado${guardados === 1 ? "" : "s"} en tu PC`,
@@ -818,7 +809,7 @@ export function usePortal(token: string | null) {
           );
         }
       } catch (error) {
-        aviso.error("No se pudo guardar en tu PC", mensajeDe(error, "Reintenta."));
+        aviso.error("No se pudo guardar en tu PC", mensajeDe(error, "Reintenta."), { gravedad: gravedadDe(error) });
       } finally {
         setGuardandoPc(false);
       }
@@ -826,7 +817,27 @@ export function usePortal(token: string | null) {
     [token, guardandoPc],
   );
 
-  /** Abre la carpeta del comprobante en el Explorador (backend local); si no, copia la ruta. */
+  /** Si la carpeta no se pudo abrir sola: la ventana de ayuda (ruta, copiar y reintentar). */
+  /** Pide en silencio lo que necesita la previsualización (el usuario acaba de abrir el menú «⋯»). */
+  const precargarPrevisualizacion = useCallback(
+    (c: Comprobante) => {
+      if (!token || (!c.tieneXml && !c.tienePdf)) return;
+      apiPrevisualizacion(token, c.id).catch(() => {
+        // Sin precarga no pasa nada: al abrir la ventana se vuelve a pedir y ahí sí se avisa.
+      });
+    },
+    [token],
+  );
+
+  const [carpetaFallida, setCarpetaFallida] = useState<CarpetaFallida | null>(null);
+  const cerrarCarpetaFallida = useCallback(() => setCarpetaFallida(null), []);
+
+  /**
+   * Abre la carpeta del comprobante en el Explorador (backend local). Si esa carpeta no existe en
+   * la PC, la restaura desde el bucket y la abre. Si no se puede (p. ej. la web no corre en la PC
+   * del usuario), en vez de un aviso que se esfuma abre una ventana con la ruta y un botón para
+   * reintentar o copiarla.
+   */
   const abrirCarpeta = useCallback(
     async (c: Comprobante) => {
       if (!token) return;
@@ -836,27 +847,26 @@ export function usePortal(token: string | null) {
         try {
           ({ ruta } = await apiAbrirCarpeta(token, partes, c.origen));
         } catch (error) {
-          // La carpeta solo existe si el correo o «Guardar en mi PC» la crearon: si sus archivos
-          // están en el bucket, el backend los copia a la PC y la abre.
+          // 404: la carpeta aún no existe en esta PC. Si los archivos están en el bucket, el
+          // backend los copia a la PC y la abre.
           if (!(error instanceof ApiError && error.status === 404)) throw error;
           ({ ruta } = await apiRestaurarCarpeta(token, c.id));
         }
+        setCarpetaFallida(null);
         aviso.ok("Carpeta abierta", ruta);
       } catch (error) {
-        const relativa = rutaRelativa("Descargas", partes);
         const sinBackendLocal = error instanceof ApiError && error.status === 409;
-        if (sinBackendLocal) {
-          try {
-            await navigator.clipboard.writeText(relativa);
-          } catch {
-            // Sin permiso de portapapeles: la ruta igual aparece en el aviso.
-          }
-        }
-        aviso.error(
-          sinBackendLocal ? "No se puede abrir desde la web" : "No se pudo abrir la carpeta",
-          sinBackendLocal ? `Ruta copiada: ${relativa}` : mensajeDe(error, "Reintenta."),
-          { registrar: !sinBackendLocal }, // sin backend local no es un fallo: es la web
-        );
+        const mensaje = sinBackendLocal
+          ? "La web no puede abrir el Explorador por sí sola: el backend debe correr en tu PC."
+          : mensajeDe(error, "Reintenta en un momento.");
+        // Sin backend local no es un fallo del portal: es el límite de un navegador.
+        if (!sinBackendLocal) registrarFallo("Abrir carpeta", mensaje);
+        setCarpetaFallida({
+          comprobante: c,
+          ruta: rutaRelativa("Descargas", partes),
+          mensaje,
+          gravedad: sinBackendLocal ? "aviso" : gravedadDe(error),
+        });
       }
     },
     [token],
@@ -883,7 +893,7 @@ export function usePortal(token: string | null) {
           descargarBlob(blob, nombre);
           aviso.ok("Evidencia descargada", nombre);
         } catch (error) {
-          aviso.error("No se pudo descargar la evidencia", mensajeDe(error, "Reintenta."));
+          aviso.error("No se pudo descargar la evidencia", mensajeDe(error, "Reintenta."), { gravedad: gravedadDe(error) });
         }
       });
     },
@@ -941,6 +951,9 @@ export function usePortal(token: string | null) {
     guardandoPc,
     guardarEnPc,
     abrirCarpeta,
+    precargarPrevisualizacion,
+    carpetaFallida,
+    cerrarCarpetaFallida,
     exportando,
     descargar,
     consultarCdr,
@@ -958,4 +971,12 @@ export function usePortal(token: string | null) {
 }
 
 /** Todo lo que expone `usePortal`: lo reciben las vistas y los diálogos en que se divide el portal. */
+/** Una carpeta que no se pudo abrir sola, con lo que la ventana de ayuda necesita mostrar. */
+export interface CarpetaFallida {
+  comprobante: Comprobante;
+  ruta: string;
+  mensaje: string;
+  gravedad: "error" | "aviso";
+}
+
 export type EstadoPortal = ReturnType<typeof usePortal>;

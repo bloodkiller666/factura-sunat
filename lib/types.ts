@@ -96,12 +96,17 @@ export type FiltroRespaldo =
   | "XML_PDF"
   | "NINGUNO";
 
+/** Filtro por «Estado correo» (solo Compras). */
+export type FiltroCorreo = "TODOS" | "ENVIADO" | "NO_ENVIADO";
+
 export interface FiltrosState {
   /** Búsqueda por N° de documento, cliente, RUC u orden de compra. */
   q: string;
   tipo: TipoDocumento | "TODOS";
   estadoSunat: EstadoSunat | "TODOS";
   respaldo: FiltroRespaldo;
+  /** Compras con o sin el asunto de su correo cargado. */
+  correo: FiltroCorreo;
   /** Registro que se está viendo: ventas (`emitido`) o compras a proveedores (`recibido`). */
   origen: "emitido" | "recibido";
   /** `PEN` (soles) o `USD` (dólares); los importes no se convierten entre monedas. */

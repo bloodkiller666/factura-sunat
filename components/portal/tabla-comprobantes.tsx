@@ -57,6 +57,8 @@ interface Props {
   onLimpiarSeleccion: () => void;
   onAbrir: (comprobante: Comprobante) => void;
   onPrevisualizar: (comprobante: Comprobante) => void;
+  /** Se llama al abrir el menú «⋯»: adelanta lo que la previsualización va a necesitar. */
+  onPrecargarPrevisualizacion: (comprobante: Comprobante) => void;
   onDescargar: (comprobante: Comprobante, tipo: TipoDescarga) => void;
   onConsultarCdr: (comprobante: Comprobante) => void;
   onExportarExcel: () => void;
@@ -79,6 +81,7 @@ function MenuFila({
   consultando,
   onAbrir,
   onPrevisualizar,
+  onPrecargar,
   onDescargar,
   onConsultarCdr,
 }: {
@@ -87,6 +90,7 @@ function MenuFila({
   consultando: boolean;
   onAbrir: Props["onAbrir"];
   onPrevisualizar: Props["onPrevisualizar"];
+  onPrecargar: Props["onPrecargarPrevisualizacion"];
   onDescargar: Props["onDescargar"];
   onConsultarCdr: Props["onConsultarCdr"];
 }) {
@@ -100,6 +104,10 @@ function MenuFila({
           icono={MoreHorizontal}
           etiqueta={`Más acciones de ${comprobante.numero}`}
           {...props}
+          onClick={() => {
+            props.onClick();
+            onPrecargar(comprobante);
+          }}
         />
       )}
     >
@@ -170,8 +178,9 @@ function CeldaCorreo({ c }: { c: Comprobante }) {
     .join("\n");
   return (
     <div title={detalle ? `${asunto}\n${detalle}` : asunto}>
-      <p className="truncate text-[13px] text-fg">{asunto}</p>
-      {remitente && <p className="truncate text-[11.5px] text-fg-3">{remitente}</p>}
+      {/* Primero quién lo envió (en negrita) y debajo el asunto, más pequeño y en gris. */}
+      <p className="truncate text-[13px] font-semibold text-fg">{remitente || asunto}</p>
+      {remitente && <p className="truncate text-[11.5px] text-fg-3">{asunto}</p>}
     </div>
   );
 }
@@ -208,6 +217,7 @@ export function TablaComprobantes({
   onLimpiarSeleccion,
   onAbrir,
   onPrevisualizar,
+  onPrecargarPrevisualizacion,
   onDescargar,
   onConsultarCdr,
   onExportarExcel,
@@ -421,6 +431,7 @@ export function TablaComprobantes({
                           consultando={consultando.has(c.id)}
                           onAbrir={onAbrir}
                           onPrevisualizar={onPrevisualizar}
+                          onPrecargar={onPrecargarPrevisualizacion}
                           onDescargar={onDescargar}
                           onConsultarCdr={onConsultarCdr}
                         />

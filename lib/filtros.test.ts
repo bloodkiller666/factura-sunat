@@ -98,6 +98,13 @@ describe("filtrosParaApi", () => {
     expect(api("NINGUNO")).toBe("ninguno");
   });
 
+  it("el Estado correo viaja con el nombre que entiende el servidor", () => {
+    expect(filtrosParaApi(con({ origen: "recibido", correo: "ENVIADO" })).correo).toBe("enviado");
+    expect(filtrosParaApi(con({ origen: "recibido", correo: "NO_ENVIADO" })).correo).toBe("no_enviado");
+    expect(filtrosParaApi(con({ origen: "recibido" })).correo).toBeUndefined();
+    expect(hayFiltrosActivos(con({ origen: "recibido", correo: "ENVIADO" }))).toBe(true);
+  });
+
   it("el vencimiento acepta rangos abiertos y no afecta a los indicadores", () => {
     expect(filtrosParaApi(con({ venceHasta: "2026-10-18" }))).toEqual({
       origen: "emitido",

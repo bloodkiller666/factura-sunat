@@ -28,7 +28,7 @@ describe("avisos", () => {
 
     expect(leerAvisos().map((a) => [a.tono, a.titulo])).toEqual([
       ["ok", "Listo"],
-      ["aviso", "Falló"],
+      ["error", "Falló"],
     ]);
     expect(oyente).toHaveBeenCalledTimes(2);
     baja();

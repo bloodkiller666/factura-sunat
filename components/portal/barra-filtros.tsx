@@ -24,6 +24,12 @@ const ETIQUETA_RESPALDO: Record<FiltrosState["respaldo"], string> = {
   NINGUNO: "Sin XML ni PDF",
 };
 
+const ETIQUETA_CORREO: Record<FiltrosState["correo"], string> = {
+  TODOS: "",
+  ENVIADO: "Correo enviado",
+  NO_ENVIADO: "Correo no enviado",
+};
+
 interface Chip {
   clave: string;
   texto: string;
@@ -65,6 +71,13 @@ function chipsActivos(filtros: FiltrosState): Chip[] {
       clave: "respaldo",
       texto: ETIQUETA_RESPALDO[filtros.respaldo],
       quitar: { respaldo: "TODOS" },
+    });
+  }
+  if (filtros.correo !== "TODOS") {
+    chips.push({
+      clave: "correo",
+      texto: ETIQUETA_CORREO[filtros.correo],
+      quitar: { correo: "TODOS" },
     });
   }
   if (filtros.moneda !== "TODOS") {
@@ -143,6 +156,19 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
             <option value="Anulado">Anulado</option>
           </Seleccion>
         </div>
+        {filtros.origen === "recibido" && (
+          <div className="xl:col-span-2">
+            <Seleccion
+              aria-label="Estado correo"
+              value={filtros.correo}
+              onChange={(e) => onCambiar({ correo: e.target.value as FiltrosState["correo"] })}
+            >
+              <option value="TODOS">Estado correo: todos</option>
+              <option value="ENVIADO">Correo enviado</option>
+              <option value="NO_ENVIADO">Correo no enviado</option>
+            </Seleccion>
+          </div>
+        )}
         {filtros.origen === "recibido" && (
           <div className="xl:col-span-2">
             <Seleccion
