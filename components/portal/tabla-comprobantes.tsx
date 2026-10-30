@@ -304,6 +304,9 @@ export function TablaComprobantes({
               <th scope="col" className={TH}>
                 Respaldo
               </th>
+              <th scope="col" className={cn(TH, "hidden lg:table-cell")}>
+                N° de SAP
+              </th>
               {compras && (
                 <th scope="col" className={cn(TH, "hidden xl:table-cell")}>
                   Correo
@@ -314,9 +317,6 @@ export function TablaComprobantes({
                   Estado correo
                 </th>
               )}
-              <th scope="col" className={cn(TH, "hidden lg:table-cell")}>
-                N° de SAP
-              </th>
               <th scope="col" className="w-[84px] px-3 py-2.5">
                 <span className="sr-only">Acciones</span>
               </th>
@@ -410,6 +410,9 @@ export function TablaComprobantes({
                     <td className="px-3 py-2.5">
                       <Respaldos c={c} />
                     </td>
+                    <td className="hidden px-3 py-2.5 lg:table-cell">
+                      <span className="font-mono text-[12px] text-fg-3">{c.numeroSap || "—"}</span>
+                    </td>
                     {compras && (
                       <td className="hidden max-w-[260px] px-3 py-2.5 xl:table-cell">
                         <CeldaCorreo c={c} />
@@ -420,9 +423,6 @@ export function TablaComprobantes({
                         <EstadoCorreoPill estado={estadoCorreo(c)} />
                       </td>
                     )}
-                    <td className="hidden px-3 py-2.5 lg:table-cell">
-                      <span className="font-mono text-[12px] text-fg-3">{c.numeroSap || "—"}</span>
-                    </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center justify-end gap-0.5">
                         <MenuFila
