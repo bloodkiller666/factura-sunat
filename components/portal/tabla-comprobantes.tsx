@@ -414,7 +414,7 @@ export function TablaComprobantes({
                       <span className="font-mono text-[12px] text-fg-3">{c.numeroSap || "—"}</span>
                     </td>
                     {compras && (
-                      <td className="hidden max-w-[260px] px-3 py-2.5 xl:table-cell">
+                      <td className="hidden w-[220px] max-w-[220px] px-3 py-2.5 xl:table-cell">
                         <CeldaCorreo c={c} />
                       </td>
                     )}
