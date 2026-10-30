@@ -370,7 +370,7 @@ export function TablaComprobantes({
                       </p>
                       <p className="text-[12px] text-fg-3">{c.tipo}</p>
                     </td>
-                    <td className="max-w-[300px] px-3 py-2.5">
+                    <td className="w-[240px] max-w-[240px] px-3 py-2.5">
                       <p className="truncate text-[13px] text-fg" title={c.cliente.razonSocial}>
                         {c.cliente.razonSocial}
                       </p>

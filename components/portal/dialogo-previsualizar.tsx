@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, FileCode2, FileText, TriangleAlert } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileCode2,
+  FileText,
+  Mail,
+  TriangleAlert,
+} from "lucide-react";
 import { Boton } from "@/components/ui/boton";
 import { Dialogo } from "@/components/ui/dialogo";
 import { Esqueleto } from "@/components/ui/varios";
@@ -18,7 +25,8 @@ interface Props {
 }
 
 /**
- * Previsualización de los PDF y XML archivados de un comprobante.
+ * Previsualización de los PDF y XML archivados de un comprobante y, en las compras con correo, del
+ * `correo.txt` (asunto, remitente, fecha, adjuntos y cuerpo).
  *
  * Los archivos salen del bucket privado de Cloudflare R2: el backend firma una URL temporal por
  * archivo (una sola petición con todos) y el navegador los lee directo de R2. El PDF se muestra en
@@ -146,18 +154,14 @@ function Previsualizacion({
         {actual && (
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-[13px] font-medium text-fg">
-              {actual.tipo === "pdf" ? (
-                <FileText className="h-4 w-4 text-fg-3" aria-hidden />
-              ) : (
-                <FileCode2 className="h-4 w-4 text-fg-3" aria-hidden />
-              )}
+              {actual.tipo === "pdf" && <FileText className="h-4 w-4 text-fg-3" aria-hidden />}
+              {actual.tipo === "xml" && <FileCode2 className="h-4 w-4 text-fg-3" aria-hidden />}
+              {actual.tipo === "txt" && <Mail className="h-4 w-4 text-fg-3" aria-hidden />}
               <span className="truncate">{actual.nombre}</span>
             </p>
-            {actual.tipo === "pdf" ? (
-              <VisorPdf key={actual.id} archivo={actual} />
-            ) : (
-              <VisorXml texto={textos[actual.id]} />
-            )}
+            {actual.tipo === "pdf" && <VisorPdf key={actual.id} archivo={actual} />}
+            {actual.tipo === "xml" && <VisorXml texto={textos[actual.id]} />}
+            {actual.tipo === "txt" && <VisorTexto texto={actual.texto ?? ""} />}
           </div>
         )}
       </div>
@@ -198,6 +202,15 @@ function VisorPdf({ archivo }: { archivo: ApiPrevisualizacionItem }) {
         )}
       />
     </div>
+  );
+}
+
+/** El `correo.txt`: texto plano que ya viene en la respuesta (no hay nada que descargar). */
+function VisorTexto({ texto }: { texto: string }) {
+  return (
+    <pre className="h-[65vh] overflow-auto rounded-md border border-line bg-surface-2 p-3 font-mono text-[12px] leading-5 break-words whitespace-pre-wrap text-fg-2">
+      {texto}
+    </pre>
   );
 }
 

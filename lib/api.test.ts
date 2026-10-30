@@ -318,6 +318,19 @@ describe("llamadas a la API", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("apiPrevisualizacion agrega el correo.txt de la compra al final, tras los PDF y XML", async () => {
+    olvidarPrevisualizaciones();
+    const items = [{ id: "1", tipo: "pdf", nombre: "f.pdf", size_bytes: 10, url: "https://r2/f.pdf" }];
+    fetchMock.mockResolvedValueOnce(
+      respuesta({ comprobante_id: "c2", items, expires_in: 900, correo_txt: "Asunto: X\n" }),
+    );
+
+    const lista = await apiPrevisualizacion("T", "c2");
+
+    expect(lista.map((i) => i.nombre)).toEqual(["f.pdf", "correo.txt"]);
+    expect(lista[1]).toMatchObject({ tipo: "txt", texto: "Asunto: X\n" });
+  });
+
   it("apiBizlinksRespaldos llama al endpoint de respaldos con límite y fechas", async () => {
     fetchMock.mockResolvedValueOnce(
       respuesta({

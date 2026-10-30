@@ -395,18 +395,27 @@ export async function apiArchivos(token: string, id: string): Promise<ApiArchivo
   return cuerpo.items;
 }
 
-/** Un PDF o XML del comprobante con su URL firmada para verlo directo desde el bucket. */
+/**
+ * Un PDF o XML del comprobante con su URL firmada para verlo directo desde el bucket. El `correo.txt`
+ * (`tipo: "txt"`) no está en el bucket: el servidor manda su texto y se ve igual que un archivo más.
+ */
 export interface ApiPrevisualizacionItem {
   id: string;
-  tipo: "pdf" | "xml";
+  tipo: "pdf" | "xml" | "txt";
   nombre: string;
   size_bytes: number | null;
   url: string;
+  /** Solo en el `correo.txt`: su contenido. */
+  texto?: string;
 }
+
+/** Identificador del `correo.txt` dentro de la lista de previsualización. */
+export const ID_CORREO_TXT = "correo-txt";
 
 /**
  * PDF y XML del comprobante, con las URLs ya firmadas, en UNA petición (en vez de listar y pedir una
- * URL por archivo: cada viaje a la base cuesta ~300 ms). Primero los PDF y luego los XML.
+ * URL por archivo: cada viaje a la base cuesta ~300 ms). Primero los PDF, luego los XML y al final el
+ * `correo.txt` de las compras que lo tienen.
  */
 export async function apiPrevisualizacion(
   token: string,
@@ -417,11 +426,25 @@ export async function apiPrevisualizacion(
   // La misma petición en curso (precarga + apertura, o el doble efecto de React) se comparte.
   const enCurso = EN_CURSO.get(id);
   if (enCurso) return enCurso;
-  const peticion = pedir<{ items: ApiPrevisualizacionItem[] }>(
+  const peticion = pedir<{ items: ApiPrevisualizacionItem[]; correo_txt?: string | null }>(
     `/api/v1/comprobantes/${id}/previsualizacion`,
     token,
   )
-    .then(({ items }) => {
+    .then(({ items: archivos, correo_txt }) => {
+      // El correo.txt va al final, tras los PDF y XML (solo las compras con correo lo traen).
+      const items: ApiPrevisualizacionItem[] = correo_txt
+        ? [
+            ...archivos,
+            {
+              id: ID_CORREO_TXT,
+              tipo: "txt",
+              nombre: "correo.txt",
+              size_bytes: null,
+              url: "",
+              texto: correo_txt,
+            },
+          ]
+        : archivos;
       PREVISUALIZACIONES.set(id, { items, vence: Date.now() + VIGENCIA_PREVISUALIZACION_MS });
       return items;
     })
