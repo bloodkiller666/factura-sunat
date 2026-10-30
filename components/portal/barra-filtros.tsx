@@ -26,8 +26,8 @@ const ETIQUETA_RESPALDO: Record<FiltrosState["respaldo"], string> = {
 
 const ETIQUETA_CORREO: Record<FiltrosState["correo"], string> = {
   TODOS: "",
-  ENVIADO: "Correo enviado",
-  NO_ENVIADO: "Correo no enviado",
+  ENVIADO: "Enviado",
+  NO_ENVIADO: "No enviado",
 };
 
 interface Chip {
@@ -164,8 +164,8 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
               onChange={(e) => onCambiar({ correo: e.target.value as FiltrosState["correo"] })}
             >
               <option value="TODOS">Estado correo: todos</option>
-              <option value="ENVIADO">Correo enviado</option>
-              <option value="NO_ENVIADO">Correo no enviado</option>
+              <option value="ENVIADO">Enviado</option>
+              <option value="NO_ENVIADO">No enviado</option>
             </Seleccion>
           </div>
         )}

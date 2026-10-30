@@ -231,8 +231,8 @@ export function Indicadores({
           <ul className="mt-3 space-y-1">
             {(
               [
-                ["Correo enviado", "bg-ok", metricas.correos.enviados],
-                ["Correo no enviado", "bg-bad", metricas.correos.noEnviados],
+                ["Enviado", "bg-ok", metricas.correos.enviados],
+                ["No enviado", "bg-bad", metricas.correos.noEnviados],
               ] as const
             ).map(([nombre, color, cantidad]) => (
               <li key={nombre} className="flex items-center gap-2 px-1.5 py-1">
