@@ -17,11 +17,12 @@ export function segmentoSeguro(texto: string, vacio: string): string {
   return texto.replace(NO_PERMITIDO, "-").replace(/^[ .]+|[ .]+$/g, "") || vacio;
 }
 
-/** «10» → «OCTUBRE»: en la carpeta el mes va en letras, igual que en el backend y el extractor
- * (`app/core/meses.py`), para que nadie confunda un mes con un día. */
+/** «10» → «10. OCTUBRE»: en la carpeta el mes lleva su número y su nombre, igual que en el
+ * backend y el extractor (`app/core/meses.py`): nadie confunde un mes con un día y las carpetas
+ * se ordenan como el año. */
 export function nombreDeMes(mes: string): string {
   const n = Number(mes);
-  return Number.isInteger(n) && n >= 1 && n <= 12 ? NOMBRES_MES[n - 1].toUpperCase() : "";
+  return Number.isInteger(n) && n >= 1 && n <= 12 ? `${n}. ${NOMBRES_MES[n - 1].toUpperCase()}` : "";
 }
 
 /** Año, mes (en letras), RUC de la contraparte (cliente en ventas, proveedor en compras) y

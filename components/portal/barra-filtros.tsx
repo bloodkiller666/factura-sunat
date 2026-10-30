@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { Campo, CampoBusqueda, Seleccion } from "@/components/ui/campos";
 import { SelectorFechas } from "@/components/ui/selector-fechas";
-import { describirRango } from "@/lib/calendario";
+import { describirRango, type RangoVisible } from "@/lib/calendario";
 import { MINIMO_BUSQUEDA, hayFiltrosActivos } from "@/lib/filtros";
 import type { FiltrosState } from "@/lib/types";
 
@@ -11,6 +11,8 @@ interface Props {
   filtros: FiltrosState;
   onCambiar: (parcial: Partial<FiltrosState>) => void;
   onLimpiar: () => void;
+  /** Fechas que muestra la tabla: el botón de emisión las dice en vez de «Todas las fechas». */
+  fechasVisibles?: RangoVisible | null;
 }
 
 const ETIQUETA_RESPALDO: Record<FiltrosState["respaldo"], string> = {
@@ -97,7 +99,7 @@ function chipsActivos(filtros: FiltrosState): Chip[] {
   return chips;
 }
 
-export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
+export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = null }: Props) {
   const chips = chipsActivos(filtros);
   const busquedaCorta = filtros.q.trim().length > 0 && filtros.q.trim().length < MINIMO_BUSQUEDA;
 
@@ -121,6 +123,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar }: Props) {
           desde={filtros.desde}
           hasta={filtros.hasta}
           onChange={(rango) => onCambiar(rango)}
+          rangoVisible={fechasVisibles}
           className="w-full xl:col-span-2"
         />
         <SelectorFechas

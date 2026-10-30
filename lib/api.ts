@@ -102,6 +102,9 @@ export interface ApiPagina {
   has_more: boolean;
   /** Total del conjunto filtrado; ausente si se pidió `contar=false`. */
   total?: number | null;
+  /** Primera y última fecha de emisión del conjunto filtrado (solo con `contar`). */
+  fecha_desde?: string | null;
+  fecha_hasta?: string | null;
 }
 
 /** Indicadores del conjunto filtrado, calculados en la base de datos. */
@@ -396,12 +399,13 @@ export async function apiArchivos(token: string, id: string): Promise<ApiArchivo
 }
 
 /**
- * Un PDF o XML del comprobante con su URL firmada para verlo directo desde el bucket. El `correo.txt`
- * (`tipo: "txt"`) no está en el bucket: el servidor manda su texto y se ve igual que un archivo más.
+ * Un PDF, XML o CDR (XML) del comprobante con su URL firmada para verlo directo desde el bucket. El
+ * `correo.txt` (`tipo: "txt"`) no está en el bucket: el servidor manda su texto y se ve igual que un
+ * archivo más.
  */
 export interface ApiPrevisualizacionItem {
   id: string;
-  tipo: "pdf" | "xml" | "txt";
+  tipo: "pdf" | "xml" | "cdr" | "txt";
   nombre: string;
   size_bytes: number | null;
   url: string;
@@ -409,13 +413,13 @@ export interface ApiPrevisualizacionItem {
   texto?: string;
 }
 
-/** Identificador del `correo.txt` dentro de la lista de previsualización. */
+/** Identificador de cada `correo.txt` dentro de la lista de previsualización. */
 export const ID_CORREO_TXT = "correo-txt";
 
 /**
- * PDF y XML del comprobante, con las URLs ya firmadas, en UNA petición (en vez de listar y pedir una
- * URL por archivo: cada viaje a la base cuesta ~300 ms). Primero los PDF, luego los XML y al final el
- * `correo.txt` de las compras que lo tienen.
+ * PDF, XML y CDR del comprobante, con las URLs ya firmadas, en UNA petición (en vez de listar y
+ * pedir una URL por archivo: cada viaje a la base cuesta ~300 ms). Primero los PDF, luego los XML y
+ * los CDR y al final los `correo.txt` de las compras que los tienen (uno por correo en que llegó).
  */
 export async function apiPrevisualizacion(
   token: string,
@@ -426,25 +430,33 @@ export async function apiPrevisualizacion(
   // La misma petición en curso (precarga + apertura, o el doble efecto de React) se comparte.
   const enCurso = EN_CURSO.get(id);
   if (enCurso) return enCurso;
-  const peticion = pedir<{ items: ApiPrevisualizacionItem[]; correo_txt?: string | null }>(
-    `/api/v1/comprobantes/${id}/previsualizacion`,
-    token,
-  )
-    .then(({ items: archivos, correo_txt }) => {
-      // El correo.txt va al final, tras los PDF y XML (solo las compras con correo lo traen).
-      const items: ApiPrevisualizacionItem[] = correo_txt
-        ? [
-            ...archivos,
-            {
-              id: ID_CORREO_TXT,
-              tipo: "txt",
-              nombre: "correo.txt",
-              size_bytes: null,
-              url: "",
-              texto: correo_txt,
-            },
-          ]
-        : archivos;
+  const peticion = pedir<{
+    items: ApiPrevisualizacionItem[];
+    correo_txt?: string | null;
+    correos_txt?: Array<{ nombre: string; texto: string }>;
+  }>(`/api/v1/comprobantes/${id}/previsualizacion`, token)
+    .then(({ items: archivos, correo_txt, correos_txt }) => {
+      // Los correo.txt van al final, tras los PDF, XML y CDR (solo las compras con correo los
+      // traen). Un servidor anterior solo mandaba uno (`correo_txt`).
+      const correos =
+        correos_txt && correos_txt.length > 0
+          ? correos_txt
+          : correo_txt
+            ? [{ nombre: "correo.txt", texto: correo_txt }]
+            : [];
+      const items: ApiPrevisualizacionItem[] = [
+        ...archivos,
+        ...correos.map(
+          (correo, i): ApiPrevisualizacionItem => ({
+            id: `${ID_CORREO_TXT}-${i}`,
+            tipo: "txt",
+            nombre: correo.nombre,
+            size_bytes: null,
+            url: "",
+            texto: correo.texto,
+          }),
+        ),
+      ];
       PREVISUALIZACIONES.set(id, { items, vence: Date.now() + VIGENCIA_PREVISUALIZACION_MS });
       return items;
     })
@@ -558,7 +570,8 @@ export async function apiDescargarTipos(
   const archivos = await apiArchivos(token, comprobanteId);
   const delTipo = archivos.filter((candidato) => candidato.tipo === tipo);
   if (delTipo.length === 0) return [await apiDescargarTipo(token, comprobanteId, tipo)];
-  const aBajar = tipo === "pdf" ? delTipo : delTipo.slice(0, 1);
+  // Una compra puede tener varios PDF (factura, guías…) y más de un CDR: se bajan todos.
+  const aBajar = tipo === "pdf" || tipo === "cdr" ? delTipo : delTipo.slice(0, 1);
   return Promise.all(aBajar.map((archivo) => apiDescargarArchivo(token, archivo)));
 }
 

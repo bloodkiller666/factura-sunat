@@ -27,6 +27,7 @@ import {
   type ApiResumen,
 } from "@/lib/api";
 import { aviso, conectarReportadorDeFallos, gravedadDe, registrarFallo } from "@/lib/avisos";
+import type { RangoVisible } from "@/lib/calendario";
 import {
   guardarArchivos,
   obtenerRaiz,
@@ -83,6 +84,8 @@ interface PaginaCargada {
   hayMas: boolean;
   /** Total del conjunto filtrado; `null` solo si el servidor aún no lo ha contado. */
   total: number | null;
+  /** Primera y última fecha de emisión del conjunto filtrado (lo que muestra la tabla). */
+  fechas: RangoVisible | null;
   error: string | null;
 }
 
@@ -146,6 +149,7 @@ export function usePortal(token: string | null) {
   // Páginas ya pedidas y totales ya contados: ir y volver es instantáneo y no se recuenta.
   const cachePaginas = useRef(new Map<string, ApiPagina>());
   const cacheTotales = useRef(new Map<string, number>());
+  const cacheFechas = useRef(new Map<string, RangoVisible | null>());
   const cacheResumen = useRef(new Map<string, ApiResumen>());
 
   const empresa = useMemo(
@@ -193,6 +197,7 @@ export function usePortal(token: string | null) {
   const actualizando = hayDatos && cargada?.clave !== clavePagina;
   const items = useMemo(() => (hayDatos && cargada ? cargada.items : []), [hayDatos, cargada]);
   const total = hayDatos && cargada ? cargada.total : null;
+  const fechasVisibles = hayDatos && cargada ? cargada.fechas : null;
 
   const hayResumen = Boolean(resumen && resumen.ruc === rucActivo);
   const metricas = useMemo(
@@ -259,6 +264,12 @@ export function usePortal(token: string | null) {
     const aplicar = (respuesta: ApiPagina) => {
       if (respuesta.total !== null && respuesta.total !== undefined) {
         cacheTotales.current.set(claveTotal, respuesta.total);
+        cacheFechas.current.set(
+          claveTotal,
+          respuesta.fecha_desde && respuesta.fecha_hasta
+            ? { desde: respuesta.fecha_desde, hasta: respuesta.fecha_hasta }
+            : null,
+        );
       }
       const nuevos = respuesta.items.map(mapComprobante);
       setCargada({
@@ -267,6 +278,7 @@ export function usePortal(token: string | null) {
         items: nuevos,
         hayMas: respuesta.has_more,
         total: cacheTotales.current.get(claveTotal) ?? null,
+        fechas: cacheFechas.current.get(claveTotal) ?? null,
         error: null,
       });
       // La selección guarda copias: se refrescan con lo último que trajo el servidor.
@@ -313,6 +325,7 @@ export function usePortal(token: string | null) {
           items: [],
           hayMas: false,
           total: null,
+          fechas: null,
           error: mensaje,
         });
       }
@@ -773,12 +786,15 @@ export function usePortal(token: string | null) {
         for (const c of comprobantes) {
           const existentes = await apiArchivos(token, c.id);
           const aGuardar: Array<{ nombre: string; blob: Blob }> = [];
-          // Compras: XML y PDF (no guardan CDR). Ventas: XML y CDR (no hay PDF).
-          const tipos = c.origen === "recibido" ? (["xml", "pdf"] as const) : (["xml", "cdr"] as const);
+          // Compras: XML, PDF y el CDR si llegó por correo. Ventas: XML y CDR (no hay PDF).
+          const tipos =
+            c.origen === "recibido"
+              ? (["xml", "pdf", "cdr"] as const)
+              : (["xml", "cdr"] as const);
           for (const tipo of tipos) {
-            // Todos los PDF de la compra (factura, guías, notas…); del resto, el primero.
+            // Todos los PDF y CDR de la compra (factura, guías, notas…); del resto, el primero.
             const delTipo = existentes.filter((a) => a.tipo === tipo);
-            for (const archivo of tipo === "pdf" ? delTipo : delTipo.slice(0, 1)) {
+            for (const archivo of tipo === "pdf" || tipo === "cdr" ? delTipo : delTipo.slice(0, 1)) {
               try {
                 const { blob, nombre } = await apiDescargarArchivo(token, archivo);
                 aGuardar.push({ nombre, blob });
@@ -926,6 +942,7 @@ export function usePortal(token: string | null) {
     hayMas: hayDatos && cargada ? cargada.hayMas : false,
     comprobantes: items,
     total,
+    fechasVisibles,
     metricas,
     actualizandoResumen,
     errorResumen,

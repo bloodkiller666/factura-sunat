@@ -7,6 +7,7 @@ import {
   FileCode2,
   FileText,
   Mail,
+  ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
@@ -25,8 +26,8 @@ interface Props {
 }
 
 /**
- * Previsualización de los PDF y XML archivados de un comprobante y, en las compras con correo, del
- * `correo.txt` (asunto, remitente, fecha, adjuntos y cuerpo).
+ * Previsualización de los PDF, XML y CDR archivados de un comprobante y, en las compras con correo,
+ * de cada `correo.txt` (asunto, remitente, fecha, adjuntos y cuerpo).
  *
  * Los archivos salen del bucket privado de Cloudflare R2: el backend firma una URL temporal por
  * archivo (una sola petición con todos) y el navegador los lee directo de R2. El PDF se muestra en
@@ -88,7 +89,9 @@ function Previsualizacion({
     if (!archivos) return;
     const orden = [...archivos].sort((a, b) => Number(b === actual) - Number(a === actual));
     for (const archivo of orden) {
-      if (archivo.tipo !== "xml" || pedidos.current.has(archivo.id)) continue;
+      if ((archivo.tipo !== "xml" && archivo.tipo !== "cdr") || pedidos.current.has(archivo.id)) {
+        continue;
+      }
       pedidos.current.add(archivo.id);
       fetch(archivo.url)
         .then(async (respuesta) => {
@@ -156,11 +159,14 @@ function Previsualizacion({
             <p className="flex items-center gap-2 text-[13px] font-medium text-fg">
               {actual.tipo === "pdf" && <FileText className="h-4 w-4 text-fg-3" aria-hidden />}
               {actual.tipo === "xml" && <FileCode2 className="h-4 w-4 text-fg-3" aria-hidden />}
+              {actual.tipo === "cdr" && <ShieldCheck className="h-4 w-4 text-fg-3" aria-hidden />}
               {actual.tipo === "txt" && <Mail className="h-4 w-4 text-fg-3" aria-hidden />}
               <span className="truncate">{actual.nombre}</span>
             </p>
             {actual.tipo === "pdf" && <VisorPdf key={actual.id} archivo={actual} />}
-            {actual.tipo === "xml" && <VisorXml texto={textos[actual.id]} />}
+            {(actual.tipo === "xml" || actual.tipo === "cdr") && (
+              <VisorXml texto={textos[actual.id]} />
+            )}
             {actual.tipo === "txt" && <VisorTexto texto={actual.texto ?? ""} />}
           </div>
         )}

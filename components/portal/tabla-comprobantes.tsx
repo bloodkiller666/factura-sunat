@@ -131,17 +131,15 @@ function MenuFila({
       >
         Descargar XML
       </ItemMenu>
-      {/* Las compras no guardan CDR: solo XML y PDF. */}
-      {comprobante.origen === "emitido" && (
-        <ItemMenu
-          icono={ShieldCheck}
-          deshabilitado={!comprobante.tieneCdr}
-          ayuda={comprobante.tieneCdr ? undefined : "No archivado"}
-          onClick={() => onDescargar(comprobante, "cdr")}
-        >
-          Descargar CDR
-        </ItemMenu>
-      )}
+      {/* El CDR de una compra es el que mandó el proveedor en su correo (XML). */}
+      <ItemMenu
+        icono={ShieldCheck}
+        deshabilitado={!comprobante.tieneCdr}
+        ayuda={comprobante.tieneCdr ? undefined : "No archivado"}
+        onClick={() => onDescargar(comprobante, "cdr")}
+      >
+        Descargar CDR
+      </ItemMenu>
       {comprobante.origen === "recibido" && (
         <ItemMenu
           icono={FileText}
@@ -190,6 +188,7 @@ function Respaldos({ c }: { c: Comprobante }) {
     <span className="inline-flex items-center gap-1">
       <ChipRespaldo nombre="XML" presente={c.tieneXml} />
       {c.origen === "emitido" && <ChipRespaldo nombre="CDR" presente={c.tieneCdr} />}
+      {c.origen === "recibido" && c.tieneCdr && <ChipRespaldo nombre="CDR" presente />}
       {c.origen === "recibido" && <ChipRespaldo nombre="PDF" presente={c.tienePdf} />}
     </span>
   );

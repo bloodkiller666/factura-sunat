@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   atajosDeRango,
   describirRango,
+  describirRangoVisible,
   diaDeSemana,
   diasDelMes,
   enRango,
@@ -109,6 +110,20 @@ describe("rangos", () => {
     expect(describirRango("", "")).toBe("Todas las fechas");
     expect(describirRango("2026-09-01", "2026-09-30")).toBe("Setiembre 2026");
     expect(describirRango("2026-09-05", "2026-09-20")).toBe("05/09/2026 – 20/09/2026");
+  });
+
+  it("el botón dice de qué día a qué día muestra la tabla, no «Todas las fechas»", () => {
+    const visible = { desde: "2026-08-05", hasta: "2026-10-28" };
+    expect(describirRangoVisible("", "", visible)).toBe("05/08/2026 – 28/10/2026");
+    // Con un filtro, la tabla muestra solo esas filas y el texto sigue a la tabla.
+    expect(describirRangoVisible("2026-09-01", "2026-09-30", { desde: "2026-09-01", hasta: "2026-09-27" })).toBe(
+      "01/09/2026 – 27/09/2026",
+    );
+    // Un solo día.
+    expect(describirRangoVisible("", "", { desde: "2026-10-28", hasta: "2026-10-28" })).toBe("28/10/2026");
+    // Sin datos todavía, se usa el rango elegido.
+    expect(describirRangoVisible("", "", null)).toBe("Todas las fechas");
+    expect(describirRangoVisible("2026-09-01", "2026-09-30", undefined)).toBe("Setiembre 2026");
     expect(describirRango("2026-09-05", "2026-09-05")).toBe("05/09/2026");
     expect(describirRango("2026-09-05", "")).toBe("Desde 05/09/2026");
     expect(describirRango("", "2026-09-20")).toBe("Hasta 20/09/2026");

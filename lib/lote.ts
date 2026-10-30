@@ -199,12 +199,13 @@ export async function construirLoteRespaldo(
       manifiesto.push([carpeta, nombre, tipo, String(bytes.length), await sha256(bytes)]);
     };
 
-    // Ventas: XML y CDR. Compras: XML y PDF (las compras no guardan CDR y en ventas no hay PDF).
-    const tipos: Array<readonly ["xml" | "cdr" | "pdf", TipoRespaldo]> =
-      comprobante.origen === "recibido"
-        ? [
+    // Ventas: XML y CDR. Compras: XML, PDF y el CDR si el proveedor lo mandó (en ventas no hay PDF).
+    const esCompra = comprobante.origen === "recibido";
+    const tipos: Array<readonly ["xml" | "cdr" | "pdf", TipoRespaldo]> = esCompra
+      ? [
             ["xml", "XML"],
             ["pdf", "PDF"],
+            ["cdr", "CDR"],
           ]
         : [
             ["xml", "XML"],
@@ -216,9 +217,10 @@ export async function construirLoteRespaldo(
       for (const [tipo, etiqueta] of tipos) {
         // El PDF de una compra puede ser varios (factura, guía de remisión, nota…): van todos.
         const delTipo = guardados.filter((candidato) => candidato.tipo === tipo);
-        const aBajar = tipo === "pdf" ? delTipo : delTipo.slice(0, 1);
+        const aBajar = tipo === "pdf" || (tipo === "cdr" && esCompra) ? delTipo : delTipo.slice(0, 1);
         if (aBajar.length === 0) {
-          faltan.push(etiqueta);
+          // El CDR de una compra solo existe si el proveedor lo mandó: no es un faltante.
+          if (!(tipo === "cdr" && esCompra)) faltan.push(etiqueta);
           continue;
         }
         // Un archivo que no baja no invalida al otro: solo ese figura como faltante.
@@ -232,7 +234,9 @@ export async function construirLoteRespaldo(
         }
       }
     } catch {
-      faltan.push(...tipos.map(([, etiqueta]) => etiqueta));
+      faltan.push(
+        ...tipos.filter(([tipo]) => !(tipo === "cdr" && esCompra)).map(([, etiqueta]) => etiqueta),
+      );
     }
 
     if (faltan.length > 0) faltantes.push({ numero: comprobante.numero, faltan });

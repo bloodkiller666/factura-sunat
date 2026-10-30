@@ -8,6 +8,7 @@ import {
   atajosDeRango,
   atajosDeVencimiento,
   describirRango,
+  describirRangoVisible,
   enRango,
   hoyIso,
   ordenarRango,
@@ -18,6 +19,7 @@ import {
   sumarMeses,
   ultimoDiaDelMes,
   type Rango,
+  type RangoVisible,
 } from "@/lib/calendario";
 import { formatearFechaLarga } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,8 @@ interface Props {
    * adelante («Próximos 7 días», «Ya vencidos») y otro rótulo.
    */
   modo?: "emision" | "vencimiento";
+  /** Fechas que muestra la tabla: el botón de emisión las dice en vez de «Todas las fechas». */
+  rangoVisible?: RangoVisible | null;
 }
 
 const ANCHO_PANEL = 548;
@@ -53,6 +57,7 @@ export function SelectorFechas({
   deshabilitado,
   className,
   modo = "emision",
+  rangoVisible = null,
 }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [movil, setMovil] = useState(false);
@@ -176,7 +181,8 @@ export function SelectorFechas({
   const previa: Rango | null =
     inicio !== null ? ordenarRango(inicio, sobre ?? inicio) : desde && hasta ? { desde, hasta } : null;
 
-  const etiqueta = describirRango(desde, hasta);
+  const etiqueta =
+    modo === "emision" ? describirRangoVisible(desde, hasta, rangoVisible) : describirRango(desde, hasta);
   const textoBoton = hayRango || modo === "emision" ? etiqueta : "Vencimiento: todos";
 
   const contenido = (

@@ -74,13 +74,13 @@ describe("construirLoteRespaldo", () => {
 
     const zip = await leerZip(resultado.zip);
     expect([...zip.keys()].sort()).toEqual([
-      "2026/SETIEMBRE/20987654321/F001-00000001/20514831620-01-F001-00000001.xml",
-      "2026/SETIEMBRE/20987654321/F001-00000001/R-20514831620-01-F001-00000001.zip",
+      "2026/9. SETIEMBRE/20987654321/F001-00000001/20514831620-01-F001-00000001.xml",
+      "2026/9. SETIEMBRE/20987654321/F001-00000001/R-20514831620-01-F001-00000001.zip",
       "LEEME.txt",
       "manifiesto.csv",
     ]);
     expect(
-      texto(zip.get("2026/SETIEMBRE/20987654321/F001-00000001/20514831620-01-F001-00000001.xml")!),
+      texto(zip.get("2026/9. SETIEMBRE/20987654321/F001-00000001/20514831620-01-F001-00000001.xml")!),
     ).toBe("contenido de 20514831620-01-F001-00000001.xml");
 
     const filas = texto(zip.get("manifiesto.csv")!).split("\r\n");
@@ -91,7 +91,7 @@ describe("construirLoteRespaldo", () => {
     expect(texto(zip.get("LEEME.txt")!)).toContain("Todos los comprobantes del lote tienen sus archivos");
   });
 
-  it("en compras lleva el XML y el PDF; el CDR no se pide ni se incluye", async () => {
+  it("en compras lleva el XML, el PDF y el CDR que mandó el proveedor; un ZIP suelto no", async () => {
     const c = compra({ numero: "F010-00000456" });
     const pedidos: string[] = [];
     const resultado = await construirLoteRespaldo(
@@ -104,7 +104,9 @@ describe("construirLoteRespaldo", () => {
           [c.id]: [
             archivo("xml", "f.xml"),
             archivo("pdf", "f.pdf"),
-            // Un CDR que se archivó antes: sigue en el bucket pero el lote no lo toma.
+            // El CDR que el proveedor mandó por correo (XML) va con la compra.
+            archivo("cdr", "CDR-f.xml"),
+            // Un ZIP suelto no es de respaldo: el lote no lo toma.
             archivo("zip", "R-f.zip"),
           ],
         },
@@ -117,11 +119,12 @@ describe("construirLoteRespaldo", () => {
       ),
     );
 
-    expect(pedidos.sort()).toEqual(["f.pdf", "f.xml"]);
+    expect(pedidos.sort()).toEqual(["CDR-f.xml", "f.pdf", "f.xml"]);
     const zip = await leerZip(resultado.zip);
     expect([...zip.keys()].sort()).toEqual([
-      "2026/SETIEMBRE/20999999999/F010-00000456/f.pdf",
-      "2026/SETIEMBRE/20999999999/F010-00000456/f.xml",
+      "2026/9. SETIEMBRE/20999999999/F010-00000456/CDR-f.xml",
+      "2026/9. SETIEMBRE/20999999999/F010-00000456/f.pdf",
+      "2026/9. SETIEMBRE/20999999999/F010-00000456/f.xml",
       "LEEME.txt",
       "manifiesto.csv",
     ]);
@@ -145,9 +148,9 @@ describe("construirLoteRespaldo", () => {
 
     const zip = await leerZip(resultado.zip);
     expect([...zip.keys()].sort()).toEqual([
-      "2026/SETIEMBRE/20999999999/F010-00000456/f.xml",
-      "2026/SETIEMBRE/20999999999/F010-00000456/factura.pdf",
-      "2026/SETIEMBRE/20999999999/F010-00000456/guia de remision.pdf",
+      "2026/9. SETIEMBRE/20999999999/F010-00000456/f.xml",
+      "2026/9. SETIEMBRE/20999999999/F010-00000456/factura.pdf",
+      "2026/9. SETIEMBRE/20999999999/F010-00000456/guia de remision.pdf",
       "LEEME.txt",
       "manifiesto.csv",
     ]);

@@ -1,13 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { guardarArchivos, partesCarpeta, rutaRelativa, segmentoSeguro } from "./carpeta-local";
+import { guardarArchivos, nombreDeMes, partesCarpeta, rutaRelativa, segmentoSeguro } from "./carpeta-local";
 
 const doc = { fechaEmision: "2026-09-05", numero: "FF01-00000123", cliente: { ruc: "20100000001", razonSocial: "X" } };
 
+describe("nombreDeMes", () => {
+  it("lleva el número y el nombre: «1. ENERO», «10. OCTUBRE»", () => {
+    expect(["01", "02", "9", "10", "12"].map(nombreDeMes)).toEqual([
+      "1. ENERO",
+      "2. FEBRERO",
+      "9. SETIEMBRE",
+      "10. OCTUBRE",
+      "12. DICIEMBRE",
+    ]);
+    expect(nombreDeMes("13")).toBe("");
+    expect(nombreDeMes("")).toBe("");
+  });
+});
+
 describe("partesCarpeta", () => {
   it("arma año / mes / documento / RUC", () => {
-    expect(partesCarpeta(doc)).toEqual(["2026", "SETIEMBRE", "20100000001", "FF01-00000123"]);
+    expect(partesCarpeta(doc)).toEqual(["2026", "9. SETIEMBRE", "20100000001", "FF01-00000123"]);
     expect(rutaRelativa("Descargas", partesCarpeta(doc))).toBe(
-      "Descargas\\2026\\SETIEMBRE\\20100000001\\FF01-00000123",
+      "Descargas\\2026\\9. SETIEMBRE\\20100000001\\FF01-00000123",
     );
   });
 
@@ -70,7 +84,7 @@ describe("guardarArchivos", () => {
       { nombre: "F.xml", blob: new Blob(["<xml/>"]) },
       { nombre: "R-F.zip", blob: new Blob(["cdr"]) },
     ]);
-    const hoja = raiz.hijos.get("2026")!.hijos.get("SETIEMBRE")!.hijos.get("20100000001")!.hijos.get("FF01-00000123")!;
+    const hoja = raiz.hijos.get("2026")!.hijos.get("9. SETIEMBRE")!.hijos.get("20100000001")!.hijos.get("FF01-00000123")!;
     expect([...hoja.archivos.entries()]).toEqual([
       ["F.xml", "<xml/>"],
       ["R-F.zip", "cdr"],

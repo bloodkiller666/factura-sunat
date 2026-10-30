@@ -177,6 +177,28 @@ export function mesCompleto(desde: string, hasta: string): string | null {
   return desde.slice(0, 7);
 }
 
+/** Rango de fechas de emisión que muestra la tabla (primera y última fila del conjunto filtrado). */
+export interface RangoVisible {
+  desde: string;
+  hasta: string;
+}
+
+/**
+ * Texto del botón de fechas según lo que muestra la tabla: «05/08/2026 – 28/10/2026» (o un solo día).
+ * Sin datos todavía, se usa el rango elegido (`describirRango`). Se adapta solo: si llegan comprobantes
+ * con fechas posteriores o se filtra por fechas, el rango de la tabla cambia y el texto con él.
+ */
+export function describirRangoVisible(
+  desde: string,
+  hasta: string,
+  visible: RangoVisible | null | undefined,
+): string {
+  if (!visible?.desde || !visible?.hasta) return describirRango(desde, hasta);
+  return visible.desde === visible.hasta
+    ? formatearFecha(visible.desde)
+    : `${formatearFecha(visible.desde)} – ${formatearFecha(visible.hasta)}`;
+}
+
 /** Texto del rango para el botón y los indicadores. */
 export function describirRango(desde: string, hasta: string): string {
   if (!desde && !hasta) return "Todas las fechas";

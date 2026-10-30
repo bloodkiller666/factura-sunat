@@ -331,6 +331,36 @@ describe("llamadas a la API", () => {
     expect(lista[1]).toMatchObject({ tipo: "txt", texto: "Asunto: X\n" });
   });
 
+  it("apiPrevisualizacion trae cada correo.txt (uno por correo) y el CDR junto a los demás archivos", async () => {
+    olvidarPrevisualizaciones();
+    const items = [
+      { id: "1", tipo: "pdf", nombre: "f.pdf", size_bytes: 10, url: "https://r2/f.pdf" },
+      { id: "2", tipo: "cdr", nombre: "CDR-f.xml", size_bytes: 5, url: "https://r2/cdr.xml" },
+    ];
+    fetchMock.mockResolvedValueOnce(
+      respuesta({
+        comprobante_id: "c3",
+        items,
+        expires_in: 900,
+        correos_txt: [
+          { nombre: "correo.txt", texto: "primero" },
+          { nombre: "correo (2).txt", texto: "segundo" },
+        ],
+        correo_txt: "primero",
+      }),
+    );
+
+    const lista = await apiPrevisualizacion("T", "c3");
+
+    expect(lista.map((i) => [i.tipo, i.nombre])).toEqual([
+      ["pdf", "f.pdf"],
+      ["cdr", "CDR-f.xml"],
+      ["txt", "correo.txt"],
+      ["txt", "correo (2).txt"],
+    ]);
+    expect(lista[3].texto).toBe("segundo");
+  });
+
   it("apiBizlinksRespaldos llama al endpoint de respaldos con límite y fechas", async () => {
     fetchMock.mockResolvedValueOnce(
       respuesta({

@@ -71,7 +71,12 @@ export function VistaComprobantes({ p, compras, onRespaldos, onImportar, onSap, 
         conRespaldo={!compras}
       />
 
-      <BarraFiltros filtros={p.filtros} onCambiar={p.cambiarFiltros} onLimpiar={p.limpiarFiltros} />
+      <BarraFiltros
+        filtros={p.filtros}
+        onCambiar={p.cambiarFiltros}
+        onLimpiar={p.limpiarFiltros}
+        fechasVisibles={p.fechasVisibles}
+      />
 
       <TablaComprobantes
         comprobantes={p.comprobantes}
