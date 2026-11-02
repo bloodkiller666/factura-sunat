@@ -64,7 +64,7 @@ function Tarjeta({
         {titulo}
       </p>
       <p className="tnum mt-1 text-[18px] leading-6 font-semibold text-fg">{valor}</p>
-      {ayuda && <p className="mt-0.5 text-[11.5px] leading-4 text-fg-3">{ayuda}</p>}
+      {ayuda && <p className="mt-0.5 text-[12px] leading-4 text-fg-3">{ayuda}</p>}
     </div>
   );
 }
@@ -107,7 +107,7 @@ function Pendientes({ estado }: { estado: ApiEstadoAutomatizacion }) {
               {estado.sueltos_pendientes.length === 0 && <li className="font-sans">Ninguno.</li>}
             </ul>
           </div>
-          <p className="text-[11.5px] sm:col-span-2">
+          <p className="text-[12px] sm:col-span-2">
             Se reintentan solos en la siguiente corrida. Un PDF sin XML solo se une a una compra si su
             texto trae el RUC y la serie-número.
           </p>
@@ -321,7 +321,7 @@ export function VistaLogs({ token, ruc }: Props) {
           <>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] border-collapse text-left">
-                <thead className="bg-surface-2 text-[11.5px] font-medium tracking-wide text-fg-3 uppercase shadow-[0_1px_0_var(--line)]">
+                <thead className="bg-surface-2 text-[12px] font-medium tracking-wide text-fg-3 uppercase shadow-[0_1px_0_var(--line)]">
                   <tr>
                     <th className="w-8 py-2.5 pl-3">
                       <span className="sr-only">Detalle</span>

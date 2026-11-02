@@ -309,7 +309,7 @@ export function SelectorFechas({
                   <span
                     key={dia + i}
                     role="columnheader"
-                    className="py-1 text-[11.5px] font-medium text-fg-4"
+                    className="py-1 text-[12px] font-medium text-fg-4"
                   >
                     {dia}
                   </span>

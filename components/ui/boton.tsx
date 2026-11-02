@@ -8,7 +8,7 @@ type Variante = "primario" | "acento" | "secundario" | "fantasma" | "peligro";
 type Tamano = "sm" | "md";
 
 const VARIANTES: Record<Variante, string> = {
-  primario: "bg-ink text-ink-fg shadow-sm hover:bg-ink-hover",
+  primario: "bg-ink text-ink-fg shadow-sm ring-1 ring-inset ring-white/10 hover:bg-ink-hover",
   acento: "bg-accent text-white shadow-sm hover:bg-accent-hover",
   secundario:
     "border border-line-strong bg-surface text-fg-2 shadow-sm hover:bg-surface-3 hover:text-fg",
@@ -51,7 +51,7 @@ export function Boton({
       title={etiqueta}
       aria-busy={cargando || undefined}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-lg font-medium whitespace-nowrap transition-colors select-none",
+        "inline-flex shrink-0 items-center justify-center rounded-md font-medium whitespace-nowrap transition-colors select-none",
         "disabled:pointer-events-none disabled:opacity-50",
         VARIANTES[variante],
         soloIcono ? TAMANOS[tamano].solo : TAMANOS[tamano].texto,

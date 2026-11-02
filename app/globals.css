@@ -12,97 +12,113 @@
  * ------------------------------------------------------------------ */
 
 :root {
-  --bg: #f4f5f7;
+  /* Escritorio y hoja: el escritorio es azul pálido, cada superficie es una hoja blanca. */
+  --bg: #e8ecf2;
   --surface: #ffffff;
-  --surface-2: #f9fafb;
-  --surface-3: #f2f4f7;
-  --line: #e4e7ec;
-  --line-strong: #d0d5dd;
+  --surface-2: #f5f7fb;
+  --surface-3: #ebeff6;
+  /* La regla del libro: azul grisáceo, nunca gris neutro. */
+  --line: #d3dae7;
+  --line-strong: #b3c0d4;
 
-  --fg: #101828;
-  --fg-2: #344054;
-  --fg-3: #667085;
-  --fg-4: #98a2b3;
+  /* Tinta azul marino: el texto es tinta, no negro. */
+  --fg: #0e1b3d;
+  --fg-2: #2b3a5f;
+  --fg-3: #4e5d7c;
+  --fg-4: #596884;
 
-  --accent: #1f4fd8;
-  --accent-hover: #1a43b8;
-  --accent-soft: #eef3ff;
-  --accent-line: #c7d7fe;
+  /* Tinta de bolígrafo para lo interactivo. */
+  --accent: #1c3d9c;
+  --accent-hover: #142f7e;
+  --accent-soft: #e6ecfa;
+  --accent-line: #b9c8ef;
 
-  --ink: #101828;
-  --ink-hover: #1d2939;
+  --ink: #0e1b3d;
+  --ink-hover: #1a2a57;
   --ink-fg: #ffffff;
 
-  --ok: #067647;
-  --ok-bg: #ecfdf3;
-  --ok-line: #abefc6;
-  --warn: #b54708;
-  --warn-bg: #fffaeb;
-  --warn-line: #fedf89;
-  --bad: #b42318;
-  --bad-bg: #fef3f2;
-  --bad-line: #fecdca;
-  --mute: #475467;
-  --mute-bg: #f2f4f7;
-  --mute-line: #d0d5dd;
+  /* La línea de margen del libro (y los negativos): rojo contable. */
+  --margen: #d2404c;
 
-  --side: #0e1218;
-  --side-2: #151a23;
-  --side-line: #232a36;
-  --side-fg: #e6e9ee;
-  --side-fg-2: #9aa4b5;
+  --ok: #0a6b45;
+  --ok-bg: #e9f7f0;
+  --ok-line: #a6dcc2;
+  --warn: #a64b06;
+  --warn-bg: #fff6df;
+  --warn-line: #f2d083;
+  --bad: #b3261e;
+  --bad-bg: #fdeeec;
+  --bad-line: #f3bdb8;
+  --mute: #43526f;
+  --mute-bg: #eef1f7;
+  --mute-line: #c4cde0;
 
-  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
-  --shadow-pop: 0 14px 36px -10px rgb(16 24 40 / 0.22), 0 0 0 1px rgb(16 24 40 / 0.06);
-  --ring: 0 0 0 3px rgb(31 79 216 / 0.22);
+  /* Pestañas de índice (una por sección) y menú lateral azul tinta. */
+  --tab-ventas: #3b6df0;
+  --tab-compras: #f5b301;
+  --tab-evidencias: #1fa971;
+  --tab-logs: #e0505a;
+
+  --side: #0a1530;
+  --side-2: #14224a;
+  --side-line: #223260;
+  --side-fg: #e8edf9;
+  --side-fg-2: #a3b3d6;
+
+  --shadow-sm: 0 1px 0 rgb(14 27 61 / 0.04), 0 1px 2px rgb(14 27 61 / 0.06);
+  --shadow-pop: 0 14px 36px -10px rgb(14 27 61 / 0.28), 0 0 0 1px rgb(14 27 61 / 0.08);
+  --ring: 0 0 0 3px rgb(28 61 156 / 0.25);
 }
 
 .dark {
-  --bg: #0b0d12;
-  --surface: #12151c;
-  --surface-2: #161a22;
-  --surface-3: #1b202a;
-  --line: #232833;
-  --line-strong: #323948;
+  --bg: #070c1c;
+  --surface: #0e1530;
+  --surface-2: #121b3a;
+  --surface-3: #18224a;
+  --line: #222d56;
+  --line-strong: #34437a;
 
-  --fg: #e8eaee;
-  --fg-2: #c5cad3;
-  --fg-3: #98a1b2;
-  --fg-4: #6b7385;
+  --fg: #e8edf9;
+  --fg-2: #c3cde6;
+  --fg-3: #a0aed0;
+  --fg-4: #8795bb;
 
-  --accent: #6c94ff;
-  --accent-hover: #86a8ff;
-  --accent-soft: #172140;
-  --accent-line: #2a3a6b;
+  --accent: #7f9cf5;
+  --accent-hover: #9fb4f8;
+  --accent-soft: #172350;
+  --accent-line: #2c3d80;
 
-  --ink: #e8eaee;
+  --ink: #e8edf9;
   --ink-hover: #ffffff;
-  --ink-fg: #0b0d12;
+  --ink-fg: #070c1c;
 
-  --ok: #4ade80;
-  --ok-bg: #0f2a1c;
-  --ok-line: #1c4a31;
-  --warn: #fbbf24;
+  --margen: #ef6b76;
+
+  --ok: #4fd69b;
+  --ok-bg: #0c2a20;
+  --ok-line: #1b5239;
+  --warn: #f7c04a;
   --warn-bg: #2b2108;
-  --warn-line: #54410f;
-  --bad: #f87171;
-  --bad-bg: #2d1212;
-  --bad-line: #5a2020;
-  --mute: #aab2c0;
-  --mute-bg: #1b202a;
-  --mute-line: #323948;
+  --warn-line: #5a4511;
+  --bad: #f68a82;
+  --bad-bg: #2f1413;
+  --bad-line: #5e2623;
+  --mute: #b0bcd8;
+  --mute-bg: #18224a;
+  --mute-line: #34437a;
 
-  --side: #090b10;
-  --side-2: #11151c;
-  --side-line: #1d232d;
+  --side: #050a1a;
+  --side-2: #0d1632;
+  --side-line: #18224a;
 
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-pop: 0 14px 36px -10px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.07);
-  --ring: 0 0 0 3px rgb(108 148 255 / 0.3);
+  --shadow-sm: 0 1px 0 rgb(0 0 0 / 0.3), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-pop: 0 14px 36px -10px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.07);
+  --ring: 0 0 0 3px rgb(127 156 245 / 0.35);
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-barlow);
+  --font-label: var(--font-barlow-sc);
   --font-mono: var(--font-geist-mono);
 
   --color-bg: var(--bg);
@@ -125,6 +141,12 @@
   --color-ink: var(--ink);
   --color-ink-hover: var(--ink-hover);
   --color-ink-fg: var(--ink-fg);
+
+  --color-margen: var(--margen);
+  --color-tab-ventas: var(--tab-ventas);
+  --color-tab-compras: var(--tab-compras);
+  --color-tab-evidencias: var(--tab-evidencias);
+  --color-tab-logs: var(--tab-logs);
 
   --color-ok: var(--ok);
   --color-ok-bg: var(--ok-bg);
@@ -165,21 +187,16 @@ html.dark {
 body {
   background-color: var(--bg);
   color: var(--fg);
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.45;
-  letter-spacing: -0.003em;
-  font-feature-settings:
-    "cv11",
-    "ss03";
+  font-size-adjust: 0.5;
   text-rendering: optimizeLegibility;
 }
 
 /* Cifras de ancho fijo: los importes se alinean por la coma decimal. */
 .tnum {
   font-variant-numeric: tabular-nums;
-  font-feature-settings:
-    "tnum",
-    "cv11";
+  font-feature-settings: "tnum";
 }
 
 :focus-visible {
@@ -191,6 +208,18 @@ body {
 ::selection {
   background: var(--accent-soft);
   color: var(--fg);
+}
+
+/* Versalitas de libro contable: encabezados de columna y rótulos pequeños. */
+.rotulo {
+  font-family: var(--font-label), var(--font-sans), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* La línea de margen del libro: una sola, fina, roja. */
+.margen-libro {
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--margen) 55%, transparent);
 }
 
 /* Scrollbars discretos */

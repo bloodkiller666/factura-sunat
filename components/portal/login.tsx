@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { AlertCircle, Archive, Eye, EyeOff, ShieldCheck, Workflow } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Isotipo } from "@/components/portal/marca";
 import { Boton } from "@/components/ui/boton";
 import { Campo, Grupo } from "@/components/ui/campos";
@@ -12,17 +12,17 @@ interface Props {
 
 const PUNTOS = [
   {
-    icono: Workflow,
+    tab: "bg-tab-ventas",
     titulo: "Conectado a SUNAT",
     texto: "Trae tus ventas reales desde el registro SIRE y consulta el estado de cada comprobante.",
   },
   {
-    icono: Archive,
+    tab: "bg-tab-compras",
     titulo: "Respaldo ordenado",
     texto: "XML, CDR y evidencia de SUNAT guardados con su huella digital, listos para una auditoría.",
   },
   {
-    icono: ShieldCheck,
+    tab: "bg-tab-evidencias",
     titulo: "Acceso por empresa",
     texto: "Cada usuario ve solo las empresas y operaciones que su rol permite.",
   },
@@ -49,39 +49,34 @@ export function Login({ entrar }: Props) {
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
       {/* Panel de marca */}
       <aside className="relative hidden overflow-hidden bg-side text-side-fg lg:flex lg:flex-col lg:justify-between lg:p-12">
-        {/* Retícula sutil: evoca un plano técnico sin recurrir a degradados */}
+        {/* Regla de libro: líneas horizontales finas. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.5]"
+          className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(var(--side-line) 1px, transparent 1px), linear-gradient(90deg, var(--side-line) 1px, transparent 1px)",
-            backgroundSize: "44px 44px",
-            maskImage: "radial-gradient(ellipse at 20% 30%, black 0%, transparent 70%)",
-            WebkitMaskImage: "radial-gradient(ellipse at 20% 30%, black 0%, transparent 70%)",
+              "repeating-linear-gradient(to bottom, transparent 0, transparent 39px, color-mix(in srgb, var(--side-line) 45%, transparent) 39px, color-mix(in srgb, var(--side-line) 45%, transparent) 40px)",
           }}
         />
         <div className="relative flex items-center gap-3">
-          <Isotipo className="h-9 w-9" />
+          <Isotipo className="h-12 w-12" />
           <div className="leading-tight">
-            <p className="text-[15px] font-semibold tracking-tight">Portal Holding TDM</p>
-            <p className="text-[12px] text-side-fg-2">Facturación electrónica</p>
+            <p className="text-[16px] font-bold tracking-tight">Portal Holding TDM</p>
+            <p className="text-[13px] text-side-fg-2">Facturación electrónica</p>
           </div>
         </div>
 
         <div className="relative max-w-[520px]">
-          <h1 className="text-[34px] leading-[1.15] font-semibold tracking-tight text-balance">
+          <h1 className="text-[44px] leading-[1.05] font-bold tracking-tight text-balance">
             Tus comprobantes electrónicos, respaldados y a la mano.
           </h1>
-          <ul className="mt-9 space-y-6">
-            {PUNTOS.map(({ icono: Icono, titulo, texto }) => (
-              <li key={titulo} className="flex gap-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-side-line bg-side-2 text-[#F5B301]">
-                  <Icono className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
-                </span>
+          <ul className="mt-10 divide-y divide-side-line border-y border-side-line">
+            {PUNTOS.map(({ tab, titulo, texto }) => (
+              <li key={titulo} className="flex items-start gap-4 py-4">
+                <span aria-hidden className={`mt-[7px] h-2.5 w-2.5 shrink-0 rounded-[2px] ${tab}`} />
                 <div>
-                  <p className="text-[14px] font-medium">{titulo}</p>
-                  <p className="mt-0.5 text-[13px] leading-5 text-side-fg-2">{texto}</p>
+                  <p className="text-[15px] font-semibold">{titulo}</p>
+                  <p className="mt-0.5 text-[14px] leading-5 text-side-fg-2">{texto}</p>
                 </div>
               </li>
             ))}
@@ -95,13 +90,20 @@ export function Login({ entrar }: Props) {
 
       {/* Formulario */}
       <main className="flex items-center justify-center bg-bg px-5 py-10">
-        <div className="w-full max-w-[380px]">
+        <div className="w-full max-w-[400px] overflow-hidden rounded-xl border border-line bg-surface shadow-[var(--shadow-sm)]">
+          <div aria-hidden className="flex h-1.5">
+            <span className="flex-1 bg-tab-ventas" />
+            <span className="flex-1 bg-tab-compras" />
+            <span className="flex-1 bg-tab-evidencias" />
+            <span className="flex-1 bg-tab-logs" />
+          </div>
+          <div className="p-8">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <Isotipo className="h-9 w-9" />
+            <Isotipo className="h-12 w-12" />
             <p className="text-[15px] font-semibold tracking-tight">Portal Holding TDM</p>
           </div>
 
-          <h2 className="text-[22px] leading-7 font-semibold tracking-tight text-fg">
+          <h2 className="text-[26px] leading-8 font-bold tracking-tight text-fg">
             Inicia sesión
           </h2>
           <p className="mt-1.5 text-[13.5px] text-fg-3">
@@ -171,6 +173,7 @@ export function Login({ entrar }: Props) {
           <p className="mt-6 text-[12.5px] text-fg-4">
             ¿No puedes ingresar? Pide acceso al administrador de tu empresa.
           </p>
+          </div>
         </div>
       </main>
     </div>

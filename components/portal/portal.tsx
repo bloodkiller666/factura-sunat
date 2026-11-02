@@ -11,6 +11,7 @@ import { usePortal } from "@/components/portal/use-portal";
 import { VistaComprobantes } from "@/components/portal/vista-comprobantes";
 import { VistaEvidencias } from "@/components/portal/vista-evidencias";
 import { VistaLogs } from "@/components/portal/vista-logs";
+import { cn } from "@/lib/utils";
 
 interface Props {
   token: string;
@@ -24,6 +25,21 @@ export function Portal({ token, email, onSalir }: Props) {
   const p = usePortal(token);
   const [vista, setVista] = useState<VistaActiva>("comprobantes");
   const [menuMovil, setMenuMovil] = useState(false);
+  // Menú lateral contraído (solo iconos). Se recuerda entre visitas.
+  const [colapsado, setColapsado] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- se lee del navegador tras montar (evita desajuste de hidratación)
+      if (window.localStorage.getItem("tdm-menu") === "contraido") setColapsado(true);
+    } catch {}
+  }, []);
+  const alternarMenu = () =>
+    setColapsado((actual) => {
+      try {
+        window.localStorage.setItem("tdm-menu", actual ? "abierto" : "contraido");
+      } catch {}
+      return !actual;
+    });
   const [sireAbierto, setSireAbierto] = useState(false);
   const [respaldosAbierto, setRespaldosAbierto] = useState(false);
   const [sapAbierto, setSapAbierto] = useState(false);
@@ -53,7 +69,7 @@ export function Portal({ token, email, onSalir }: Props) {
     p.cambiarOrigen(destino === "compras" ? "recibido" : "emitido");
   };
 
-  const lateral = (alElegir?: () => void) => (
+  const lateral = (alElegir?: () => void, escritorio = false) => (
     <ContenidoLateral
       empresas={p.empresas}
       empresaActiva={p.empresa}
@@ -64,12 +80,19 @@ export function Portal({ token, email, onSalir }: Props) {
       email={email}
       onSalir={onSalir}
       alElegir={alElegir}
+      colapsado={escritorio && colapsado}
+      onColapsar={escritorio ? alternarMenu : undefined}
     />
   );
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
-      <aside className="sticky top-0 hidden h-dvh lg:block">{lateral()}</aside>
+    <div
+      className={cn(
+        "min-h-dvh transition-[grid-template-columns] duration-200 lg:grid",
+        colapsado ? "lg:grid-cols-[72px_minmax(0,1fr)]" : "lg:grid-cols-[240px_minmax(0,1fr)]",
+      )}
+    >
+      <aside className="sticky top-0 hidden h-dvh lg:block">{lateral(undefined, true)}</aside>
       <PanelLateralMovil abierto={menuMovil} onCerrar={() => setMenuMovil(false)}>
         {lateral(() => setMenuMovil(false))}
       </PanelLateralMovil>
@@ -88,7 +111,7 @@ export function Portal({ token, email, onSalir }: Props) {
           <Marca />
         </header>
 
-        <main className="mx-auto w-full max-w-[1480px] space-y-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-9">
+        <main className="mx-auto w-full max-w-[1480px] space-y-6 px-4 py-6 sm:px-6 lg:px-6 lg:py-9 2xl:px-10">
           {vista === "comprobantes" && (
             <VistaComprobantes
               p={p}

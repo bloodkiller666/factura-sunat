@@ -226,7 +226,7 @@ function Items({
     <div className="p-5">
       <div className="overflow-hidden rounded-xl border border-line">
         <table className="w-full text-left text-[13px]">
-          <thead className="bg-surface-2 text-[11.5px] tracking-wide text-fg-3 uppercase">
+          <thead className="bg-surface-2 text-[12px] tracking-wide text-fg-3 uppercase">
             <tr>
               <th className="px-3 py-2 font-medium">Descripción</th>
               <th className="px-3 py-2 text-right font-medium">Cant.</th>
@@ -302,7 +302,7 @@ function FilaArchivo({
               {formatearTamano(archivo.tamano)} · {formatearFechaHora(archivo.creado)}
             </p>
             {archivo.hashSha256 && (
-              <p className="flex items-center gap-1 font-mono text-[11px] text-fg-4">
+              <p className="flex items-center gap-1 font-mono text-[12px] text-fg-4">
                 SHA-256 {archivo.hashSha256.slice(0, 16)}…
                 <BotonCopiar texto={archivo.hashSha256} etiqueta="Copiar hash SHA-256" />
               </p>

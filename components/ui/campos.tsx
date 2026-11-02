@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { IconoLucide } from "@/components/ui/boton";
 
 const BASE_CAMPO =
-  "h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-[13px] text-fg shadow-sm " +
+  "h-9 w-full rounded-md border border-line-strong bg-surface px-3 text-[13px] text-fg shadow-sm " +
   "placeholder:text-fg-4 transition-colors hover:border-fg-4 focus:border-accent " +
   "focus-visible:shadow-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -116,23 +116,31 @@ export function Casilla({
   }, [indeterminada]);
 
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      disabled={disabled}
-      onChange={onChange}
-      aria-label={etiqueta}
-      style={{
-        backgroundImage: indeterminada ? GUION : checked ? CHECK : undefined,
-        backgroundSize: "100% 100%",
-      }}
+    // El `label` agranda la zona de clic a 24 x 24 px (WCAG 2.5.8) sin cambiar la caja dibujada.
+    <label
       className={cn(
-        "h-4 w-4 shrink-0 cursor-pointer appearance-none rounded-[5px] border border-line-strong bg-surface shadow-sm transition-colors",
-        "hover:border-fg-4 checked:border-accent checked:bg-accent indeterminate:border-accent indeterminate:bg-accent",
-        "disabled:cursor-not-allowed disabled:opacity-40",
-        className,
+        "inline-flex h-6 w-6 shrink-0 items-center justify-center",
+        disabled ? "cursor-not-allowed" : "cursor-pointer",
       )}
-    />
+    >
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        aria-label={etiqueta}
+        style={{
+          backgroundImage: indeterminada ? GUION : checked ? CHECK : undefined,
+          backgroundSize: "100% 100%",
+        }}
+        className={cn(
+          "h-4 w-4 shrink-0 cursor-pointer appearance-none rounded-[5px] border border-line-strong bg-surface shadow-sm transition-colors",
+          "hover:border-fg-4 checked:border-accent checked:bg-accent indeterminate:border-accent indeterminate:bg-accent",
+          "disabled:cursor-not-allowed disabled:opacity-40",
+          className,
+        )}
+      />
+    </label>
   );
 }

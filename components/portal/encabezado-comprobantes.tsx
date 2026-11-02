@@ -77,10 +77,12 @@ export function EncabezadoComprobantes({
         : formatearEntero(total);
 
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-line pb-5">
+    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 pb-1">
       <div className="min-w-0">
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] font-medium text-fg-3">
-          <span className="truncate">{empresa?.razonSocial ?? "Cargando empresa…"}</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="text-[30px] leading-9 font-bold tracking-tight text-fg">
+            {compras ? "Compras" : "Ventas"}
+          </h1>
           {empresa && !puedeOperar && <Etiqueta>Solo lectura</Etiqueta>}
           {actualizando && (
             <span
@@ -91,11 +93,8 @@ export function EncabezadoComprobantes({
               Actualizando…
             </span>
           )}
-        </p>
-        <h1 className="mt-1 text-[28px] leading-9 font-semibold tracking-tight text-fg">
-          {compras ? "Compras" : "Ventas"}
-        </h1>
-        <p className="mt-0.5 text-[13px] text-fg-3">
+        </div>
+        <p className="mt-0.5 text-[14px] text-fg-3">
           {compras
             ? "Comprobantes que los proveedores emitieron a la empresa (SIRE)."
             : "Comprobantes que la empresa emitió a sus clientes."}
@@ -188,7 +187,7 @@ export function EncabezadoComprobantes({
             Guardar en mi PC (carpetas)
           </ItemMenu>
           <SeparadorMenu />
-          <p className="px-2.5 py-1.5 text-[11.5px] leading-4 text-fg-4">
+          <p className="px-2.5 py-1.5 text-[12px] leading-4 text-fg-4">
             Exporta la selección o, si no hay, todo lo filtrado. El lote incluye los XML y CDR
             reales con su huella SHA-256. «Guardar en mi PC» (con filas seleccionadas) los deja en
             Descargas/AAAA/MES/RUC/SERIE-NÚMERO.

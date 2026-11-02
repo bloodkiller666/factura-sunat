@@ -73,7 +73,7 @@ function importeFirmado(c: Comprobante): number {
   return c.tipo === "Nota de Crédito" ? -c.total : c.total;
 }
 
-const TH = "px-3 py-2.5 text-left text-[11.5px] font-medium tracking-wide text-fg-3 uppercase";
+const TH = "rotulo px-2 py-2.5 text-left text-[13px] font-semibold text-fg-2";
 
 function MenuFila({
   comprobante,
@@ -178,7 +178,7 @@ function CeldaCorreo({ c }: { c: Comprobante }) {
     <div title={detalle ? `${asunto}\n${detalle}` : asunto}>
       {/* Primero quién lo envió (en negrita) y debajo el asunto, más pequeño y en gris. */}
       <p className="truncate text-[13px] font-semibold text-fg">{remitente || asunto}</p>
-      {remitente && <p className="truncate text-[11.5px] text-fg-3">{asunto}</p>}
+      {remitente && <p className="truncate text-[12px] text-fg-3">{asunto}</p>}
     </div>
   );
 }
@@ -188,7 +188,6 @@ function Respaldos({ c }: { c: Comprobante }) {
     <span className="inline-flex items-center gap-1">
       <ChipRespaldo nombre="XML" presente={c.tieneXml} />
       {c.origen === "emitido" && <ChipRespaldo nombre="CDR" presente={c.tieneCdr} />}
-      {c.origen === "recibido" && c.tieneCdr && <ChipRespaldo nombre="CDR" presente />}
       {c.origen === "recibido" && <ChipRespaldo nombre="PDF" presente={c.tienePdf} />}
     </span>
   );
@@ -271,10 +270,26 @@ export function TablaComprobantes({
 
       {/* Tabla (≥ md) */}
       <div className="hidden max-h-[calc(100dvh-300px)] min-h-[320px] overflow-auto md:block">
-        <table className="w-full min-w-[980px] border-collapse text-left">
-          <thead className="sticky top-0 z-10 bg-surface-2 shadow-[0_1px_0_var(--line)]">
+        <table className="w-full min-w-[760px] table-fixed border-collapse text-left">
+          {/* Anchos fijos: en una laptop (1366 px) todo cabe sin scroll horizontal. Proveedor y
+              correo se reparten lo que sobra y cortan con «…» (el texto completo va en el tooltip). */}
+          <colgroup>
+            <col className="w-9" />
+            <col className="w-[120px]" />
+            <col />
+            <col className="w-[88px]" />
+            <col className="w-[100px]" />
+            <col className="w-[104px]" />
+            <col className="w-[108px]" />
+            <col className="w-[122px]" />
+            <col className="hidden w-[84px] lg:table-column" />
+            {compras && <col className="hidden xl:table-column" />}
+            {compras && <col className="hidden w-11 xl:table-column 2xl:w-[128px]" />}
+            <col className="w-11" />
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-surface-3 shadow-[0_2px_0_var(--line-strong)]">
             <tr>
-              <th scope="col" className="w-10 py-2.5 pr-0 pl-4">
+              <th scope="col" className="py-2.5 pr-0 pl-3">
                 <Casilla
                   checked={todosMarcados}
                   indeterminada={marcadosEnPagina > 0 && !todosMarcados}
@@ -304,7 +319,7 @@ export function TablaComprobantes({
                 Respaldo
               </th>
               <th scope="col" className={cn(TH, "hidden lg:table-cell")}>
-                N° de SAP
+                N° SAP
               </th>
               {compras && (
                 <th scope="col" className={cn(TH, "hidden xl:table-cell")}>
@@ -316,7 +331,7 @@ export function TablaComprobantes({
                   Estado correo
                 </th>
               )}
-              <th scope="col" className="w-[84px] px-3 py-2.5">
+              <th scope="col" className="px-2 py-2.5">
                 <span className="sr-only">Acciones</span>
               </th>
             </tr>
@@ -356,34 +371,34 @@ export function TablaComprobantes({
                       marcado && "bg-accent-soft/60 hover:bg-accent-soft",
                     )}
                   >
-                    <td className="py-2.5 pr-0 pl-4">
+                    <td className="py-2.5 pr-0 pl-3">
                       <Casilla
                         checked={marcado}
                         onChange={() => onAlternar(c)}
                         etiqueta={`Seleccionar ${c.numero}`}
                       />
                     </td>
-                    <td className="px-3 py-2.5">
-                      <p className="font-mono text-[12.5px] font-medium tracking-tight text-fg">
+                    <td className="px-2 py-2.5">
+                      <p className="font-mono text-[12px] font-medium tracking-tight whitespace-nowrap text-fg">
                         {c.numero}
                       </p>
                       <p className="text-[12px] text-fg-3">{c.tipo}</p>
                     </td>
-                    <td className="w-[240px] max-w-[240px] px-3 py-2.5">
+                    <td className="px-2 py-2.5">
                       <p className="truncate text-[13px] text-fg" title={c.cliente.razonSocial}>
                         {c.cliente.razonSocial}
                       </p>
-                      <p className="font-mono text-[11.5px] text-fg-3">
+                      <p className="font-mono text-[12px] text-fg-3">
                         {c.cliente.ruc || "Sin documento"}
                         {c.cliente.docEtiqueta && (
                           <span className="ml-1.5 font-sans text-fg-4">· {c.cliente.docEtiqueta}</span>
                         )}
                       </p>
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
+                    <td className="px-2 py-2.5 whitespace-nowrap">
                       <p className="tnum text-[13px] text-fg">{formatearFecha(c.fechaEmision)}</p>
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
+                    <td className="px-2 py-2.5 whitespace-nowrap">
                       {c.fechaVencimiento ? (
                         <p className="tnum text-[13px] text-fg">{formatearFecha(c.fechaVencimiento)}</p>
                       ) : (
@@ -391,7 +406,7 @@ export function TablaComprobantes({
                       )}
                       {c.formaPago && <p className="text-[12px] text-fg-3">{c.formaPago}</p>}
                     </td>
-                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                    <td className="px-2 py-2.5 text-right whitespace-nowrap">
                       <p
                         className={cn(
                           "tnum text-[13px] font-medium",
@@ -401,28 +416,28 @@ export function TablaComprobantes({
                       >
                         {formatearMoneda(importeFirmado(c), c.moneda)}
                       </p>
-                      {c.moneda === "USD" && <p className="text-[11px] text-fg-4">Dólares</p>}
+                      {c.moneda === "USD" && <p className="text-[12px] text-fg-4">Dólares</p>}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-2 py-2.5">
                       <EstadoPill estado={c.estadoSunat} />
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-2 py-2.5">
                       <Respaldos c={c} />
                     </td>
-                    <td className="hidden px-3 py-2.5 lg:table-cell">
+                    <td className="hidden px-2 py-2.5 lg:table-cell">
                       <span className="font-mono text-[12px] text-fg-3">{c.numeroSap || "—"}</span>
                     </td>
                     {compras && (
-                      <td className="hidden w-[220px] max-w-[220px] px-3 py-2.5 xl:table-cell">
+                      <td className="hidden px-2 py-2.5 xl:table-cell">
                         <CeldaCorreo c={c} />
                       </td>
                     )}
                     {compras && (
-                      <td className="hidden px-3 py-2.5 xl:table-cell">
-                        <EstadoCorreoPill estado={estadoCorreo(c)} />
+                      <td className="hidden px-2 py-2.5 xl:table-cell">
+                        <EstadoCorreoPill estado={estadoCorreo(c)} compacto />
                       </td>
                     )}
-                    <td className="px-3 py-2.5">
+                    <td className="px-2 py-2.5">
                       <div className="flex items-center justify-end gap-0.5">
                         <MenuFila
                           comprobante={c}

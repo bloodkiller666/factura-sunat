@@ -1,11 +1,13 @@
 "use client";
 
-import { X } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { Campo, CampoBusqueda, Seleccion } from "@/components/ui/campos";
 import { SelectorFechas } from "@/components/ui/selector-fechas";
 import { describirRango, type RangoVisible } from "@/lib/calendario";
 import { MINIMO_BUSQUEDA, hayFiltrosActivos } from "@/lib/filtros";
 import type { FiltrosState } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface Props {
   filtros: FiltrosState;
@@ -99,45 +101,89 @@ function chipsActivos(filtros: FiltrosState): Chip[] {
   return chips;
 }
 
+/** Resalta un filtro que ya no está en su valor por defecto: se ve de un vistazo cuáles están activos. */
+const ACTIVO = "border-accent! bg-accent-soft/50!";
+
 export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = null }: Props) {
   const chips = chipsActivos(filtros);
   const busquedaCorta = filtros.q.trim().length > 0 && filtros.q.trim().length < MINIMO_BUSQUEDA;
+  const compras = filtros.origen === "recibido";
+  // En el móvil los filtros secundarios se pliegan: lo primero que se ve es la tabla, no ocho controles.
+  const [abierto, setAbierto] = useState(false);
+  const plegable = abierto ? "" : "max-md:hidden";
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-12">
-        <div className="sm:col-span-2 xl:col-span-4">
-          <CampoBusqueda
-            value={filtros.q}
-            onChange={(e) => onCambiar({ q: e.target.value })}
-            placeholder={
-              filtros.origen === "recibido"
-                ? "Buscar por N°, proveedor o RUC"
-                : "Buscar por N°, cliente o RUC"
-            }
-            aria-label="Buscar comprobantes"
-            aria-describedby={busquedaCorta ? "ayuda-busqueda" : undefined}
-          />
+    <section
+      aria-label="Filtros"
+      className="space-y-3 rounded-xl border border-line bg-surface p-3 shadow-sm"
+    >
+      {/* Una sola rejilla: búsqueda y fechas arriba, el resto de filtros debajo, alineados a las mismas columnas. */}
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-2 lg:grid-cols-3",
+          compras ? "xl:grid-cols-6" : "xl:grid-cols-4",
+        )}
+      >
+        <div className="col-span-2 flex gap-2 lg:col-span-3 xl:col-span-2">
+          <div className="min-w-0 flex-1">
+            <CampoBusqueda
+              value={filtros.q}
+              onChange={(e) => onCambiar({ q: e.target.value })}
+              placeholder={
+                compras ? "Buscar por N°, proveedor o RUC" : "Buscar por N°, cliente o RUC"
+              }
+              aria-label="Buscar comprobantes"
+              aria-describedby={busquedaCorta ? "ayuda-busqueda" : undefined}
+              className={cn(filtros.q.trim() && ACTIVO)}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setAbierto((v) => !v)}
+            aria-expanded={abierto}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-[13px] font-medium text-fg-2 shadow-sm hover:border-fg-4 md:hidden"
+          >
+            <SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            Filtros
+            {chips.length > 0 && (
+              <span className="tnum rounded-full bg-accent px-1.5 text-[12px] leading-5 font-semibold text-white">
+                {chips.length}
+              </span>
+            )}
+            <ChevronDown
+              className={cn("h-4 w-4 text-fg-4 transition-transform", abierto && "rotate-180")}
+              aria-hidden
+            />
+          </button>
         </div>
         <SelectorFechas
           desde={filtros.desde}
           hasta={filtros.hasta}
           onChange={(rango) => onCambiar(rango)}
           rangoVisible={fechasVisibles}
-          className="w-full xl:col-span-2"
+          className={cn(
+            "col-span-2 w-full lg:col-span-1",
+            compras ? "xl:col-span-2" : "xl:col-span-1",
+            plegable,
+          )}
         />
         <SelectorFechas
           modo="vencimiento"
           desde={filtros.venceDesde}
           hasta={filtros.venceHasta}
           onChange={(rango) => onCambiar({ venceDesde: rango.desde, venceHasta: rango.hasta })}
-          className="w-full xl:col-span-2"
+          className={cn(
+            "col-span-2 w-full lg:col-span-1",
+            compras ? "xl:col-span-2" : "xl:col-span-1",
+            plegable,
+          )}
         />
-        <div className="xl:col-span-2">
+        <div className={plegable}>
           <Seleccion
             aria-label="Tipo de documento"
             value={filtros.tipo}
             onChange={(e) => onCambiar({ tipo: e.target.value as FiltrosState["tipo"] })}
+            className={cn(filtros.tipo !== "TODOS" && ACTIVO)}
           >
             <option value="TODOS">Todos los tipos</option>
             <option value="Factura">Facturas</option>
@@ -146,11 +192,12 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = n
             <option value="Nota de Débito">Notas de débito</option>
           </Seleccion>
         </div>
-        <div className="xl:col-span-2">
+        <div className={plegable}>
           <Seleccion
             aria-label="Estado SUNAT"
             value={filtros.estadoSunat}
             onChange={(e) => onCambiar({ estadoSunat: e.target.value as FiltrosState["estadoSunat"] })}
+            className={cn(filtros.estadoSunat !== "TODOS" && ACTIVO)}
           >
             <option value="TODOS">Estado SUNAT: todos</option>
             <option value="Aprobado">Aprobado</option>
@@ -159,12 +206,13 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = n
             <option value="Anulado">Anulado</option>
           </Seleccion>
         </div>
-        {filtros.origen === "recibido" && (
-          <div className="xl:col-span-2">
+        {compras && (
+          <div className={plegable}>
             <Seleccion
               aria-label="Estado correo"
               value={filtros.correo}
               onChange={(e) => onCambiar({ correo: e.target.value as FiltrosState["correo"] })}
+              className={cn(filtros.correo !== "TODOS" && ACTIVO)}
             >
               <option value="TODOS">Estado correo: todos</option>
               <option value="ENVIADO">Enviado</option>
@@ -172,12 +220,13 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = n
             </Seleccion>
           </div>
         )}
-        {filtros.origen === "recibido" && (
-          <div className="xl:col-span-2">
+        {compras && (
+          <div className={plegable}>
             <Seleccion
               aria-label="Respaldo"
               value={filtros.respaldo}
               onChange={(e) => onCambiar({ respaldo: e.target.value as FiltrosState["respaldo"] })}
+              className={cn(filtros.respaldo !== "TODOS" && ACTIVO)}
             >
               <option value="TODOS">Respaldo: todos</option>
               <option value="XML_PDF">XML y PDF</option>
@@ -187,23 +236,25 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = n
             </Seleccion>
           </div>
         )}
-        <div className="xl:col-span-2">
+        <div className={plegable}>
           <Seleccion
             aria-label="Moneda"
             value={filtros.moneda}
             onChange={(e) => onCambiar({ moneda: e.target.value as FiltrosState["moneda"] })}
+            className={cn(filtros.moneda !== "TODOS" && ACTIVO)}
           >
             <option value="TODOS">Todas las monedas</option>
             <option value="PEN">Soles (S/)</option>
             <option value="USD">Dólares (US$)</option>
           </Seleccion>
         </div>
-        <div className="xl:col-span-2">
+        <div className={plegable}>
           <Campo
             value={filtros.numeroSap}
             onChange={(e) => onCambiar({ numeroSap: e.target.value })}
             placeholder="N° de SAP"
             aria-label="Filtrar por N° de SAP"
+            className={cn(filtros.numeroSap.trim() && ACTIVO)}
           />
         </div>
       </div>
@@ -215,7 +266,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = n
       )}
 
       {hayFiltrosActivos(filtros) && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
           <span className="text-[12px] text-fg-3">Filtros:</span>
           {chips.map((chip) => (
             <button
@@ -238,6 +289,6 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = n
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 }

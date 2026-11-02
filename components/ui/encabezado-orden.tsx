@@ -38,21 +38,21 @@ export function EncabezadoOrden<C extends string>({
     <th
       scope="col"
       aria-sort={activo ? (orden.direccion === "asc" ? "ascending" : "descending") : "none"}
-      className={cn("px-3 py-2.5 font-medium", alinear === "derecha" && "text-right", className)}
+      className={cn("px-2 py-2.5 font-medium", alinear === "derecha" && "text-right", className)}
     >
       <button
         type="button"
         onClick={() => onOrden(campo)}
         className={cn(
-          "inline-flex items-center gap-1 rounded text-[11.5px] font-medium tracking-wide uppercase transition-colors hover:text-fg",
-          activo ? "text-fg" : "text-fg-3",
+          "rotulo inline-flex min-h-6 items-center gap-1 rounded text-[13px] font-semibold transition-colors hover:text-fg",
+          activo ? "text-fg" : "text-fg-2",
           alinear === "derecha" && "flex-row-reverse",
         )}
       >
         <span className="text-left">
           {etiqueta}
           {nota && (
-            <span className="block text-[10.5px] font-normal tracking-normal text-fg-4 normal-case">
+            <span className="block font-sans text-[11.5px] font-normal tracking-normal text-fg-4 normal-case">
               {nota}
             </span>
           )}

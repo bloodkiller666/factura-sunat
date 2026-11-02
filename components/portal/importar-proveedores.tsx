@@ -98,7 +98,7 @@ function Contador({
       <p className={cn("tnum text-[18px] leading-6 font-semibold", clase ?? "text-fg")}>
         {formatearEntero(valor)}
       </p>
-      <p className="text-[11.5px] leading-4 text-fg-3">{etiqueta}</p>
+      <p className="text-[12px] leading-4 text-fg-3">{etiqueta}</p>
     </div>
   );
 }

@@ -140,7 +140,7 @@ export function ItemMenu({
     >
       {Icono && <Icono className="h-4 w-4 shrink-0 text-fg-3" strokeWidth={1.75} aria-hidden />}
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {ayuda && <span className="shrink-0 text-[11px] text-fg-4">{ayuda}</span>}
+      {ayuda && <span className="shrink-0 text-[12px] text-fg-4">{ayuda}</span>}
     </button>
   );
 }
@@ -151,7 +151,7 @@ export function SeparadorMenu() {
 
 export function TituloMenu({ children }: { children: ReactNode }) {
   return (
-    <div className="px-2.5 pt-1.5 pb-1 text-[11px] font-medium tracking-wide text-fg-4 uppercase">
+    <div className="px-2.5 pt-1.5 pb-1 text-[12px] font-medium tracking-wide text-fg-4 uppercase">
       {children}
     </div>
   );

@@ -21,7 +21,10 @@ interface Props {
 
 /** En móvil las tarjetas forman un carrusel; desde `lg` pasan a una cuadrícula de tres. */
 const CONTENEDOR =
-  "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:overflow-visible lg:px-0 lg:pb-0";
+  "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 " +
+  // En escritorio las tres son UNA ficha con columnas separadas por la regla, como el
+  // encabezado de una tarjeta kardex, y no tres tarjetas flotantes.
+  "lg:mx-0 lg:grid lg:gap-0 lg:divide-x lg:divide-line lg:overflow-hidden lg:rounded-xl lg:border lg:border-line lg:bg-surface lg:px-0 lg:pb-0 lg:shadow-sm";
 
 const SEGMENTOS: Array<{ estado: EstadoSunat; color: string; clave: keyof Metricas }> = [
   { estado: "Aprobado", color: "bg-ok", clave: "aprobados" },
@@ -44,13 +47,13 @@ function Tarjeta({
   return (
     <section
       className={cn(
-        "flex min-w-[86%] shrink-0 snap-center flex-col rounded-xl border border-line bg-surface p-4 shadow-sm sm:min-w-[48%] lg:min-w-0",
+        "flex min-w-[86%] shrink-0 snap-center flex-col rounded-xl border border-line bg-surface p-4 shadow-sm sm:min-w-[48%] lg:min-w-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-5 lg:shadow-none",
         className,
       )}
     >
       <header className="mb-3 flex items-baseline justify-between gap-2">
-        <h3 className="text-[12px] font-medium text-fg-3">{titulo}</h3>
-        {subtitulo && <span className="truncate text-[11.5px] text-fg-4">{subtitulo}</span>}
+        <h3 className="rotulo text-[13px] font-semibold text-fg-2">{titulo}</h3>
+        {subtitulo && <span className="truncate text-[12px] text-fg-4">{subtitulo}</span>}
       </header>
       {children}
     </section>
@@ -59,7 +62,7 @@ function Tarjeta({
 
 function CargandoTarjeta() {
   return (
-    <div className="min-w-[86%] shrink-0 space-y-3 rounded-xl border border-line bg-surface p-4 shadow-sm sm:min-w-[48%] lg:min-w-0">
+    <div className="min-w-[86%] shrink-0 space-y-3 rounded-xl border border-line bg-surface p-4 shadow-sm sm:min-w-[48%] lg:min-w-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-5 lg:shadow-none">
       <Esqueleto className="h-3 w-28" />
       <Esqueleto className="h-8 w-44" />
       <Esqueleto className="h-3 w-full" />
@@ -102,7 +105,7 @@ export function Indicadores({
     >
       {/* Facturado */}
       <Tarjeta titulo="Facturado total" subtitulo={metricas.etiquetaRango}>
-        <p className="tnum text-[26px] leading-8 font-semibold tracking-tight text-fg">
+        <p className="tnum font-mono text-[26px] leading-8 font-semibold tracking-tight text-fg">
           {formatearMoneda(metricas.facturadoPen)}
         </p>
         {metricas.facturadoUsd !== 0 && (
@@ -172,7 +175,7 @@ export function Indicadores({
             const pct = porcentaje(cantidad, cobertura.total);
             return (
               <div key={nombre} className="flex items-center gap-3">
-                <span className="w-8 font-mono text-[11px] font-semibold text-fg-3">{nombre}</span>
+                <span className="w-8 font-mono text-[12px] font-semibold text-fg-3">{nombre}</span>
                 <Progreso
                   valor={cobertura.total ? cantidad / cobertura.total : 0}
                   tono={pct === 100 ? "ok" : pct >= 50 ? "acento" : "aviso"}
@@ -191,7 +194,7 @@ export function Indicadores({
             type="button"
             onClick={() => onFiltrarRespaldo("SIN_XML")}
             disabled={sinXml === 0}
-            className="font-medium text-accent hover:underline disabled:pointer-events-none disabled:text-fg-4 disabled:no-underline"
+            className="inline-flex min-h-6 items-center font-medium text-accent hover:underline disabled:pointer-events-none disabled:text-fg-4 disabled:no-underline"
           >
             {sinXml === 0 ? "Todos con XML" : `Ver ${formatearEntero(sinXml)} sin XML`}
           </button>
@@ -199,7 +202,7 @@ export function Indicadores({
             type="button"
             onClick={() => onFiltrarRespaldo("SIN_CDR")}
             disabled={sinCdr === 0}
-            className="font-medium text-accent hover:underline disabled:pointer-events-none disabled:text-fg-4 disabled:no-underline"
+            className="inline-flex min-h-6 items-center font-medium text-accent hover:underline disabled:pointer-events-none disabled:text-fg-4 disabled:no-underline"
           >
             {sinCdr === 0 ? "Todos con CDR" : `Ver ${formatearEntero(sinCdr)} sin CDR`}
           </button>

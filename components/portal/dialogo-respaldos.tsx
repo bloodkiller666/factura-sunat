@@ -306,7 +306,7 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
                         {nombreItem(item)}
                       </span>
                       {item.cliente_ruc && (
-                        <span className="block font-mono text-[11.5px] text-fg-3">
+                        <span className="block font-mono text-[12px] text-fg-3">
                           {item.cliente_ruc}
                         </span>
                       )}
@@ -361,7 +361,7 @@ export function DialogoRespaldos({ abierto, token, ruc, filtros, onCerrar, onRec
               </p>
             )}
 
-            <p className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-fg-4">
+            <p className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-fg-4">
               <span className="inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5 text-ok" aria-hidden /> Listo
               </span>

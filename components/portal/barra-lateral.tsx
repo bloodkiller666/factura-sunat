@@ -6,6 +6,8 @@ import {
   Check,
   ChevronsUpDown,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
   Receipt,
   ScrollText,
   ShieldCheck,
@@ -39,7 +41,18 @@ interface Props {
   onSalir: () => void;
   /** Se ejecuta tras elegir algo (cierra el panel en móvil). */
   alElegir?: () => void;
+  /** Solo escritorio: el menú se contrae a una columna de iconos. */
+  colapsado?: boolean;
+  onColapsar?: () => void;
 }
+
+/** Color de la pestaña de índice de cada sección, como las divisiones de un fichero. */
+const COLOR_TAB: Record<Seccion, string> = {
+  ventas: "text-tab-ventas",
+  compras: "text-tab-compras",
+  evidencias: "text-tab-evidencias",
+  logs: "text-tab-logs",
+};
 
 function Item({
   icono: Icono,
@@ -48,6 +61,8 @@ function Item({
   onClick,
   deshabilitado,
   nota,
+  tab,
+  colapsado,
 }: {
   icono: IconoLucide;
   etiqueta: string;
@@ -55,6 +70,8 @@ function Item({
   onClick: () => void;
   deshabilitado?: boolean;
   nota?: string;
+  tab: Seccion;
+  colapsado?: boolean;
 }) {
   return (
     <button
@@ -62,27 +79,25 @@ function Item({
       onClick={onClick}
       disabled={deshabilitado}
       aria-current={activo ? "page" : undefined}
-      title={nota}
+      title={colapsado ? etiqueta : nota}
+      aria-label={colapsado ? etiqueta : undefined}
+      // La pestaña activa se funde con el escritorio (mismo color y sin borde a la derecha):
+      // así se ve como la división de un fichero que sale por encima del resto.
       className={cn(
-        "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors",
+        "group relative flex w-full items-center gap-3 py-2.5 pl-3 text-left text-[14px] font-medium transition-colors",
+        colapsado && "justify-center pr-0 pl-0",
         activo
-          ? "bg-side-2 text-side-fg"
-          : "text-side-fg-2 hover:bg-side-2/60 hover:text-side-fg",
+          ? cn("rounded-l-xl bg-bg font-semibold text-fg", !colapsado && "pr-6")
+          : cn("rounded-lg text-side-fg-2 hover:bg-side-2 hover:text-side-fg", !colapsado && "pr-3"),
         "disabled:pointer-events-none disabled:opacity-40",
       )}
     >
-      {activo && (
-        <span
-          aria-hidden
-          className="absolute top-2.5 bottom-2.5 left-0 w-[3px] rounded-r-full bg-[#F5B301]"
-        />
-      )}
       <Icono
-        className={cn("h-[18px] w-[18px] shrink-0", activo && "text-[#F5B301]")}
-        strokeWidth={1.75}
+        className={cn("h-[18px] w-[18px] shrink-0", COLOR_TAB[tab], !activo && "opacity-90")}
+        strokeWidth={activo ? 2.1 : 1.75}
         aria-hidden
       />
-      {etiqueta}
+      {!colapsado && etiqueta}
     </button>
   );
 }
@@ -98,6 +113,8 @@ export function ContenidoLateral({
   email,
   onSalir,
   alElegir,
+  colapsado = false,
+  onColapsar,
 }: Props) {
   const elegir = (accion: () => void) => () => {
     accion();
@@ -106,17 +123,38 @@ export function ContenidoLateral({
 
   return (
     <div className="flex h-full flex-col bg-side text-side-fg">
-      <div className="px-4 pt-5 pb-4">
-        <Marca />
+      <div
+        className={cn(
+          "flex pt-5 pb-4",
+          colapsado ? "flex-col items-center gap-3 px-2" : "items-center justify-between gap-2 px-4",
+        )}
+      >
+        <Marca compacta={colapsado} />
+        {onColapsar && (
+          <button
+            type="button"
+            onClick={onColapsar}
+            aria-label={colapsado ? "Traer el menú" : "Contraer el menú"}
+            aria-expanded={!colapsado}
+            title={colapsado ? "Traer el menú" : "Contraer el menú"}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-side-fg-2 transition-colors hover:bg-side-2 hover:text-side-fg"
+          >
+            {colapsado ? (
+              <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
+            ) : (
+              <PanelLeftClose className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Empresa activa */}
-      <div className="px-3">
+      <div className={colapsado ? "px-2" : "px-3"}>
         {cargandoEmpresas || !empresaActiva ? (
           <div className="h-[58px] animate-pulse rounded-xl bg-side-2" />
         ) : (
           <Menu
-            ancho={256}
+            ancho={240}
             alinear="inicio"
             disparador={(props) => (
               <button
@@ -124,22 +162,25 @@ export function ContenidoLateral({
                 {...props}
                 disabled={empresas.length < 2}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-xl border border-side-line bg-side-2 p-2.5 text-left transition-colors",
-                  empresas.length > 1 && "hover:border-[#323a49]",
+                  cn(
+                  "flex w-full items-center gap-3 rounded-lg border border-side-line bg-side-2 p-2.5 text-left transition-colors",
+                  colapsado && "justify-center p-1.5",
+                ),
+                  empresas.length > 1 && "hover:border-side-fg-2/50",
                 )}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#232a36] text-[12px] font-semibold text-side-fg">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-tab-compras text-[12px] font-bold text-[#0a1530]">
                   {iniciales(empresaActiva.nombreCorto)}
                 </span>
-                <span className="min-w-0 flex-1">
+                <span className={cn("min-w-0 flex-1", colapsado && "sr-only")}>
                   <span className="block truncate text-[13px] font-medium text-side-fg">
                     {empresaActiva.nombreCorto}
                   </span>
-                  <span className="block truncate font-mono text-[11px] text-side-fg-2">
+                  <span className="block truncate font-mono text-[12px] text-side-fg-2">
                     RUC {empresaActiva.ruc}
                   </span>
                 </span>
-                {empresas.length > 1 && (
+                {empresas.length > 1 && !colapsado && (
                   <ChevronsUpDown className="h-4 w-4 shrink-0 text-side-fg-2" aria-hidden />
                 )}
               </button>
@@ -161,55 +202,70 @@ export function ContenidoLateral({
             ))}
           </Menu>
         )}
-        {empresaActiva && (
-          <p className="mt-2 px-1 text-[11px] text-side-fg-2">
+        {empresaActiva && !colapsado && (
+          <p className="mt-2 px-1 text-[12px] text-side-fg-2">
             Tu rol: <span className="text-side-fg">{ROLES[empresaActiva.rol]}</span>
           </p>
         )}
       </div>
 
-      <nav aria-label="Principal" className="mt-6 flex-1 space-y-0.5 overflow-y-auto px-3">
-        <p className="px-3 pb-2 text-[10.5px] font-semibold tracking-[0.08em] text-side-fg-2/80 uppercase">
-          Comprobantes
-        </p>
+      <nav aria-label="Principal" className={cn("mt-6 flex-1 space-y-1 overflow-y-auto", colapsado ? "pl-2" : "pl-3")}>
+        {!colapsado && (
+          <p className="rotulo px-3 pb-2 text-[12px] font-semibold text-side-fg-2">Comprobantes</p>
+        )}
         <Item
           icono={Receipt}
           etiqueta="Ventas"
           activo={seccion === "ventas"}
+          tab="ventas"
+          colapsado={colapsado}
           onClick={elegir(() => onSeccion("ventas"))}
         />
         <Item
           icono={ShoppingCart}
           etiqueta="Compras"
           activo={seccion === "compras"}
+          tab="compras"
+          colapsado={colapsado}
           onClick={elegir(() => onSeccion("compras"))}
         />
 
-        <p className="px-3 pt-6 pb-2 text-[10.5px] font-semibold tracking-[0.08em] text-side-fg-2/80 uppercase">
-          Auditoría
-        </p>
+        {colapsado ? (
+          <hr className="mx-3 my-3 border-side-line" />
+        ) : (
+          <p className="rotulo px-3 pt-6 pb-2 text-[12px] font-semibold text-side-fg-2">Auditoría</p>
+        )}
         <Item
           icono={ShieldCheck}
           etiqueta="Evidencias SIRE"
           activo={seccion === "evidencias"}
+          tab="evidencias"
+          colapsado={colapsado}
           onClick={elegir(() => onSeccion("evidencias"))}
         />
         <Item
           icono={ScrollText}
           etiqueta="Logs"
           activo={seccion === "logs"}
+          tab="logs"
+          colapsado={colapsado}
           onClick={elegir(() => onSeccion("logs"))}
         />
       </nav>
 
       <div className="border-t border-side-line p-3">
-        <div className="flex items-center gap-2.5 rounded-lg p-1.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#232a36] text-[12px] font-semibold uppercase">
+        <div className={cn("flex items-center gap-2.5 rounded-lg p-1.5", colapsado && "flex-col")}>
+          <span
+            title={email ?? undefined}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-side-line text-[12px] font-semibold uppercase"
+          >
             {(email ?? "?").charAt(0)}
           </span>
-          <p className="min-w-0 flex-1 truncate text-[12px] text-side-fg-2" title={email ?? undefined}>
-            {email ?? "—"}
-          </p>
+          {!colapsado && (
+            <p className="min-w-0 flex-1 truncate text-[12px] text-side-fg-2" title={email ?? undefined}>
+              {email ?? "—"}
+            </p>
+          )}
           <BotonTema sobreOscuro />
           <button
             type="button"

@@ -27,7 +27,7 @@ export function Etiqueta({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-[11px] leading-[18px] font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-[4px] border px-1.5 py-px text-[12px] leading-[18px] font-medium whitespace-nowrap",
         TONOS[tono],
         className,
       )}
@@ -38,14 +38,21 @@ export function Etiqueta({
 }
 
 /** «Estado correo» de una compra: Enviado (verde) o No enviado (rojo). */
-export function EstadoCorreoPill({ estado }: { estado: EstadoCorreo }) {
+export function EstadoCorreoPill({
+  estado,
+  compacto = false,
+}: {
+  estado: EstadoCorreo;
+  /** En la tabla de una laptop solo el icono (el texto sigue en el tooltip y para lectores). */
+  compacto?: boolean;
+}) {
   const enviado = estado === "Enviado";
   const Icono = enviado ? CheckCircle2 : CircleX;
   return (
     <Etiqueta tono={enviado ? "ok" : "error"} className="uppercase">
       <span title={AYUDA_ESTADO_CORREO[estado]} className="inline-flex items-center gap-1">
         <Icono className="h-3 w-3" aria-hidden />
-        {estado}
+        <span className={compacto ? "sr-only 2xl:not-sr-only" : undefined}>{estado}</span>
       </span>
     </Etiqueta>
   );
@@ -65,7 +72,7 @@ export function EstadoPill({ estado }: { estado: EstadoSunat }) {
     <span
       title={ayuda}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-2 text-[12px] leading-4 font-medium whitespace-nowrap",
+        "rotulo inline-flex items-center gap-1.5 rounded-[4px] border-[1.5px] py-[3px] pr-2 pl-1.5 text-[12.5px] leading-4 font-semibold whitespace-nowrap",
         TONOS[tono],
       )}
     >
@@ -93,7 +100,7 @@ export function ChipRespaldo({
       title={titulo}
       aria-label={titulo}
       className={cn(
-        "inline-flex h-[20px] items-center rounded px-1.5 font-mono text-[10.5px] font-semibold tracking-wide",
+        "inline-flex h-[20px] items-center rounded-[3px] px-1.5 font-mono text-[11.5px] font-semibold tracking-wide",
         presente
           ? "border border-ok-line bg-ok-bg text-ok"
           : "border border-dashed border-line-strong text-fg-4",

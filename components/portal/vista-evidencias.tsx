@@ -126,7 +126,7 @@ export function VistaEvidencias({
                       </td>
                       <td className="px-3 py-3">
                         {evidencia.hashSha256 ? (
-                          <span className="flex items-center gap-1 font-mono text-[11.5px] text-fg-3">
+                          <span className="flex items-center gap-1 font-mono text-[12px] text-fg-3">
                             {evidencia.hashSha256.slice(0, 14)}…
                             <BotonCopiar texto={evidencia.hashSha256} etiqueta="Copiar SHA-256 completo" />
                           </span>

@@ -1,10 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Barlow, Barlow_Semi_Condensed, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Rotulación de carretera y de libro: Barlow para la interfaz y su versión semicondensada
+// para los encabezados de columna. Las cifras siguen en mono tabular.
+const barlow = Barlow({
+  variable: "--font-barlow",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const barlowCondensada = Barlow_Semi_Condensed({
+  variable: "--font-barlow-sc",
+  subsets: ["latin"],
+  weight: ["500", "600"],
 });
 
 const geistMono = Geist_Mono({
@@ -20,8 +29,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f5f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0d12" },
+    { media: "(prefers-color-scheme: light)", color: "#e8ecf2" },
+    { media: "(prefers-color-scheme: dark)", color: "#070c1c" },
   ],
 };
 
@@ -46,7 +55,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${barlow.variable} ${barlowCondensada.variable} ${geistMono.variable} h-full`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: scriptTema }} />
