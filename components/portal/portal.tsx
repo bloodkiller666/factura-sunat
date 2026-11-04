@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Menu as IconoMenu } from "lucide-react";
 import { ContenidoLateral, PanelLateralMovil, type Seccion } from "@/components/portal/barra-lateral";
+import { DialogoCuenta } from "@/components/portal/dialogo-cuenta";
 import { DialogosPortal, type EstadoImportar } from "@/components/portal/dialogos-portal";
 import type { PestanaImportar } from "@/components/portal/dialogo-importar";
 import { EncabezadoVista } from "@/components/portal/encabezado-vista";
@@ -11,18 +12,22 @@ import { usePortal } from "@/components/portal/use-portal";
 import { VistaComprobantes } from "@/components/portal/vista-comprobantes";
 import { VistaEvidencias } from "@/components/portal/vista-evidencias";
 import { VistaLogs } from "@/components/portal/vista-logs";
+import type { CambioCuenta } from "@/lib/cuenta";
+import type { ResultadoActualizacion } from "@/lib/use-sesion";
 import { cn } from "@/lib/utils";
 
 interface Props {
   token: string;
   email: string | null;
   onSalir: () => void;
+  onActualizarCuenta: (cambios: CambioCuenta) => Promise<ResultadoActualizacion>;
 }
 
 type VistaActiva = "comprobantes" | "evidencias" | "logs";
 
-export function Portal({ token, email, onSalir }: Props) {
+export function Portal({ token, email, onSalir, onActualizarCuenta }: Props) {
   const p = usePortal(token);
+  const [cuentaAbierta, setCuentaAbierta] = useState(false);
   const [vista, setVista] = useState<VistaActiva>("comprobantes");
   const [menuMovil, setMenuMovil] = useState(false);
   // Menú lateral contraído (solo iconos). Se recuerda entre visitas.
@@ -79,6 +84,7 @@ export function Portal({ token, email, onSalir }: Props) {
       onSeccion={irASeccion}
       email={email}
       onSalir={onSalir}
+      onCuenta={() => setCuentaAbierta(true)}
       alElegir={alElegir}
       colapsado={escritorio && colapsado}
       onColapsar={escritorio ? alternarMenu : undefined}
@@ -125,7 +131,7 @@ export function Portal({ token, email, onSalir }: Props) {
           {vista === "logs" && (
             <>
               <EncabezadoVista titulo="Logs">
-                Corridas de la automatización: SIRE, correo de proveedores e importación.
+                Corridas de la automatización: correo de proveedores e importación.
               </EncabezadoVista>
               <VistaLogs key={rucActivo} token={token} ruc={rucActivo} />
             </>
@@ -164,6 +170,13 @@ export function Portal({ token, email, onSalir }: Props) {
         importar={importar}
         onImportar={setImportar}
         onAbrirImportar={abrirImportar}
+      />
+
+      <DialogoCuenta
+        abierto={cuentaAbierta}
+        emailActual={email}
+        onCerrar={() => setCuentaAbierta(false)}
+        onActualizar={onActualizarCuenta}
       />
     </div>
   );

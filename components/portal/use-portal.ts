@@ -48,6 +48,7 @@ import {
   type CampoOrden,
   type Orden,
 } from "@/lib/filtros";
+import { ORIGEN_INICIAL } from "@/lib/secciones";
 import { formatearEntero } from "@/lib/format";
 import {
   MAX_COMPROBANTES_LOTE,
@@ -118,7 +119,10 @@ export function usePortal(token: string | null) {
   const [rucActivo, setRucActivo] = useState<string | null>(null);
   const [errorEmpresas, setErrorEmpresas] = useState<string | null>(null);
 
-  const [filtros, setFiltros] = useState<FiltrosState>(FILTROS_INICIALES);
+  const [filtros, setFiltros] = useState<FiltrosState>({
+    ...FILTROS_INICIALES,
+    origen: ORIGEN_INICIAL,
+  });
   const [qEfectiva, setQEfectiva] = useState(FILTROS_INICIALES.q);
   const [orden, setOrden] = useState<Orden>(ORDEN_INICIAL);
   const [pagina, setPagina] = useState(0);

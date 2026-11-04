@@ -228,7 +228,7 @@ export function VistaLogs({ token, ruc }: Props) {
       <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
         <p className="text-[13px] leading-5 text-fg-2">
           Cada vez que corre la <strong className="font-medium text-fg">automatización diaria</strong>{" "}
-          (SIRE una vez al día y el correo de proveedores tres veces) queda aquí su resumen: lo que
+          (el correo de proveedores, tres veces al día) queda aquí su resumen: lo que
           se registró de nuevo, los errores y lo que aún falta importar. Es el mismo registro que la
           PC guarda en sus archivos locales (bitácora, estado y pendientes), visible desde el portal.
           También quedan aquí, como <strong className="font-medium text-fg">Fallos del portal</strong>,

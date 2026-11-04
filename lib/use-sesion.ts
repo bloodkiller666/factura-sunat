@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { traducirErrorCuenta, type CambioCuenta } from "./cuenta";
 import { clienteSupabase, supabaseConfigurado } from "./supabase";
 
 interface Sesion {
@@ -20,6 +21,13 @@ interface Sesion {
   configurado: boolean;
   entrar: (email: string, password: string) => Promise<{ ok: boolean; mensaje?: string }>;
   salir: () => Promise<void>;
+  /** Cambia el correo y/o la contraseña de quien tiene la sesión abierta. */
+  actualizarCuenta: (cambios: CambioCuenta) => Promise<ResultadoActualizacion>;
+}
+
+export interface ResultadoActualizacion {
+  ok: boolean;
+  mensaje: string;
 }
 
 export function useSesion(): Sesion {
@@ -74,6 +82,28 @@ export function useSesion(): Sesion {
     setSesion(null);
   }, []);
 
+  const actualizarCuenta = useCallback(async (cambios: CambioCuenta) => {
+    const supabase = clienteSupabase();
+    if (!supabase) {
+      return { ok: false, mensaje: "Supabase no está configurado en este entorno (.env)." };
+    }
+    // Solo se manda lo que cambia: pedir un campo sin querer cambiarlo lo rechazaría o lo reiniciaría.
+    const { error } = await supabase.auth.updateUser({
+      ...(cambios.email !== undefined && { email: cambios.email }),
+      ...(cambios.password !== undefined && { password: cambios.password }),
+    });
+    if (error) return { ok: false, mensaje: traducirErrorCuenta(error.message) };
+
+    const partes: string[] = [];
+    if (cambios.password !== undefined) partes.push("Tu contraseña se actualizó.");
+    if (cambios.email !== undefined) {
+      partes.push(
+        `Te enviamos un enlace de confirmación a ${cambios.email}: tu correo cambia cuando lo abras.`,
+      );
+    }
+    return { ok: true, mensaje: partes.join(" ") };
+  }, []);
+
   return {
     token: sesion?.access_token ?? null,
     email: sesion?.user.email ?? null,
@@ -81,6 +111,7 @@ export function useSesion(): Sesion {
     configurado: supabaseConfigurado,
     entrar,
     salir,
+    actualizarCuenta,
   };
 }
 

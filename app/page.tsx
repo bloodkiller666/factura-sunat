@@ -57,7 +57,12 @@ export default function Page() {
 
   return (
     <>
-      <Portal token={sesion.token} email={sesion.email} onSalir={() => void sesion.salir()} />
+      <Portal
+        token={sesion.token}
+        email={sesion.email}
+        onSalir={() => void sesion.salir()}
+        onActualizarCuenta={sesion.actualizarCuenta}
+      />
       <Avisos />
     </>
   );

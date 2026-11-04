@@ -12,11 +12,13 @@ import {
   ScrollText,
   ShieldCheck,
   ShoppingCart,
+  UserCog,
 } from "lucide-react";
 import { Marca } from "@/components/portal/marca";
 import { Menu, ItemMenu, TituloMenu } from "@/components/ui/menu";
 import { BotonTema } from "@/components/ui/tema";
 import { iniciales } from "@/lib/format";
+import { VENTAS_VISIBLES } from "@/lib/secciones";
 import type { Empresa } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { IconoLucide } from "@/components/ui/boton";
@@ -39,6 +41,8 @@ interface Props {
   onSeccion: (seccion: Seccion) => void;
   email: string | null;
   onSalir: () => void;
+  /** Abre «Mi cuenta» (cambiar correo y/o contraseña). */
+  onCuenta: () => void;
   /** Se ejecuta tras elegir algo (cierra el panel en móvil). */
   alElegir?: () => void;
   /** Solo escritorio: el menú se contrae a una columna de iconos. */
@@ -112,6 +116,7 @@ export function ContenidoLateral({
   onSeccion,
   email,
   onSalir,
+  onCuenta,
   alElegir,
   colapsado = false,
   onColapsar,
@@ -213,14 +218,17 @@ export function ContenidoLateral({
         {!colapsado && (
           <p className="rotulo px-3 pb-2 text-[12px] font-semibold text-side-fg-2">Comprobantes</p>
         )}
-        <Item
-          icono={Receipt}
-          etiqueta="Ventas"
-          activo={seccion === "ventas"}
-          tab="ventas"
-          colapsado={colapsado}
-          onClick={elegir(() => onSeccion("ventas"))}
-        />
+        {/* Ventas está oculta por ahora (lib/secciones.ts): su código sigue completo. */}
+        {VENTAS_VISIBLES && (
+          <Item
+            icono={Receipt}
+            etiqueta="Ventas"
+            activo={seccion === "ventas"}
+            tab="ventas"
+            colapsado={colapsado}
+            onClick={elegir(() => onSeccion("ventas"))}
+          />
+        )}
         <Item
           icono={ShoppingCart}
           etiqueta="Compras"
@@ -267,6 +275,15 @@ export function ContenidoLateral({
             </p>
           )}
           <BotonTema sobreOscuro />
+          <button
+            type="button"
+            onClick={elegir(onCuenta)}
+            aria-label="Mi cuenta"
+            title="Mi cuenta: cambiar correo o contraseña"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-side-fg-2 transition-colors hover:bg-side-2 hover:text-side-fg"
+          >
+            <UserCog className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </button>
           <button
             type="button"
             onClick={onSalir}
