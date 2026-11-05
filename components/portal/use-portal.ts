@@ -32,6 +32,7 @@ import {
   guardarArchivos,
   obtenerRaiz,
   partesCarpeta,
+  rutaParaCopiar,
   rutaRelativa,
   soportaCarpetaLocal,
 } from "@/lib/carpeta-local";
@@ -883,7 +884,7 @@ export function usePortal(token: string | null) {
         if (!sinBackendLocal) registrarFallo("Abrir carpeta", mensaje);
         setCarpetaFallida({
           comprobante: c,
-          ruta: rutaRelativa("Descargas", partes),
+          ruta: rutaParaCopiar(partes),
           mensaje,
           gravedad: sinBackendLocal ? "aviso" : gravedadDe(error),
         });

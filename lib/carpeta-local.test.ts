@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { guardarArchivos, nombreDeMes, partesCarpeta, rutaRelativa, segmentoSeguro } from "./carpeta-local";
+import {
+  guardarArchivos,
+  nombreDeMes,
+  partesCarpeta,
+  rutaParaCopiar,
+  rutaRelativa,
+  segmentoSeguro,
+} from "./carpeta-local";
 
 const doc = { fechaEmision: "2026-09-05", numero: "FF01-00000123", cliente: { ruc: "20100000001", razonSocial: "X" } };
 
@@ -89,5 +96,28 @@ describe("guardarArchivos", () => {
       ["F.xml", "<xml/>"],
       ["R-F.zip", "cdr"],
     ]);
+  });
+});
+
+describe("rutaParaCopiar", () => {
+  const partes = ["2026", "11. NOVIEMBRE", "20100000001", "F001-00000123"];
+
+  it("con la ruta de red configurada arma una ruta que el Explorador entiende", () => {
+    const base = String.raw`\\fs-server\GER ADM FINANZ\2026\00 Portal`;
+    expect(rutaParaCopiar(partes, base)).toBe(
+      String.raw`\\fs-server\GER ADM FINANZ\2026\00 Portal\2026\11. NOVIEMBRE\20100000001\F001-00000123`,
+    );
+  });
+
+  it("ignora la barra final y los espacios de la base", () => {
+    expect(rutaParaCopiar(partes, String.raw`  W:\00 Portal\ `)).toBe(
+      String.raw`W:\00 Portal\2026\11. NOVIEMBRE\20100000001\F001-00000123`,
+    );
+  });
+
+  it("sin base configurada conserva el comportamiento de antes (relativa a Descargas)", () => {
+    expect(rutaParaCopiar(partes, "")).toBe(
+      String.raw`Descargas\2026\11. NOVIEMBRE\20100000001\F001-00000123`,
+    );
   });
 });

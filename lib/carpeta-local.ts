@@ -41,6 +41,19 @@ export function rutaRelativa(raiz: string, partes: string[]): string {
   return [raiz, ...partes].join("\\");
 }
 
+/**
+ * Carpeta donde viven los documentos, tal como la ve quien usa el portal (p. ej. la ruta de red
+ * `\\servidor\carpeta\00 Portal`). Si no se configura, la ruta que se copia queda relativa a
+ * «Descargas» (el valor de antes), que solo sirve para quien guardó ahí.
+ */
+export const RUTA_BASE_CARPETAS = (process.env.NEXT_PUBLIC_RUTA_CARPETAS ?? "").trim();
+
+/** Ruta lista para pegar en el Explorador: la base configurada más `año\mes\RUC\documento`. */
+export function rutaParaCopiar(partes: string[], base: string = RUTA_BASE_CARPETAS): string {
+  const raiz = base.trim().replace(/[\\/]+$/, "");
+  return rutaRelativa(raiz === "" ? "Descargas" : raiz, partes);
+}
+
 /* ---- Permisos y carpeta raíz recordada ---- */
 
 type Modo = { mode: "readwrite" };
