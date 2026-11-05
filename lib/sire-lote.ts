@@ -10,12 +10,28 @@
 import { ApiError, apiSireSync, type ApiSireSync, type LibroSire } from "./api";
 import { mesesEntre } from "./filtros";
 import { periodoSire } from "./format";
+import {
+  guardarTicket,
+  leerTicket,
+  olvidarTicket,
+  type AlmacenTickets,
+} from "./sire-tickets";
 
 /** Primer periodo que SUNAT habilita en SIRE para TDM (julio de 2023). */
 export const PRIMER_PERIODO_SIRE = "2023-07";
 const MAX_REINTENTOS_TICKET = 8;
 
 export type EstadoMes = "pendiente" | "en_curso" | "ok" | "sin_datos" | "error" | "omitido";
+
+/** Avance de la espera mientras SUNAT genera el archivo (el motivo de que tarde). */
+export interface EsperaSunat {
+  /** Consulta actual y total de consultas que se harán antes de rendirse. */
+  intento: number;
+  maximo: number;
+  ticket: string;
+  /** `true` si se retomó un ticket de una solicitud anterior en vez de pedir uno nuevo. */
+  retomado: boolean;
+}
 
 export interface ResultadoMes {
   mes: string;
@@ -25,6 +41,24 @@ export interface ResultadoMes {
   anulados: number;
   omitidos: number;
   mensaje?: string;
+  /** Solo mientras `estado` es `en_curso` y SUNAT sigue generando el archivo. */
+  espera?: EsperaSunat;
+}
+
+/** Texto para el usuario cuando SUNAT sigue generando el archivo tras todas las consultas. */
+export function mensajeSunatTarda(ticket: string): string {
+  return (
+    "SUNAT sigue generando el archivo: los reportes de SIRE pueden tardar varios minutos, y más " +
+    "cuando el servicio está cargado. No hace falta repetir la solicitud: vuelve a pulsar " +
+    `«Sincronizar» más tarde y se retomará el mismo ticket (${ticket}).`
+  );
+}
+
+export interface OpcionesMes {
+  /** Se avisa en cada consulta en que SUNAT aún no termina. */
+  alEsperar?: (espera: EsperaSunat) => void;
+  /** Dónde recordar el ticket (por defecto `localStorage`; `null` = no recordar). */
+  almacen?: AlmacenTickets | null;
 }
 
 export type LlamadaSire = (
@@ -61,16 +95,50 @@ export async function sincronizarMes(
   mes: string,
   llamar: LlamadaSire = apiSireSync,
   libro: LibroSire = "ventas",
+  opciones: OpcionesMes = {},
 ): Promise<ResultadoMes> {
   const periodo = periodoSire(mes);
-  let ticket: string | undefined;
+  const { almacen } = opciones;
+  const leer = () =>
+    almacen === undefined ? leerTicket(ruc, libro, periodo) : leerTicket(ruc, libro, periodo, almacen);
+  const guardar = (t: string) =>
+    almacen === undefined
+      ? guardarTicket(ruc, libro, periodo, t)
+      : guardarTicket(ruc, libro, periodo, t, almacen);
+  const olvidar = () =>
+    almacen === undefined ? olvidarTicket(ruc, libro, periodo) : olvidarTicket(ruc, libro, periodo, almacen);
+
+  // Si una solicitud anterior quedó a medias, se retoma su ticket en vez de pedir otra propuesta.
+  let ticket: string | undefined = leer();
+  let retomado = ticket !== undefined;
 
   for (let intento = 0; intento <= MAX_REINTENTOS_TICKET; intento += 1) {
-    const respuesta = await llamar(token, ruc, periodo, ticket, libro);
+    let respuesta: ApiSireSync;
+    try {
+      respuesta = await llamar(token, ruc, periodo, ticket, libro);
+    } catch (error) {
+      // Un ticket recordado puede haber caducado en SUNAT: se descarta y se pide uno nuevo, una vez.
+      if (retomado && intento === 0 && error instanceof ApiError && error.status !== 0) {
+        olvidar();
+        ticket = undefined;
+        retomado = false;
+        intento = -1;
+        continue;
+      }
+      throw error;
+    }
     if (respuesta.estado === "en_proceso" && respuesta.ticket) {
       ticket = respuesta.ticket;
+      guardar(ticket);
+      opciones.alEsperar?.({
+        intento: intento + 1,
+        maximo: MAX_REINTENTOS_TICKET + 1,
+        ticket,
+        retomado,
+      });
       continue;
     }
+    olvidar(); // terminó (con datos o sin ellos): el ticket ya no hace falta
     return {
       mes,
       estado: respuesta.estado === "sin_datos" ? "sin_datos" : "ok",
@@ -84,7 +152,7 @@ export async function sincronizarMes(
   return {
     ...resultadoInicial(mes),
     estado: "error",
-    mensaje: "SUNAT sigue generando el archivo. Vuelve a intentarlo en unos minutos.",
+    mensaje: mensajeSunatTarda(ticket ?? "sin ticket"),
   };
 }
 
@@ -97,6 +165,7 @@ export async function sincronizarMeses(
     cancelado: () => boolean;
     llamar?: LlamadaSire;
     libro?: LibroSire;
+    almacen?: AlmacenTickets | null;
   },
 ): Promise<ResultadoMes[]> {
   const resultados: ResultadoMes[] = [];
@@ -112,7 +181,11 @@ export async function sincronizarMeses(
     opciones.alCambiar({ ...resultadoInicial(mes), estado: "en_curso" });
     let resultado: ResultadoMes;
     try {
-      resultado = await sincronizarMes(token, ruc, mes, opciones.llamar, opciones.libro);
+      resultado = await sincronizarMes(token, ruc, mes, opciones.llamar, opciones.libro, {
+        almacen: opciones.almacen,
+        alEsperar: (espera) =>
+          opciones.alCambiar({ ...resultadoInicial(mes), estado: "en_curso", espera }),
+      });
     } catch (error) {
       if (error instanceof ApiError && error.code === "periodo_ya_cargado") {
         // Ya está en la base: no es un fallo ni detiene el resto de los meses.

@@ -7,8 +7,19 @@ import {
   resumirLote,
   sincronizarMes,
   sincronizarMeses,
+  type EsperaSunat,
   type ResultadoMes,
 } from "./sire-lote";
+import { guardarTicket, leerTicket, type AlmacenTickets } from "./sire-tickets";
+
+function memoria(): AlmacenTickets {
+  const datos = new Map<string, string>();
+  return {
+    getItem: (k) => datos.get(k) ?? null,
+    setItem: (k, v) => void datos.set(k, v),
+    removeItem: (k) => void datos.delete(k),
+  };
+}
 
 const respuesta = (parcial: Partial<ApiSireSync> = {}): ApiSireSync => ({
   periodo: "202609",
@@ -60,6 +71,90 @@ describe("sincronizarMes", () => {
     expect(r.estado).toBe("error");
     expect(r.mensaje).toMatch(/sigue generando/);
     expect(llamar.mock.calls.length).toBeLessThanOrEqual(10);
+  });
+});
+
+describe("sincronizarMes cuando SUNAT tarda", () => {
+  it("avisa en cada consulta el avance y el ticket", async () => {
+    const llamar = vi
+      .fn()
+      .mockResolvedValueOnce(respuesta({ estado: "en_proceso", ticket: "T-1" }))
+      .mockResolvedValueOnce(respuesta({ estado: "en_proceso", ticket: "T-1" }))
+      .mockResolvedValueOnce(respuesta());
+    const avisos: EsperaSunat[] = [];
+    await sincronizarMes("T", "205", "2026-09", llamar, "compras", {
+      almacen: memoria(),
+      alEsperar: (e) => avisos.push(e),
+    });
+    expect(avisos.map((e) => [e.intento, e.ticket, e.retomado])).toEqual([
+      [1, "T-1", false],
+      [2, "T-1", false],
+    ]);
+    expect(avisos[0].maximo).toBeGreaterThan(avisos[1].intento);
+  });
+
+  it("al rendirse explica el motivo, da el ticket y lo deja guardado para retomarlo", async () => {
+    const almacen = memoria();
+    const llamar = vi.fn().mockResolvedValue(respuesta({ estado: "en_proceso", ticket: "T-157" }));
+    const r = await sincronizarMes("T", "205", "2026-10", llamar, "compras", { almacen });
+    expect(r.estado).toBe("error");
+    expect(r.mensaje).toMatch(/pueden tardar varios minutos/);
+    expect(r.mensaje).toMatch(/no hace falta repetir la solicitud/i);
+    expect(r.mensaje).toContain("T-157");
+    expect(leerTicket("205", "compras", "202610", almacen)).toBe("T-157");
+  });
+
+  it("la siguiente vez retoma el ticket guardado en vez de pedir otra propuesta", async () => {
+    const almacen = memoria();
+    guardarTicket("205", "compras", "202610", "T-157", almacen);
+    const llamar = vi.fn().mockResolvedValue(respuesta());
+    const avisos: EsperaSunat[] = [];
+    const r = await sincronizarMes("T", "205", "2026-10", llamar, "compras", {
+      almacen,
+      alEsperar: (e) => avisos.push(e),
+    });
+    expect(r.estado).toBe("ok");
+    expect(llamar).toHaveBeenCalledTimes(1);
+    expect(llamar.mock.calls[0][3]).toBe("T-157");
+    expect(leerTicket("205", "compras", "202610", almacen)).toBeUndefined(); // ya terminó
+    expect(avisos).toEqual([]);
+  });
+
+  it("marca como retomada la espera de un ticket recordado", async () => {
+    const almacen = memoria();
+    guardarTicket("205", "compras", "202610", "T-157", almacen);
+    const llamar = vi
+      .fn()
+      .mockResolvedValueOnce(respuesta({ estado: "en_proceso", ticket: "T-157" }))
+      .mockResolvedValueOnce(respuesta());
+    const avisos: EsperaSunat[] = [];
+    await sincronizarMes("T", "205", "2026-10", llamar, "compras", {
+      almacen,
+      alEsperar: (e) => avisos.push(e),
+    });
+    expect(avisos[0].retomado).toBe(true);
+  });
+
+  it("si el ticket recordado ya no sirve en SUNAT, pide uno nuevo una sola vez", async () => {
+    const almacen = memoria();
+    guardarTicket("205", "compras", "202610", "T-viejo", almacen);
+    const llamar = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError("Ticket inválido", "sunat_fault", 502))
+      .mockResolvedValueOnce(respuesta());
+    const r = await sincronizarMes("T", "205", "2026-10", llamar, "compras", { almacen });
+    expect(r.estado).toBe("ok");
+    expect(llamar.mock.calls.map((c) => c[3])).toEqual(["T-viejo", undefined]);
+  });
+
+  it("un fallo de conexión con un ticket recordado se informa y el ticket se conserva", async () => {
+    const almacen = memoria();
+    guardarTicket("205", "compras", "202610", "T-157", almacen);
+    const llamar = vi.fn().mockRejectedValue(new ApiError("Sin conexión", "network_error", 0));
+    await expect(
+      sincronizarMes("T", "205", "2026-10", llamar, "compras", { almacen }),
+    ).rejects.toBeInstanceOf(ApiError);
+    expect(leerTicket("205", "compras", "202610", almacen)).toBe("T-157");
   });
 });
 

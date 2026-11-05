@@ -51,6 +51,19 @@ const ICONO: Record<EstadoMes, { icono: typeof CheckCircle2; clase: string }> = 
 };
 
 function TextoResultado({ r }: { r: ResultadoMes }) {
+  if (r.estado === "en_curso" && r.espera) {
+    // SUNAT no ha terminado de generar el archivo: se dice por qué tarda y que no hace falta repetir.
+    return (
+      <span className="text-accent">
+        SUNAT sigue generando el archivo (consulta {r.espera.intento} de {r.espera.maximo}).{" "}
+        <span className="text-fg-3">
+          {r.espera.retomado ? "Se retomó la solicitud anterior. " : ""}
+          Los reportes de SIRE pueden tardar varios minutos; mantén esta ventana abierta o vuelve
+          más tarde: se retomará el mismo ticket ({r.espera.ticket}).
+        </span>
+      </span>
+    );
+  }
   if (r.estado === "en_curso") return <span className="text-accent">Consultando SUNAT…</span>;
   if (r.estado === "pendiente") return <span className="text-fg-4">En espera</span>;
   if (r.estado === "omitido")
