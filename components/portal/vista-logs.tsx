@@ -58,7 +58,7 @@ function Tarjeta({
   icono: typeof Clock;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-3.5 shadow-sm">
+    <div className="rounded-xl border border-line bg-surface p-3.5 shadow-card">
       <p className="flex items-center gap-1.5 text-[12px] text-fg-3">
         <Icono className="h-3.5 w-3.5" aria-hidden />
         {titulo}
@@ -225,7 +225,7 @@ export function VistaLogs({ token, ruc }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
+      <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
         <p className="text-[13px] leading-5 text-fg-2">
           Cada vez que corre la <strong className="font-medium text-fg">automatización diaria</strong>{" "}
           (el correo de proveedores, tres veces al día) queda aquí su resumen: lo que
@@ -293,7 +293,7 @@ export function VistaLogs({ token, ruc }: Props) {
         </Boton>
       </div>
 
-      <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card">
         {error ? (
           <EstadoVacio
             icono={ScrollText}

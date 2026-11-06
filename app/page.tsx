@@ -11,7 +11,7 @@ import { useSesion } from "@/lib/use-sesion";
 function EntornoIncompleto({ faltan }: { faltan: string[] }) {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-bg px-4">
-      <div className="max-w-md rounded-2xl border border-line bg-surface p-7 shadow-sm">
+      <div className="max-w-md rounded-2xl border border-line bg-surface p-7 shadow-card">
         <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-warn-line bg-warn-bg text-warn">
           <CloudOff className="h-5 w-5" aria-hidden />
         </span>

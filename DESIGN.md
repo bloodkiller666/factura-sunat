@@ -8,7 +8,8 @@ El portal es la ficha kardex digital de la empresa: una hoja reglada sobre un es
 
 Jugadas propias:
 - **Pestañas de índice** en el menú lateral: cada sección tiene su color (Ventas azul, Compras amarillo TDM, Evidencias verde, Logs rojo) y la pestaña activa se funde con el escritorio.
-- **Sellos de estado**: rectángulo de esquinas cortas, versalitas y borde de 1,5 px (nunca solo color: llevan icono y texto).
+- **Sellos de estado**: rectángulo de esquinas cortas, versalitas y borde de 1 px (nunca solo color: llevan icono y texto).
+- **Línea de margen roja** en el login: una sola línea fina sobre la hoja reglada del panel de marca.
 
 ## Color (tokens en `app/globals.css`)
 
@@ -26,11 +27,13 @@ Jugadas propias:
 
 Estados de datos (`--ok`, `--warn`, `--bad`, `--mute`) se reservan para el estado real del dato. El modo oscuro tiene su propio conjunto, también azul tinta.
 
+**Profundidad** (2026-11-06): sombras en capas, una de contacto nítida y otra ambiente larga y suave. `--shadow-sm` (botones y campos), `--shadow-card` (hojas: indicadores, filtros, tabla), `--shadow-pop` (diálogos y menús), `--shadow-ink` (botón primario, con luz superior interna). Movimiento: `--ease-out: cubic-bezier(0.22,1,0.36,1)`, 150 ms en controles, 200–260 ms en diálogos.
+
 ## Tipografía
 
 - **Barlow** (400–700) para la interfaz; cuerpo 14 px. Rotulación de carretera y de libro.
 - **Barlow Semi Condensed** (500–600) solo en versalitas (`.rotulo`, tracking 0,07 em): encabezados de columna, títulos de las fichas, grupos del menú.
-- **Geist Mono** para cifras y números de documento (`tnum`).
+- **Geist Mono** para números de documento y RUC (`tnum`). Los importes grandes (indicadores) van en Barlow con cifras tabulares, no en mono.
 - Título de sección 30 px bold; mínimo de texto 11,5 px (chips y notas), 12 px para texto.
 
 ## Componentes
@@ -38,7 +41,7 @@ Estados de datos (`--ok`, `--warn`, `--bad`, `--mute`) se reservan para el estad
 - **Ficha de indicadores**: en escritorio, UNA hoja con tres columnas separadas por la regla (no tres tarjetas). En móvil, carrusel de tarjetas.
 - **Filtros**: una hoja con dos filas alineadas; un filtro fuera de su valor por defecto se marca con borde y fondo de acento.
 - **Tabla**: anchos fijos por columna (`colgroup`), sin scroll horizontal desde 1280 px; Proveedor y Correo se reparten el resto y cortan con «…».
-- **Botones y campos**: esquina de 6 px (`rounded-md`), no de burbuja.
+- **Botones y campos**: esquina de 8 px (`rounded-lg`), no de burbuja. Los botones se hunden al presionar (`active:scale-[0.97]`) y el primario lleva luz superior interna; los campos del login miden 44 px.
 - **Zonas de clic**: mínimo 24 × 24 px (casillas con `label`).
 
 ## Hacer / No hacer

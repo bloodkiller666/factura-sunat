@@ -13,9 +13,10 @@ import { cn } from "@/lib/utils";
 import type { IconoLucide } from "@/components/ui/boton";
 
 const BASE_CAMPO =
-  "h-9 w-full rounded-md border border-line-strong bg-surface px-3 text-[13px] text-fg shadow-sm " +
-  "placeholder:text-fg-4 transition-colors hover:border-fg-4 focus:border-accent " +
-  "focus-visible:shadow-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60";
+  "h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-[13px] text-fg shadow-sm " +
+  "placeholder:text-fg-4 transition-[border-color,box-shadow] duration-150 ease-[var(--ease-out)] " +
+  "hover:border-fg-4/70 focus:border-accent focus-visible:shadow-[var(--ring)] " +
+  "disabled:cursor-not-allowed disabled:opacity-60";
 
 interface PropsInput extends InputHTMLAttributes<HTMLInputElement> {
   icono?: IconoLucide;

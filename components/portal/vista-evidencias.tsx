@@ -44,7 +44,7 @@ export function VistaEvidencias({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
+      <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
         <p className="text-[13px] leading-5 text-fg-2">
           Cada vez que sincronizas un periodo, el portal guarda{" "}
           <strong className="font-medium text-fg">el archivo original que entrega SUNAT</strong>{" "}
@@ -54,7 +54,7 @@ export function VistaEvidencias({
         </p>
       </div>
 
-      <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card">
         {error ? (
           <EstadoVacio
             icono={ShieldCheck}

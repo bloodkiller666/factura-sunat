@@ -239,7 +239,7 @@ export function TablaComprobantes({
 
   return (
     <section
-      className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm"
+      className="overflow-hidden rounded-xl border border-line bg-surface shadow-card"
       aria-busy={actualizando || undefined}
     >
       {/* Barra de selección */}
@@ -287,7 +287,7 @@ export function TablaComprobantes({
             {compras && <col className="hidden w-11 xl:table-column 2xl:w-[128px]" />}
             <col className="w-11" />
           </colgroup>
-          <thead className="sticky top-0 z-10 bg-surface-3 shadow-[0_2px_0_var(--line-strong)]">
+          <thead className="sticky top-0 z-10 bg-surface-3 shadow-[0_1px_0_var(--line-strong),0_8px_14px_-10px_rgb(14_27_61/0.22)]">
             <tr>
               <th scope="col" className="py-2.5 pr-0 pl-3">
                 <Casilla
@@ -367,7 +367,7 @@ export function TablaComprobantes({
                       onAbrir(c);
                     }}
                     className={cn(
-                      "group cursor-pointer transition-colors outline-none hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:shadow-[inset_2px_0_0_var(--accent)]",
+                      "group cursor-pointer transition-colors outline-none hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:shadow-[inset_0_0_0_2px_var(--accent-line)]",
                       marcado && "bg-accent-soft/60 hover:bg-accent-soft",
                     )}
                   >

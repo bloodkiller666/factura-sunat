@@ -86,7 +86,7 @@ export function Tarjeta({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border border-line bg-surface shadow-sm", className)}>
+    <section className={cn("rounded-xl border border-line bg-surface shadow-card", className)}>
       {children}
     </section>
   );

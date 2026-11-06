@@ -24,7 +24,7 @@ const CONTENEDOR =
   "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 " +
   // En escritorio las tres son UNA ficha con columnas separadas por la regla, como el
   // encabezado de una tarjeta kardex, y no tres tarjetas flotantes.
-  "lg:mx-0 lg:grid lg:gap-0 lg:divide-x lg:divide-line lg:overflow-hidden lg:rounded-xl lg:border lg:border-line lg:bg-surface lg:px-0 lg:pb-0 lg:shadow-sm";
+  "lg:mx-0 lg:grid lg:gap-0 lg:divide-x lg:divide-line lg:overflow-hidden lg:rounded-xl lg:border lg:border-line lg:bg-surface lg:px-0 lg:pb-0 lg:shadow-card";
 
 const SEGMENTOS: Array<{ estado: EstadoSunat; color: string; clave: keyof Metricas }> = [
   { estado: "Aprobado", color: "bg-ok", clave: "aprobados" },
@@ -47,7 +47,7 @@ function Tarjeta({
   return (
     <section
       className={cn(
-        "flex min-w-[86%] shrink-0 snap-center flex-col rounded-xl border border-line bg-surface p-4 shadow-sm sm:min-w-[48%] lg:min-w-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-5 lg:shadow-none",
+        "flex min-w-[86%] shrink-0 snap-center flex-col rounded-xl border border-line bg-surface p-4 shadow-card sm:min-w-[48%] lg:min-w-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-5 lg:shadow-none",
         className,
       )}
     >
@@ -62,7 +62,7 @@ function Tarjeta({
 
 function CargandoTarjeta() {
   return (
-    <div className="min-w-[86%] shrink-0 space-y-3 rounded-xl border border-line bg-surface p-4 shadow-sm sm:min-w-[48%] lg:min-w-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-5 lg:shadow-none">
+    <div className="min-w-[86%] shrink-0 space-y-3 rounded-xl border border-line bg-surface p-4 shadow-card sm:min-w-[48%] lg:min-w-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-5 lg:shadow-none">
       <Esqueleto className="h-3 w-28" />
       <Esqueleto className="h-8 w-44" />
       <Esqueleto className="h-3 w-full" />
@@ -105,7 +105,7 @@ export function Indicadores({
     >
       {/* Facturado */}
       <Tarjeta titulo="Facturado total" subtitulo={metricas.etiquetaRango}>
-        <p className="tnum font-mono text-[26px] leading-8 font-semibold tracking-tight text-fg">
+        <p className="tnum text-[30px] leading-9 font-semibold tracking-[-0.02em] text-fg">
           {formatearMoneda(metricas.facturadoPen)}
         </p>
         {metricas.facturadoUsd !== 0 && (

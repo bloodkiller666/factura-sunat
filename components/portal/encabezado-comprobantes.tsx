@@ -80,7 +80,7 @@ export function EncabezadoComprobantes({
     <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 pb-1">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="text-[30px] leading-9 font-bold tracking-tight text-fg">
+          <h1 className="text-[32px] leading-10 font-semibold tracking-[-0.025em] text-fg">
             {compras ? "Compras" : "Ventas"}
           </h1>
           {empresa && !puedeOperar && <Etiqueta>Solo lectura</Etiqueta>}

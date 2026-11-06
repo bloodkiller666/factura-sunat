@@ -88,7 +88,7 @@ function Item({
       // La pestaña activa se funde con el escritorio (mismo color y sin borde a la derecha):
       // así se ve como la división de un fichero que sale por encima del resto.
       className={cn(
-        "group relative flex w-full items-center gap-3 py-2.5 pl-3 text-left text-[14px] font-medium transition-colors",
+        "group relative flex w-full items-center gap-3 py-2.5 pl-3 text-left text-[14px] font-medium transition-[background-color,color] duration-150 ease-[var(--ease-out)]",
         colapsado && "justify-center pr-0 pl-0",
         activo
           ? cn("rounded-l-xl bg-bg font-semibold text-fg", !colapsado && "pr-6")
@@ -168,7 +168,7 @@ export function ContenidoLateral({
                 disabled={empresas.length < 2}
                 className={cn(
                   cn(
-                  "flex w-full items-center gap-3 rounded-lg border border-side-line bg-side-2 p-2.5 text-left transition-colors",
+                  "flex w-full items-center gap-3 rounded-xl border border-side-line bg-side-2 p-2.5 text-left shadow-[inset_0_1px_0_rgb(255_255_255/0.05)] transition-colors duration-150",
                   colapsado && "justify-center p-1.5",
                 ),
                   empresas.length > 1 && "hover:border-side-fg-2/50",
@@ -208,8 +208,9 @@ export function ContenidoLateral({
           </Menu>
         )}
         {empresaActiva && !colapsado && (
-          <p className="mt-2 px-1 text-[12px] text-side-fg-2">
-            Tu rol: <span className="text-side-fg">{ROLES[empresaActiva.rol]}</span>
+          <p className="mt-2.5 flex items-center gap-1.5 px-1 text-[12px] text-side-fg-2">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-tab-evidencias" />
+            Tu rol: <span className="font-medium text-side-fg">{ROLES[empresaActiva.rol]}</span>
           </p>
         )}
       </div>

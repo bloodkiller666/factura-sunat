@@ -72,7 +72,7 @@ export function EstadoPill({ estado }: { estado: EstadoSunat }) {
     <span
       title={ayuda}
       className={cn(
-        "rotulo inline-flex items-center gap-1.5 rounded-[4px] border-[1.5px] py-[3px] pr-2 pl-1.5 text-[12.5px] leading-4 font-semibold whitespace-nowrap",
+        "rotulo inline-flex items-center gap-1.5 rounded-[5px] border py-[3px] pr-2 pl-1.5 text-[12.5px] leading-4 font-semibold whitespace-nowrap",
         TONOS[tono],
       )}
     >

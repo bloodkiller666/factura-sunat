@@ -115,7 +115,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = n
   return (
     <section
       aria-label="Filtros"
-      className="space-y-3 rounded-xl border border-line bg-surface p-3 shadow-sm"
+      className="space-y-3 rounded-xl border border-line bg-surface p-3 shadow-card"
     >
       {/* Una sola rejilla: búsqueda y fechas arriba, el resto de filtros debajo, alineados a las mismas columnas. */}
       <div

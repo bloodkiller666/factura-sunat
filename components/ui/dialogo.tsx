@@ -79,10 +79,10 @@ export function Dialogo({
     >
       {abierto && (
         <div className={cn("flex flex-col", lateral ? "h-dvh" : "max-h-[86dvh]")}>
-          <header className="flex shrink-0 items-start justify-between gap-4 border-b border-line px-5 py-4">
+          <header className="flex shrink-0 items-start justify-between gap-4 border-b border-line px-6 py-4">
             {cabecera ?? (
               <div className="min-w-0">
-                <h2 className="text-[15px] leading-6 font-semibold tracking-tight text-fg">
+                <h2 className="text-[16px] leading-6 font-semibold tracking-[-0.01em] text-fg">
                   {titulo}
                 </h2>
                 {descripcion && <p className="mt-0.5 text-[13px] text-fg-3">{descripcion}</p>}
@@ -99,7 +99,7 @@ export function Dialogo({
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
           {pie && (
-            <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-2 px-5 py-3">
+            <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-2 px-6 py-3.5">
               {pie}
             </footer>
           )}

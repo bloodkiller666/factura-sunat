@@ -8,18 +8,22 @@ type Variante = "primario" | "acento" | "secundario" | "fantasma" | "peligro";
 type Tamano = "sm" | "md";
 
 const VARIANTES: Record<Variante, string> = {
-  primario: "bg-ink text-ink-fg shadow-sm ring-1 ring-inset ring-white/10 hover:bg-ink-hover",
-  acento: "bg-accent text-white shadow-sm hover:bg-accent-hover",
+  primario: "bg-ink text-ink-fg shadow-ink hover:bg-ink-hover",
+  acento: "bg-accent text-white shadow-ink hover:bg-accent-hover",
   secundario:
-    "border border-line-strong bg-surface text-fg-2 shadow-sm hover:bg-surface-3 hover:text-fg",
+    "border border-line-strong bg-surface text-fg-2 shadow-sm hover:border-fg-4/60 hover:bg-surface-2 hover:text-fg",
   fantasma: "text-fg-3 hover:bg-surface-3 hover:text-fg",
-  peligro: "border border-bad-line bg-bad-bg text-bad hover:brightness-95",
+  peligro: "border border-bad-line bg-bad-bg text-bad hover:border-bad hover:brightness-[0.97]",
 };
 
 const TAMANOS: Record<Tamano, { texto: string; solo: string }> = {
   sm: { texto: "h-8 gap-1.5 px-2.5 text-[12.5px]", solo: "h-8 w-8" },
   md: { texto: "h-9 gap-2 px-3.5 text-[13px]", solo: "h-9 w-9" },
 };
+
+/** Respuesta al toque: se hunde un poco al presionar y vuelve con curva suave. */
+const RESPUESTA =
+  "transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-[var(--ease-out)] active:scale-[0.97]";
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variante?: Variante;
@@ -51,7 +55,8 @@ export function Boton({
       title={etiqueta}
       aria-busy={cargando || undefined}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-md font-medium whitespace-nowrap transition-colors select-none",
+        "inline-flex shrink-0 items-center justify-center rounded-lg font-medium whitespace-nowrap select-none",
+        RESPUESTA,
         "disabled:pointer-events-none disabled:opacity-50",
         VARIANTES[variante],
         soloIcono ? TAMANOS[tamano].solo : TAMANOS[tamano].texto,
