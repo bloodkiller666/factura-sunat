@@ -9,7 +9,7 @@ El portal es la ficha kardex digital de la empresa: una hoja reglada sobre un es
 Jugadas propias:
 - **Pestañas de índice** en el menú lateral: cada sección tiene su color (Ventas azul, Compras amarillo TDM, Evidencias verde, Logs rojo) y la pestaña activa se funde con el escritorio.
 - **Sellos de estado**: rectángulo de esquinas cortas, versalitas y borde de 1 px (nunca solo color: llevan icono y texto).
-- **Línea de margen roja** en el login: una sola línea fina sobre la hoja reglada del panel de marca.
+
 
 ## Color (tokens en `app/globals.css`)
 

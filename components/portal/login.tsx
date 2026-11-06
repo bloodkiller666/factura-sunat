@@ -47,8 +47,8 @@ export function Login({ entrar }: Props) {
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      {/* Panel de marca: la hoja reglada con su línea de margen roja. */}
-      <aside className="relative hidden overflow-hidden bg-side text-side-fg lg:flex lg:flex-col lg:justify-between lg:py-12 lg:pr-14 lg:pl-[104px]">
+      {/* Panel de marca: la hoja reglada. */}
+      <aside className="relative hidden overflow-hidden bg-side text-side-fg lg:flex lg:flex-col lg:justify-between lg:p-14">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -56,11 +56,6 @@ export function Login({ entrar }: Props) {
             backgroundImage:
               "repeating-linear-gradient(to bottom, transparent 0, transparent 39px, color-mix(in srgb, var(--side-line) 40%, transparent) 39px, color-mix(in srgb, var(--side-line) 40%, transparent) 40px)",
           }}
-        />
-        {/* Línea de margen: una sola, fina, roja. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-[72px] w-px bg-margen/70"
         />
 
         <div className="relative flex items-center gap-3">
