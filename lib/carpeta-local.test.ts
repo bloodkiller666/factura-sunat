@@ -121,3 +121,23 @@ describe("rutaParaCopiar", () => {
     );
   });
 });
+
+describe("rutaParaCopiar con varias empresas", () => {
+  const partes = ["2026", "11. NOVIEMBRE", "20100000001", "F001-00000123"];
+  const raiz = String.raw`\fs-server\CONTAB\00 Portal`;
+
+  it("cada razón social tiene su carpeta, sin el punto final que Windows quita", () => {
+    expect(rutaParaCopiar(partes, raiz, "HOLDING TDM S.A.C.")).toBe(
+      String.raw`\fs-server\CONTAB\00 Portal\HOLDING TDM S.A.C\2026\11. NOVIEMBRE\20100000001\F001-00000123`,
+    );
+    expect(rutaParaCopiar(partes, raiz, "TDM ASFALTOS S.A.C")).toBe(
+      String.raw`\fs-server\CONTAB\00 Portal\TDM ASFALTOS S.A.C\2026\11. NOVIEMBRE\20100000001\F001-00000123`,
+    );
+  });
+
+  it("sin base configurada no agrega el nivel de empresa", () => {
+    expect(rutaParaCopiar(partes, "", "HOLDING TDM S.A.C.")).toBe(
+      String.raw`Descargas\2026\11. NOVIEMBRE\20100000001\F001-00000123`,
+    );
+  });
+});

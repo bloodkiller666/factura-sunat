@@ -48,10 +48,26 @@ export function rutaRelativa(raiz: string, partes: string[]): string {
  */
 export const RUTA_BASE_CARPETAS = (process.env.NEXT_PUBLIC_RUTA_CARPETAS ?? "").trim();
 
-/** Ruta lista para pegar en el Explorador: la base configurada más `año\mes\RUC\documento`. */
-export function rutaParaCopiar(partes: string[], base: string = RUTA_BASE_CARPETAS): string {
+/**
+ * Nombre de la carpeta de una empresa: su razón social sin el punto final, porque Windows lo quita
+ * (`HOLDING TDM S.A.C.` vive en `HOLDING TDM S.A.C`). Igual que `nombre_carpeta_empresa` del backend.
+ */
+export function carpetaDeEmpresa(razonSocial: string): string {
+  return segmentoSeguro(razonSocial, "empresa");
+}
+
+/**
+ * Ruta lista para pegar en el Explorador: la base configurada, la carpeta de la empresa (cada razón
+ * social va aparte) y `año\mes\RUC\documento`. Sin `empresa` no se agrega ese nivel.
+ */
+export function rutaParaCopiar(
+  partes: string[],
+  base: string = RUTA_BASE_CARPETAS,
+  empresa?: string,
+): string {
   const raiz = base.trim().replace(/[\\/]+$/, "");
-  return rutaRelativa(raiz === "" ? "Descargas" : raiz, partes);
+  const conEmpresa = empresa && raiz !== "" ? [carpetaDeEmpresa(empresa), ...partes] : partes;
+  return rutaRelativa(raiz === "" ? "Descargas" : raiz, conEmpresa);
 }
 
 /* ---- Permisos y carpeta raíz recordada ---- */

@@ -866,7 +866,7 @@ export function usePortal(token: string | null) {
       try {
         let ruta: string;
         try {
-          ({ ruta } = await apiAbrirCarpeta(token, partes, c.origen));
+          ({ ruta } = await apiAbrirCarpeta(token, partes, c.origen, empresa?.razonSocial));
         } catch (error) {
           // 404: la carpeta aún no existe en esta PC. Si los archivos están en el bucket, el
           // backend los copia a la PC y la abre.
@@ -884,13 +884,13 @@ export function usePortal(token: string | null) {
         if (!sinBackendLocal) registrarFallo("Abrir carpeta", mensaje);
         setCarpetaFallida({
           comprobante: c,
-          ruta: rutaParaCopiar(partes),
+          ruta: rutaParaCopiar(partes, undefined, empresa?.razonSocial),
           mensaje,
           gravedad: sinBackendLocal ? "aviso" : gravedadDe(error),
         });
       }
     },
-    [token],
+    [token, empresa],
   );
 
   const cargarEvidencias = useCallback(async () => {

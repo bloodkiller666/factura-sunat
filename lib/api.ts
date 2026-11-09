@@ -513,11 +513,12 @@ export async function apiAbrirCarpeta(
   token: string,
   partes: string[],
   origen: "emitido" | "recibido",
+  empresa?: string,
 ): Promise<{ ruta: string }> {
   return pedir<{ ruta: string }>("/api/v1/carpeta-local/abrir", token, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ partes, origen }),
+    body: JSON.stringify({ partes, origen, empresa }),
   });
 }
 
