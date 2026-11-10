@@ -59,6 +59,8 @@ export interface OpcionesMes {
   alEsperar?: (espera: EsperaSunat) => void;
   /** Dónde recordar el ticket (por defecto `localStorage`; `null` = no recordar). */
   almacen?: AlmacenTickets | null;
+  /** Volver a consultar también los meses cerrados que ya están cargados (el backend los rechaza si no). */
+  forzar?: boolean;
 }
 
 export type LlamadaSire = (
@@ -67,6 +69,7 @@ export type LlamadaSire = (
   periodo: string,
   ticket?: string,
   libro?: LibroSire,
+  forzar?: boolean,
 ) => Promise<ApiSireSync>;
 
 /** Errores tras los cuales no tiene sentido seguir con el resto de los meses. */
@@ -115,7 +118,7 @@ export async function sincronizarMes(
   for (let intento = 0; intento <= MAX_REINTENTOS_TICKET; intento += 1) {
     let respuesta: ApiSireSync;
     try {
-      respuesta = await llamar(token, ruc, periodo, ticket, libro);
+      respuesta = await llamar(token, ruc, periodo, ticket, libro, opciones.forzar);
     } catch (error) {
       // Un ticket recordado puede haber caducado en SUNAT: se descarta y se pide uno nuevo, una vez.
       if (retomado && intento === 0 && error instanceof ApiError && error.status !== 0) {
@@ -166,6 +169,7 @@ export async function sincronizarMeses(
     llamar?: LlamadaSire;
     libro?: LibroSire;
     almacen?: AlmacenTickets | null;
+    forzar?: boolean;
   },
 ): Promise<ResultadoMes[]> {
   const resultados: ResultadoMes[] = [];
@@ -183,6 +187,7 @@ export async function sincronizarMeses(
     try {
       resultado = await sincronizarMes(token, ruc, mes, opciones.llamar, opciones.libro, {
         almacen: opciones.almacen,
+        forzar: opciones.forzar,
         alEsperar: (espera) =>
           opciones.alCambiar({ ...resultadoInicial(mes), estado: "en_curso", espera }),
       });

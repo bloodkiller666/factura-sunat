@@ -735,11 +735,12 @@ export async function apiSireSync(
   periodo: string,
   ticket?: string,
   libro: LibroSire = "ventas",
+  forzar = false,
 ): Promise<ApiSireSync> {
   return pedir<ApiSireSync>(`/api/v1/companies/${ruc}/sire/${libro}/sync`, token, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(ticket ? { periodo, ticket } : { periodo }),
+    body: JSON.stringify({ periodo, ...(ticket ? { ticket } : {}), ...(forzar ? { forzar } : {}) }),
   });
 }
 

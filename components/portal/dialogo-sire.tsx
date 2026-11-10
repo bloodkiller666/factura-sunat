@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, CircleDashed, Loader2, MinusCircle, RefreshCw } from "lucide-react";
 import { Boton } from "@/components/ui/boton";
-import { Grupo, Seleccion } from "@/components/ui/campos";
+import { Casilla, Grupo, Seleccion } from "@/components/ui/campos";
 import { Dialogo } from "@/components/ui/dialogo";
 import { Progreso } from "@/components/ui/varios";
 import type { LibroSire } from "@/lib/api";
@@ -90,6 +90,7 @@ export function DialogoSire({ abierto, token, ruc, libro, onCerrar, onTerminado 
   const [hasta, setHasta] = useState(anterior);
   const [resultados, setResultados] = useState<ResultadoMes[] | null>(null);
   const [corriendo, setCorriendo] = useState(false);
+  const [forzar, setForzar] = useState(false);
   const cancelado = useRef(false);
 
   const seleccion = desde <= hasta ? mesesEntre(desde, hasta) : [];
@@ -108,6 +109,7 @@ export function DialogoSire({ abierto, token, ruc, libro, onCerrar, onTerminado 
     setResultados(seleccion.map(resultadoInicial));
     const finales = await sincronizarMeses(token, ruc, seleccion, {
       libro,
+      forzar,
       cancelado: () => cancelado.current,
       alCambiar: (resultado) =>
         setResultados((previos) =>
@@ -209,6 +211,19 @@ export function DialogoSire({ abierto, token, ruc, libro, onCerrar, onTerminado 
                 Todo el histórico
               </Boton>
             </div>
+
+            <label className="flex cursor-pointer items-start gap-2.5 text-[12.5px] leading-5 text-fg-2">
+              <Casilla
+                checked={forzar}
+                onChange={() => setForzar((v) => !v)}
+                etiqueta="Volver a consultar los meses ya cargados"
+              />
+              <span>
+                <strong className="font-medium text-fg">Volver a consultar meses cerrados.</strong>{" "}
+                El mes actual y el anterior siempre se pueden actualizar; los más antiguos, si ya
+                están cargados, se omiten salvo que marques esto. No duplica nada.
+              </span>
+            </label>
 
             <ul className="space-y-2 rounded-xl border border-line bg-surface-2 p-4 text-[12.5px] leading-5 text-fg-2">
               <li>

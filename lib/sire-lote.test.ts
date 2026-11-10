@@ -39,14 +39,20 @@ describe("sincronizarMes", () => {
   it("pide el periodo en formato SUNAT (AAAAMM) y resume el resultado", async () => {
     const llamar = vi.fn().mockResolvedValue(respuesta());
     const r = await sincronizarMes("T", "205", "2026-09", llamar);
-    expect(llamar).toHaveBeenCalledWith("T", "205", "202609", undefined, "ventas");
+    expect(llamar).toHaveBeenCalledWith("T", "205", "202609", undefined, "ventas", undefined);
     expect(r).toMatchObject({ mes: "2026-09", estado: "ok", nuevos: 8, yaExistian: 2, anulados: 1, omitidos: 1 });
   });
 
   it("con el libro de compras pide el registro RCE", async () => {
     const llamar = vi.fn().mockResolvedValue(respuesta());
     await sincronizarMes("T", "205", "2026-09", llamar, "compras");
-    expect(llamar).toHaveBeenCalledWith("T", "205", "202609", undefined, "compras");
+    expect(llamar).toHaveBeenCalledWith("T", "205", "202609", undefined, "compras", undefined);
+  });
+
+  it("con «volver a consultar» manda forzar para los meses cerrados", async () => {
+    const llamar = vi.fn().mockResolvedValue(respuesta());
+    await sincronizarMes("T", "205", "2026-06", llamar, "compras", { forzar: true });
+    expect(llamar).toHaveBeenCalledWith("T", "205", "202606", undefined, "compras", true);
   });
 
   it("si SUNAT tarda, retoma con el mismo ticket sin pedir otra propuesta", async () => {
