@@ -141,7 +141,7 @@ export function BarraFiltros({ filtros, onCambiar, onLimpiar, fechasVisibles = n
             type="button"
             onClick={() => setAbierto((v) => !v)}
             aria-expanded={abierto}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-[13px] font-medium text-fg-2 shadow-sm hover:border-fg-4 md:hidden"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-[13px] font-medium text-fg-2 shadow-sm hover:border-fg-4 pointer-coarse:h-11 md:hidden"
           >
             <SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             Filtros

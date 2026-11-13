@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { IconoLucide } from "@/components/ui/boton";
 
 const BASE_CAMPO =
-  "h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-[13px] text-fg shadow-sm " +
+  "h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-[13px] text-fg shadow-sm pointer-coarse:h-11 pointer-coarse:text-[16px] " +
   "placeholder:text-fg-4 transition-[border-color,box-shadow] duration-150 ease-[var(--ease-out)] " +
   "hover:border-fg-4/70 focus:border-accent focus-visible:shadow-[var(--ring)] " +
   "disabled:cursor-not-allowed disabled:opacity-60";

@@ -110,7 +110,7 @@ export function Portal({ token, email, onSalir, onActualizarCuenta }: Props) {
             type="button"
             onClick={() => setMenuMovil(true)}
             aria-label="Abrir menú"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-side-fg hover:bg-side-2"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-side-fg hover:bg-side-2 pointer-coarse:h-11 pointer-coarse:w-11"
           >
             <IconoMenu className="h-5 w-5" aria-hidden />
           </button>

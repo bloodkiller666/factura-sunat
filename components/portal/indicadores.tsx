@@ -148,7 +148,7 @@ export function Indicadores({
                   type="button"
                   onClick={() => onFiltrarEstado(estado)}
                   disabled={valor === 0}
-                  className="group flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-surface-3 disabled:pointer-events-none disabled:opacity-50"
+                  className="group flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-surface-3 disabled:pointer-events-none disabled:opacity-50 pointer-coarse:min-h-11"
                 >
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", color)} aria-hidden />
                   <span className="flex-1 text-[12.5px] text-fg-2">{estado}s</span>

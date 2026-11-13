@@ -6,6 +6,10 @@ import {
   apiDescargarArchivo,
   apiDescargarTipo,
   apiPrevisualizacion,
+  apiComprobantes,
+  apiResumen,
+  apiDetalle,
+  fueCancelada,
   olvidarPrevisualizaciones,
   apiImportarCdr,
   apiSireSync,
@@ -435,5 +439,49 @@ describe("llamadas a la API", () => {
       .mockRejectedValueOnce(new TypeError("CORS"));
     const error = await apiDescargarArchivo("T", { id: "a", nombre: "x" }).catch((e) => e);
     expect(error).toMatchObject({ code: "descarga_bloqueada" });
+  });
+});
+
+
+describe("cancelar peticiones (filtro que cambia antes de que llegue la respuesta)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** `fetch` que no responde hasta que lo cancelan, como un servidor lento. */
+  function fetchColgado() {
+    const llamadas: Array<RequestInit | undefined> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        llamadas.push(init);
+        return new Promise((_resolver, rechazar) => {
+          init?.signal?.addEventListener("abort", () =>
+            rechazar(new DOMException("cancelada", "AbortError")),
+          );
+        });
+      }),
+    );
+    return llamadas;
+  }
+
+  it.each([
+    ["listado", (s: AbortSignal) => apiComprobantes("T", "20514831620", {}, s)],
+    ["indicadores", (s: AbortSignal) => apiResumen("T", "20514831620", {}, s)],
+    ["detalle", (s: AbortSignal) => apiDetalle("T", "c1", s)],
+  ])("%s: al cancelar corta la petición y no la toma por un fallo de conexión", async (_n, llamar) => {
+    const llamadas = fetchColgado();
+    const control = new AbortController();
+    const pendiente = llamar(control.signal);
+    control.abort();
+    const error = await pendiente.catch((e: unknown) => e);
+    expect(llamadas[0]?.signal).toBe(control.signal);
+    expect(fueCancelada(error)).toBe(true);
+    expect(error).not.toBeInstanceOf(ApiError);
+  });
+
+  it("sin cancelar, un fallo de red sigue siendo «sin conexión»", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const error = await apiComprobantes("T", "20514831620").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(fueCancelada(error)).toBe(false);
   });
 });

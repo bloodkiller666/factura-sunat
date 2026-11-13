@@ -309,7 +309,9 @@ async function pedir<T>(ruta: string, token: string, init: RequestInit = {}): Pr
       ...init,
       headers: { Authorization: `Bearer ${token}`, ...(init.headers ?? {}) },
     });
-  } catch {
+  } catch (error) {
+    // Una petición cancelada a propósito no es un fallo de conexión: se deja pasar tal cual.
+    if (init.signal?.aborted) throw error;
     throw new ApiError(
       "No se pudo conectar con el servidor. Revisa tu conexión o inténtalo en un momento.",
       "sin_conexion",
@@ -319,6 +321,11 @@ async function pedir<T>(ruta: string, token: string, init: RequestInit = {}): Pr
   if (!respuesta.ok) throw await errorDeRespuesta(respuesta);
   if (respuesta.status === 204) return undefined as T;
   return (await respuesta.json()) as T;
+}
+
+/** ¿La petición se canceló con un `AbortController` (p. ej. cambió el filtro antes de que llegara)? */
+export function fueCancelada(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 /* ------------------------------------------------------------------ *
@@ -372,8 +379,11 @@ export async function apiComprobantes(
   token: string,
   ruc: string,
   filtros: FiltrosApi = {},
+  signal?: AbortSignal,
 ): Promise<ApiPagina> {
-  return pedir<ApiPagina>(`/api/v1/companies/${ruc}/comprobantes${paramsDe(filtros)}`, token);
+  return pedir<ApiPagina>(`/api/v1/companies/${ruc}/comprobantes${paramsDe(filtros)}`, token, {
+    signal,
+  });
 }
 
 /** Indicadores (estados, facturado neto, cobertura de respaldo) del conjunto filtrado. */
@@ -381,15 +391,21 @@ export async function apiResumen(
   token: string,
   ruc: string,
   filtros: FiltrosApi = {},
+  signal?: AbortSignal,
 ): Promise<ApiResumen> {
   return pedir<ApiResumen>(
     `/api/v1/companies/${ruc}/comprobantes/resumen${paramsDe(filtros)}`,
     token,
+    { signal },
   );
 }
 
-export async function apiDetalle(token: string, id: string): Promise<ApiDetalle> {
-  return pedir<ApiDetalle>(`/api/v1/comprobantes/${id}`, token);
+export async function apiDetalle(
+  token: string,
+  id: string,
+  signal?: AbortSignal,
+): Promise<ApiDetalle> {
+  return pedir<ApiDetalle>(`/api/v1/comprobantes/${id}`, token, { signal });
 }
 
 /** Archivos archivados del comprobante (XML, CDR, PDF). */

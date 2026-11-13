@@ -478,9 +478,9 @@ export function TablaComprobantes({
       {/* Tarjetas (< md) */}
       <ul className="divide-y divide-line md:hidden">
         {cargando &&
-          Array.from({ length: 4 }, (_, i) => (
+          Array.from({ length: 5 }, (_, i) => (
             <li key={i} className="p-4">
-              <Esqueleto className="h-14 w-full" />
+              <Esqueleto className="h-[95px] w-full" />
             </li>
           ))}
         {!cargando &&

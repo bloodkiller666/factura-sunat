@@ -11,6 +11,7 @@ import {
   apiDescargarTipos,
   apiPrevisualizacion,
   apiDetalle,
+  fueCancelada,
   apiEmpresas,
   apiEvidencias,
   apiImportarXml,
@@ -246,12 +247,14 @@ export function usePortal(token: string | null) {
     const clave = clavePagina;
     const siguiente = pagina + 1;
     let vigente = true;
+    const control = new AbortController();
 
-    const pedir = (numeroPagina: number, contar: boolean) =>
+    const pedir = (numeroPagina: number, contar: boolean, signal?: AbortSignal) =>
       apiComprobantes(
         token,
         ruc,
         consultaDePagina(filtrosEfectivos, orden, { pagina: numeroPagina, tamano, contar }),
+        signal,
       );
 
     /** Precarga la página siguiente en segundo plano para que "Siguiente" sea inmediato. */
@@ -316,12 +319,12 @@ export function usePortal(token: string | null) {
       try {
         // El servidor solo cuenta si todavía no se conoce el total de este conjunto filtrado.
         const contar = !cacheTotales.current.has(claveTotal);
-        const respuesta = await pedir(pagina, contar);
+        const respuesta = await pedir(pagina, contar, control.signal);
         if (!vigente) return;
         guardarEnCache(cachePaginas.current, clave, respuesta);
         aplicar(respuesta);
       } catch (error) {
-        if (!vigente) return;
+        if (!vigente || fueCancelada(error)) return;
         const mensaje = mensajeDe(error, "No se pudieron cargar los comprobantes.");
         registrarFallo("Cargar comprobantes", mensaje);
         setCargada({
@@ -338,6 +341,7 @@ export function usePortal(token: string | null) {
 
     return () => {
       vigente = false;
+      control.abort(); // el filtro, la página o la empresa cambió: esa petición ya no sirve
     };
     // Todo lo que influye en la consulta ya forma parte de `clavePagina`.
   }, [token, rucActivo, clavePagina]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -349,13 +353,14 @@ export function usePortal(token: string | null) {
     const clave = claveResumen;
     const { desde, hasta } = filtros;
     let vigente = true;
+    const control = new AbortController();
     const guardado = cacheResumen.current.get(clave);
     if (guardado) {
       setResumen({ ruc, clave, api: guardado, desde, hasta });
       setErrorResumen(null);
       return;
     }
-    apiResumen(token, ruc, consultaDeResumen(filtros))
+    apiResumen(token, ruc, consultaDeResumen(filtros), control.signal)
       .then((api) => {
         if (!vigente) return;
         guardarEnCache(cacheResumen.current, clave, api);
@@ -363,13 +368,14 @@ export function usePortal(token: string | null) {
         setErrorResumen(null);
       })
       .catch((error) => {
-        if (!vigente) return;
+        if (!vigente || fueCancelada(error)) return;
         const mensaje = mensajeDe(error, "No se pudieron calcular los indicadores.");
         registrarFallo("Calcular indicadores", mensaje);
         setErrorResumen(mensaje);
       });
     return () => {
       vigente = false;
+      control.abort();
     };
   }, [token, rucActivo, claveResumen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -377,7 +383,8 @@ export function usePortal(token: string | null) {
   useEffect(() => {
     if (!token || !detalleId) return;
     let vigente = true;
-    apiDetalle(token, detalleId)
+    const control = new AbortController();
+    apiDetalle(token, detalleId, control.signal)
       .then((api) => {
         if (vigente) setDetalleApi((previo) => ({ ...previo, [detalleId]: api }));
       })
@@ -386,6 +393,7 @@ export function usePortal(token: string | null) {
       });
     return () => {
       vigente = false;
+      control.abort();
     };
   }, [token, detalleId, version]);
 

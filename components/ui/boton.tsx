@@ -17,8 +17,15 @@ const VARIANTES: Record<Variante, string> = {
 };
 
 const TAMANOS: Record<Tamano, { texto: string; solo: string }> = {
-  sm: { texto: "h-8 gap-1.5 px-2.5 text-[12.5px]", solo: "h-8 w-8" },
-  md: { texto: "h-9 gap-2 px-3.5 text-[13px]", solo: "h-9 w-9" },
+  // `pointer-coarse`: con el dedo (móvil/tableta) el área táctil sube a 44 px; con ratón no cambia.
+  sm: {
+    texto: "h-8 gap-1.5 px-2.5 text-[12.5px] pointer-coarse:h-11",
+    solo: "h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11",
+  },
+  md: {
+    texto: "h-9 gap-2 px-3.5 text-[13px] pointer-coarse:h-11",
+    solo: "h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11",
+  },
 };
 
 /** Respuesta al toque: se hunde un poco al presionar y vuelve con curva suave. */

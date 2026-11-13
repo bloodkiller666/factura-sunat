@@ -17,6 +17,7 @@ import {
 import { Boton } from "@/components/ui/boton";
 import { Etiqueta } from "@/components/ui/etiqueta";
 import { ItemMenu, Menu, SeparadorMenu } from "@/components/ui/menu";
+import { Esqueleto } from "@/components/ui/varios";
 import { formatearEntero } from "@/lib/format";
 import type { ProgresoDescargaMasiva } from "@/lib/lote";
 import type { Empresa } from "@/lib/types";
@@ -101,12 +102,21 @@ export function EncabezadoComprobantes({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Hasta saber el rol de la empresa no se sabe qué botones van: se reserva su lugar para que
+          la página no salte cuando aparecen «Importar» y «Sincronizar SIRE». */}
+      {!empresa ? (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center" aria-hidden>
+          {Array.from({ length: 4 }, (_, i) => (
+            <Esqueleto key={i} className="h-9 w-full rounded-lg pointer-coarse:h-11 sm:w-32" />
+          ))}
+        </div>
+      ) : (
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         {puedeOperar && !compras && (
           <Menu
             ancho={264}
             disparador={(props) => (
-              <Boton icono={CloudDownload} cargando={sincronizando} {...props}>
+              <Boton icono={CloudDownload} cargando={sincronizando} className="w-full sm:w-auto" {...props}>
                 Respaldos
                 <ChevronDown className="h-3.5 w-3.5 text-fg-4" aria-hidden />
               </Boton>
@@ -124,7 +134,7 @@ export function EncabezadoComprobantes({
           <Menu
             ancho={252}
             disparador={(props) => (
-              <Boton icono={Upload} {...props}>
+              <Boton icono={Upload} className="w-full sm:w-auto" {...props}>
                 Importar
                 <ChevronDown className="h-3.5 w-3.5 text-fg-4" aria-hidden />
               </Boton>
@@ -141,6 +151,7 @@ export function EncabezadoComprobantes({
         {descargaMasiva === null ? (
           <Boton
             icono={FolderDown}
+            className="w-full sm:w-auto"
             onClick={onDescargarTodo}
             title="Baja los archivos en ZIP por partes, con sus carpetas AAAA/MES/RUC/SERIE-NÚMERO"
           >
@@ -148,12 +159,12 @@ export function EncabezadoComprobantes({
           </Boton>
         ) : (
           <>
-            <Boton icono={FolderDown} cargando disabled>
+            <Boton icono={FolderDown} cargando disabled className="col-span-2 sm:col-span-1">
               {descargaMasiva === "preparando"
                 ? "Preparando…"
                 : `Parte ${descargaMasiva.parte} de ${descargaMasiva.partes} · ${formatearEntero(descargaMasiva.hecho)}/${formatearEntero(descargaMasiva.total)}`}
             </Boton>
-            <Boton icono={X} onClick={onCancelarDescargaTodo}>
+            <Boton icono={X} onClick={onCancelarDescargaTodo} className="col-span-2 sm:col-span-1">
               Cancelar
             </Boton>
           </>
@@ -161,7 +172,7 @@ export function EncabezadoComprobantes({
         <Menu
           ancho={252}
           disparador={(props) => (
-            <Boton icono={Download} {...props}>
+            <Boton icono={Download} className="w-full sm:w-auto" {...props}>
               Exportar
               <ChevronDown className="h-3.5 w-3.5 text-fg-4" aria-hidden />
             </Boton>
@@ -196,11 +207,12 @@ export function EncabezadoComprobantes({
           </p>
         </Menu>
         {puedeOperar && (
-          <Boton variante="primario" icono={RefreshCw} onClick={onSire}>
+          <Boton variante="primario" icono={RefreshCw} onClick={onSire} className="w-full sm:w-auto">
             Sincronizar SIRE
           </Boton>
         )}
       </div>
+      )}
     </div>
   );
 }
